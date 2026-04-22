@@ -4,6 +4,7 @@ import pino from 'pino';
 import type { AppConfig } from '../config.js';
 import { getChatConfig } from '../config.js';
 import type { IAgentProvider } from '../agent/types.js';
+import type { MemoryManager } from '../memory/MemoryManager.js';
 import { SingleAgentRouter } from '../agent/SingleAgentRouter.js';
 import { ManagedSession } from './ManagedSession.js';
 
@@ -17,7 +18,7 @@ export class SessionManager {
   constructor(
     private agentProvider: IAgentProvider,
     private config: AppConfig,
-    private memoryManager?: { summarize(chatId: string, sessionId: string): Promise<void> },
+    private memoryManager?: MemoryManager,
   ) {
     this.cleanupTimer = setInterval(() => this.cleanupIdle(), CLEANUP_INTERVAL);
   }
@@ -26,7 +27,6 @@ export class SessionManager {
     const existing = this.sessions.get(chatId);
     if (existing?.alive) return existing;
 
-    // Evict LRU if at capacity
     if (this.sessions.size >= this.config.env.MAX_PROCS) await this.evictLRU();
 
     const chatConfig = getChatConfig(this.config, chatId);
@@ -41,7 +41,6 @@ export class SessionManager {
     const proc = await this.agentProvider.spawn(spawnOpts);
     const router = new SingleAgentRouter(proc, this.agentProvider, spawnOpts);
 
-    // Try to restore previous session
     const lastSessionId = await this.readLastSessionId(chatId);
     if (lastSessionId) {
       try {
