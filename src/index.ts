@@ -9,6 +9,7 @@ import { AcpMemoryRecycler } from './memory/AcpMemoryRecycler.js';
 import { MemoryManager } from './memory/MemoryManager.js';
 import { SessionManager } from './session/SessionManager.js';
 import { Bridge } from './bridge/Bridge.js';
+import { startHttpServer } from './http/server.js';
 
 const log = pino({ name: 'yami-agent' });
 
@@ -72,6 +73,10 @@ async function main() {
   scheduleDailyCron(memoryManager, sessionsDir);
 
   await platform.connect();
+
+  // Task 4.4: HTTP API
+  await startHttpServer(config.env.PORT, platform, sessionManager);
+
   log.info('yami-agent started');
 
   const shutdown = async () => {
