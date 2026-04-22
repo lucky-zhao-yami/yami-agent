@@ -3,6 +3,7 @@
  * 企微 stream 是替换式：每次发当前 segment 的累计全文
  * 1500 字切割，换行处优先切割，表格续接
  */
+import { randomUUID } from 'node:crypto';
 import pino from 'pino';
 import type { WeComPlatform } from './WeComPlatform.js';
 
@@ -21,8 +22,10 @@ export class StreamSegmenter {
 
   constructor(
     private platform: WeComPlatform,
-    private chatId: string,
+    private reqId: string,
     streamId: string,
+    private chatId: string,
+    private chatType: number,
     private limit = SEGMENT_LIMIT,
     private flushInterval = FLUSH_INTERVAL,
   ) {
@@ -45,19 +48,23 @@ export class StreamSegmenter {
   async finish(): Promise<void> {
     this.clearTimer();
     if (this.buf) await this.flush();
-    if (!this.finished && this.segText) {
-      try {
-        await this.platform.sendStream(this.chatId, this.streamId, this.segText, true);
-      } catch {
-        // 6000 conflict fallback
-        log.info('stream finish failed, falling back to sendMessage');
-        if (this.fullText) await this.platform.sendMessage(this.chatId, this.fullText);
+
+    // Check 6000 conflict — degrade to sendMessage
+    if (this.platform.failedReqIds.has(this.reqId)) {
+      this.platform.failedReqIds.delete(this.reqId);
+      if (this.fullText && this.chatId) {
+        await this.platform.sendMessage(this.chatId, this.fullText, this.chatType);
       }
+      this.finished = true;
+      return;
+    }
+
+    if (!this.finished && this.segText) {
+      await this.platform.sendStream(this.reqId, this.streamId, this.segText, true);
       this.finished = true;
     }
   }
 
-  /** Fallback: return full accumulated text for sendMessage degradation */
   get text(): string { return this.fullText; }
 
   private async flush(): Promise<void> {
@@ -67,11 +74,7 @@ export class StreamSegmenter {
       if (this.buf.length <= space) {
         this.segText += this.buf;
         this.buf = '';
-        try {
-          await this.platform.sendStream(this.chatId, this.streamId, this.segText, false);
-        } catch {
-          log.info('stream push failed, will degrade on finish');
-        }
+        await this.platform.sendStream(this.reqId, this.streamId, this.segText, false);
       } else {
         let cut = space;
         const nl = this.buf.lastIndexOf('\n', space);
@@ -82,20 +85,14 @@ export class StreamSegmenter {
 
         const tableHeader = extractTableHeader(this.segText);
 
-        try {
-          await this.platform.sendStream(this.chatId, this.streamId, this.segText, true);
-        } catch {
-          log.info('stream segment close failed, falling back to sendMessage');
-          if (this.fullText) await this.platform.sendMessage(this.chatId, this.fullText);
-          this.finished = true;
-          return;
-        }
+        // Finish current segment
+        await this.platform.sendStream(this.reqId, this.streamId, this.segText, true);
 
-        // New segment
-        this.streamId = randomId();
+        // New segment with new stream_id
+        this.streamId = randomUUID().replace(/-/g, '').slice(0, 16);
         this.segText = '';
 
-        // Table continuation: prepend header to next segment
+        // Table continuation
         if (tableHeader && this.buf && this.buf.trimStart().startsWith('|')) {
           this.segText = tableHeader;
         }
@@ -108,14 +105,6 @@ export class StreamSegmenter {
   }
 }
 
-function randomId(): string {
-  return Math.random().toString(36).slice(2, 18);
-}
-
-/**
- * Extract the last markdown table header (title + separator) from text.
- * Only returns header if text ends mid-table.
- */
 function extractTableHeader(text: string): string {
   const lines = text.trimEnd().split('\n');
   if (!lines.length || !lines[lines.length - 1].trim().startsWith('|')) return '';

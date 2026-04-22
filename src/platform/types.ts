@@ -12,6 +12,7 @@ export interface IncomingMessage {
   items?: MixedItem[];
   quote?: string;
   reqId: string;
+  chatType: number; // 1=单聊, 2=群聊
 }
 
 export interface PlatformEvent {
@@ -25,8 +26,9 @@ export abstract class IMessagePlatform {
   abstract disconnect(): Promise<void>;
   abstract onMessage(handler: (msg: IncomingMessage) => Promise<void>): void;
   abstract onEvent(handler: (evt: PlatformEvent) => Promise<void>): void;
-  abstract sendStream(chatId: string, streamId: string, content: string, finish: boolean): Promise<void>;
-  abstract sendMessage(chatId: string, content: string): Promise<void>;
+  abstract sendStream(reqId: string, streamId: string, content: string, finish: boolean): Promise<void>;
+  abstract sendMessage(chatId: string, content: string, chatType?: number): Promise<void>;
+  abstract sendWelcome(reqId: string, text: string): Promise<void>;
   abstract getMedia(mediaId: string): Promise<Buffer | null>;
 }
 
