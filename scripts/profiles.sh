@@ -27,14 +27,15 @@ DEV_DEFAULT_AGENT="orchestrator-agent"
 CS_DEFAULT_AGENT="cs-troubleshooter"
 OPS_DEFAULT_AGENT="alert-advisor"
 
-BASE_SKILLS=(notify-wecom wecom-memory wecom-scheduler manage-openproject)
-BASE_AGENTS=(orchestrator-agent)
-BASE_MCPS=(memory openproject kiro-bridge)
+BASE_SKILLS=(notify-wecom)
+BASE_AGENTS=()
+BASE_MCPS=()
 BASE_STEERING=(global_guide.md product.md projects.md)
-BASE_HOOKS=(save-memory-on-exit.kiro.hook)
+BASE_HOOKS=()
 
 # ── dev ──────────────────────────────────────────────────────
 DEV_SKILLS=(
+  wecom-memory wecom-scheduler manage-openproject
   code-module-analyzer java-spock-unit-test wirte-java-unit-test
   api-test idp-deploy release-doc-generator dev-doc-generator
   code-branch-diff yamibuy-order-flow yami-public-toolkit
@@ -44,12 +45,14 @@ DEV_SKILLS=(
   knowledge-writer business-knowledge
 )
 DEV_AGENTS=(
+  orchestrator-agent
   coder-agent architect-agent api-designer-agent qa-agent
   reviewer-agent sql-query alert-advisor knowledge-agent.md
 )
-DEV_MCPS=(github kibana sql-query zentao google-sheets)
+DEV_MCPS=(memory openproject kiro-bridge github kibana sql-query zentao google-sheets)
 DEV_STEERING=(tech.md structure.md git-agent.md abtest-guide.md yami-skills.md)
 DEV_HOOKS=(
+  save-memory-on-exit.kiro.hook
   auto-ut-on-code-change.kiro.hook checkout-master-pull.kiro.hook
   code-commit.kiro.hook generate-ut-for-file.kiro.hook
   multi-repo-release-doc.kiro.hook release-assistant-hook.kiro.hook
@@ -58,7 +61,7 @@ DEV_HOOKS=(
 )
 
 # ── cs ───────────────────────────────────────────────────────
-CS_SKILLS=(cs-knowledge sql-query kibana-logs business-knowledge)
+CS_SKILLS=(cs-knowledge sql-query kibana-logs)
 CS_AGENTS=(cs-troubleshooter sql-query)
 CS_MCPS=(sql-query kibana zentao)
 CS_STEERING=(cs-global-config.md cs-yami-skills.md sub-agent-guide.md skills-path-find-guide.md)
