@@ -1,177 +1,173 @@
 #!/usr/bin/env bash
-# MCP credential collection and config generation
+# MCP installer + credential collector — driven by mcp-registry.json
 
-# Ask for a credential, return empty if skipped
-ask() {
-  local prompt="$1" default="$2" secret="$3" val
-  if [ "$secret" = "secret" ]; then
-    read -rsp "  $prompt: " val; echo
-  elif [ -n "$default" ]; then
-    read -rp "  $prompt [$default]: " val
-    val="${val:-$default}"
-  else
-    read -rp "  $prompt: " val
+REGISTRY="$SCRIPT_DIR/mcp-registry.json"
+
+# ── 安装单个 MCP 的依赖 ──────────────────────────────────────
+install_mcp() {
+  local mcp_id="$1"
+  local install_type install_pkg install_dir install_repo install_python
+
+  install_type=$(jq -r ".\"$mcp_id\".install.type // empty" "$REGISTRY")
+  [ -z "$install_type" ] && return 0  # 无需安装
+
+  install_dir=$(jq -r ".\"$mcp_id\".install.dir // empty" "$REGISTRY")
+  local target="${WORK_DIR}/${install_dir}"
+
+  case "$install_type" in
+    npm)
+      install_pkg=$(jq -r ".\"$mcp_id\".install.package" "$REGISTRY")
+      if [ -n "$install_dir" ]; then
+        [ -d "$target/node_modules" ] && return 0
+        mkdir -p "$target"
+        (cd "$target" && npm init -y --silent 2>/dev/null && npm install --silent "$install_pkg" 2>/dev/null)
+      else
+        [ -d "$WORK_DIR/node_modules/$install_pkg" ] && return 0
+        (cd "$WORK_DIR" && [ ! -f package.json ] && npm init -y --silent 2>/dev/null; npm install --silent "$install_pkg" 2>/dev/null)
+      fi
+      ;;
+    npm-local)
+      [ -d "$target/node_modules" ] && return 0
+      mkdir -p "$target"
+      # 从模板源复制源码
+      local tmpl_src="$TEMPLATE_SRC/../mcp-servers/$(basename "$install_dir")"
+      if [ -d "$tmpl_src" ]; then
+        cp -rn "$tmpl_src/"* "$target/" 2>/dev/null || true
+      fi
+      (cd "$target" && [ ! -f package.json ] && npm init -y --silent 2>/dev/null; npm install --silent 2>/dev/null)
+      ;;
+    git)
+      [ -d "$target" ] && return 0
+      install_repo=$(jq -r ".\"$mcp_id\".install.repo" "$REGISTRY")
+      install_python=$(jq -r ".\"$mcp_id\".install.python // false" "$REGISTRY")
+      git clone --quiet "$install_repo" "$target" 2>/dev/null || { warn "$mcp_id clone 失败"; return 1; }
+      if [ "$install_python" = "true" ] && [ -f "$target/requirements.txt" ]; then
+        (cd "$target" && python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt 2>/dev/null) || warn "$mcp_id pip install 失败"
+      fi
+      ;;
+  esac
+  return 0
+}
+
+# ── 交互式收集单个 MCP 的凭证，生成 JSON 片段 ─────────────────
+# 输出: MCP_ENABLED=0/1, MCP_JSON=配置片段
+collect_mcp() {
+  local mcp_id="$1"
+  MCP_ENABLED=0
+  MCP_JSON=""
+
+  local name auto
+  name=$(jq -r ".\"$mcp_id\".name" "$REGISTRY")
+  auto=$(jq -r ".\"$mcp_id\".auto // false" "$REGISTRY")
+
+  # auto MCP 不需要交互
+  if [ "$auto" = "true" ]; then
+    MCP_ENABLED=1
+    MCP_JSON=$(generate_mcp_json "$mcp_id")
+    return
   fi
-  echo "$val"
-}
 
-# Ask if MCP should be enabled, collect credentials if yes
-# Sets MCP_ENABLED=1/0 and MCP_JSON with the config fragment
-collect_mcp_github() {
-  echo ""; echo "=== GitHub MCP ==="
+  echo ""
+  echo "=== $name MCP ==="
   read -rp "  启用? [Y/n]: " yn
-  if [[ "${yn,,}" == "n" ]]; then MCP_ENABLED=0; return; fi
+  if [[ "${yn,,}" == "n" ]]; then return; fi
+
+  # 收集需要用户输入的 env 变量
+  local env_keys env_json="{}"
+  env_keys=$(jq -r ".\"$mcp_id\".env | keys[]" "$REGISTRY")
+
+  for key in $env_keys; do
+    local prompt default secret value_tpl val
+    prompt=$(jq -r ".\"$mcp_id\".env.\"$key\".prompt // empty" "$REGISTRY")
+    default=$(jq -r ".\"$mcp_id\".env.\"$key\".default // empty" "$REGISTRY")
+    secret=$(jq -r ".\"$mcp_id\".env.\"$key\".secret // false" "$REGISTRY")
+    value_tpl=$(jq -r ".\"$mcp_id\".env.\"$key\".value // empty" "$REGISTRY")
+
+    # 固定值，不需要交互
+    if [ -n "$value_tpl" ]; then
+      val=$(expand_vars "$value_tpl")
+      env_json=$(echo "$env_json" | jq --arg k "$key" --arg v "$val" '. + {($k): $v}')
+      continue
+    fi
+
+    # 交互式收集
+    if [ "$secret" = "true" ]; then
+      read -rsp "  $prompt: " val; echo
+    elif [ -n "$default" ]; then
+      read -rp "  $prompt [$default]: " val
+      val="${val:-$default}"
+    else
+      read -rp "  $prompt: " val
+    fi
+
+    if [ -z "$val" ]; then
+      warn "$key 为空，跳过此 MCP"
+      return
+    fi
+    env_json=$(echo "$env_json" | jq --arg k "$key" --arg v "$val" '. + {($k): $v}')
+  done
+
   MCP_ENABLED=1
-  local token; token=$(ask "GITHUB_PERSONAL_ACCESS_TOKEN" "" "secret")
-  MCP_JSON=$(cat <<EOFJ
-    "github": {
-      "command": "node",
-      "args": ["${WORK_DIR}/mcp-servers/github/node_modules/@modelcontextprotocol/server-github/dist/index.js"],
-      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "${token}" },
-      "disabled": false, "autoApprove": []
-    }
-EOFJ
-)
+  MCP_JSON=$(generate_mcp_json "$mcp_id" "$env_json")
 }
 
-collect_mcp_kibana() {
-  echo ""; echo "=== Kibana MCP ==="
-  read -rp "  启用? [Y/n]: " yn
-  if [[ "${yn,,}" == "n" ]]; then MCP_ENABLED=0; return; fi
-  MCP_ENABLED=1
-  MCP_JSON=$(cat <<EOFJ
-    "kibana": {
-      "command": "${WORK_DIR}/mcp-servers/kibana-mcp/.venv/bin/python",
-      "args": ["${WORK_DIR}/mcp-servers/kibana-mcp/server.py"],
-      "disabled": false,
-      "autoApprove": ["list_services", "search_logs", "search_errors", "search_by_order"]
-    }
-EOFJ
-)
+# ── 生成单个 MCP 的 JSON 配置片段 ────────────────────────────
+generate_mcp_json() {
+  local mcp_id="$1"
+  local env_override="${2:-}"
+
+  local command args_json env_json auto_approve_json aliases_json
+  command=$(jq -r ".\"$mcp_id\".command" "$REGISTRY")
+  command=$(expand_vars "$command")
+
+  args_json=$(jq -c "[.\"$mcp_id\".args[] | $(expand_vars_jq)]" "$REGISTRY")
+  auto_approve_json=$(jq -c ".\"$mcp_id\".autoApprove // []" "$REGISTRY")
+  aliases_json=$(jq -c ".\"$mcp_id\".toolAliases // null" "$REGISTRY")
+
+  if [ -n "$env_override" ]; then
+    env_json="$env_override"
+  else
+    # 自动 MCP: 展开所有 value 模板
+    env_json=$(jq -c ".\"$mcp_id\".env | to_entries | map({key: .key, value: (.value.value // \"\")}) | from_entries" "$REGISTRY")
+    # 展开变量
+    env_json=$(echo "$env_json" | python3 -c "
+import sys, json, os
+d = json.load(sys.stdin)
+vars = {'WORK_DIR': os.environ.get('WORK_DIR',''), 'CODE_DIR': os.environ.get('CODE_DIR',''), 'PORT': os.environ.get('PORT','')}
+for k,v in d.items():
+    for vk,vv in vars.items():
+        v = v.replace('{'+vk+'}', vv)
+    d[k] = v
+json.dump(d, sys.stdout)
+")
+  fi
+
+  # 组装
+  local result
+  result=$(jq -n \
+    --arg cmd "$command" \
+    --argjson args "$args_json" \
+    --argjson env "$env_json" \
+    --argjson aa "$auto_approve_json" \
+    '{command: $cmd, args: $args, env: $env, disabled: false, autoApprove: $aa}')
+
+  if [ "$aliases_json" != "null" ]; then
+    result=$(echo "$result" | jq --argjson ta "$aliases_json" '. + {toolAliases: $ta}')
+  fi
+
+  echo "$result"
 }
 
-collect_mcp_openproject() {
-  echo ""; echo "=== OpenProject MCP ==="
-  read -rp "  启用? [Y/n]: " yn
-  if [[ "${yn,,}" == "n" ]]; then MCP_ENABLED=0; return; fi
-  MCP_ENABLED=1
-  local url key
-  url=$(ask "OPENPROJECT_BASE_URL" "https://openproject.yamibuy.net")
-  key=$(ask "OPENPROJECT_API_KEY" "" "secret")
-  MCP_JSON=$(cat <<EOFJ
-    "openproject": {
-      "command": "node",
-      "args": ["${WORK_DIR}/mcp-servers/openproject/index.js"],
-      "env": {
-        "OPENPROJECT_BASE_URL": "${url}",
-        "OPENPROJECT_API_KEY": "${key}",
-        "OPENPROJECT_URL": "${url}"
-      },
-      "disabled": false, "autoApprove": []
-    }
-EOFJ
-)
+# ── 变量展开辅助 ─────────────────────────────────────────────
+expand_vars() {
+  local s="$1"
+  s="${s//\{WORK_DIR\}/$WORK_DIR}"
+  s="${s//\{CODE_DIR\}/$CODE_DIR}"
+  s="${s//\{PORT\}/$PORT}"
+  echo "$s"
 }
 
-collect_mcp_google_sheets() {
-  echo ""; echo "=== Google Sheets MCP ==="
-  read -rp "  启用? [Y/n]: " yn
-  if [[ "${yn,,}" == "n" ]]; then MCP_ENABLED=0; return; fi
-  MCP_ENABLED=1
-  local cred_path token_path
-  cred_path=$(ask "CREDENTIALS_PATH (gcp-oauth.keys.json)")
-  token_path=$(ask "TOKEN_PATH (token.json)")
-  MCP_JSON=$(cat <<EOFJ
-    "google-sheets": {
-      "command": "uvx",
-      "args": ["mcp-google-sheets@latest"],
-      "env": { "CREDENTIALS_PATH": "${cred_path}", "TOKEN_PATH": "${token_path}" },
-      "disabled": false, "autoApprove": []
-    }
-EOFJ
-)
-}
-
-collect_mcp_zentao() {
-  echo ""; echo "=== 禅道 MCP ==="
-  read -rp "  启用? [Y/n]: " yn
-  if [[ "${yn,,}" == "n" ]]; then MCP_ENABLED=0; return; fi
-  MCP_ENABLED=1
-  local url user pass
-  url=$(ask "ZENTAO_URL" "https://bugs.yamibuy.tech")
-  user=$(ask "ZENTAO_USERNAME")
-  pass=$(ask "ZENTAO_PASSWORD" "" "secret")
-  MCP_JSON=$(cat <<EOFJ
-    "zentao": {
-      "command": "node",
-      "args": ["${WORK_DIR}/mcp-servers/zentao/index.js"],
-      "env": { "ZENTAO_URL": "${url}", "ZENTAO_USERNAME": "${user}", "ZENTAO_PASSWORD": "${pass}" },
-      "disabled": false, "autoApprove": [],
-      "toolAliases": { "list_projects": "zentao_list_projects" }
-    }
-EOFJ
-)
-}
-
-collect_mcp_sql_query() {
-  echo ""; echo "=== SQL Query MCP ==="
-  read -rp "  启用? [Y/n]: " yn
-  if [[ "${yn,,}" == "n" ]]; then MCP_ENABLED=0; return; fi
-  MCP_ENABLED=1
-  local host port name user pass
-  host=$(ask "DB_HOST")
-  port=$(ask "DB_PORT" "3306")
-  name=$(ask "DB_NAME")
-  user=$(ask "DB_USER")
-  pass=$(ask "DB_PASSWORD" "" "secret")
-  MCP_JSON=$(cat <<EOFJ
-    "sql-query": {
-      "command": "uvx",
-      "args": ["--index-url", "https://nexus.yamibuy.net/repository/pypi-public/simple/", "yami-sql-mcp"],
-      "env": { "DB_HOST": "${host}", "DB_PORT": "${port}", "DB_NAME": "${name}", "DB_USER": "${user}", "DB_PASSWORD": "${pass}", "SQL_MCP_DATA_DIR": "" },
-      "disabled": false, "autoApprove": []
-    }
-EOFJ
-)
-}
-
-collect_mcp_ops_agent() {
-  echo ""; echo "=== OPS Agent MCP ==="
-  read -rp "  启用? [Y/n]: " yn
-  if [[ "${yn,,}" == "n" ]]; then MCP_ENABLED=0; return; fi
-  MCP_ENABLED=1
-  local host user key
-  host=$(ask "OPS_HOST")
-  user=$(ask "OPS_USER" "root")
-  key=$(ask "OPS_KEY" "~/.ssh/id_rsa")
-  MCP_JSON=$(cat <<EOFJ
-    "ops-agent": {
-      "command": "python3",
-      "args": ["${WORK_DIR}/mcp-servers/ops-agent/server.py"],
-      "env": { "OPS_HOST": "${host}", "OPS_USER": "${user}", "OPS_KEY": "${key}" },
-      "disabled": false, "autoApprove": []
-    }
-EOFJ
-)
-}
-
-# Memory and kiro-bridge are auto-configured, no credentials needed
-generate_mcp_memory() {
-  echo "    \"memory\": {
-      \"command\": \"node\",
-      \"args\": [\"${WORK_DIR}/node_modules/@modelcontextprotocol/server-memory/dist/index.js\"],
-      \"env\": { \"MEMORY_FILE_PATH\": \"${WORK_DIR}/.kiro/memory.db\" },
-      \"disabled\": false,
-      \"autoApprove\": [\"read_graph\", \"create_entities\", \"search_nodes\", \"create_relations\", \"open_nodes\", \"add_observations\", \"delete_observations\", \"delete_entities\"]
-    }"
-}
-
-generate_mcp_kiro_bridge() {
-  echo "    \"kiro-bridge\": {
-      \"command\": \"python3\",
-      \"args\": [\"${CODE_DIR}/kiro-wecom-bridge/mcp_server.py\"],
-      \"env\": { \"KIRO_BRIDGE_URL\": \"http://localhost:${PORT}\" },
-      \"disabled\": false,
-      \"autoApprove\": [\"reply_user\"]
-    }"
+# jq 内的变量展开表达式
+expand_vars_jq() {
+  echo "gsub(\"{WORK_DIR}\"; \"$WORK_DIR\") | gsub(\"{CODE_DIR}\"; \"$CODE_DIR\") | gsub(\"{PORT}\"; \"$PORT\")"
 }

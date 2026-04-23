@@ -185,71 +185,24 @@ ok "工作空间初始化完成"
 echo ""
 info "Step 4: 安装 MCP 依赖"
 
-# memory (所有 profile 都需要)
-if [ ! -d "$WORK_DIR/node_modules/@modelcontextprotocol/server-memory" ]; then
-  echo "  📦 memory MCP..."
-  (cd "$WORK_DIR" && npm init -y --silent 2>/dev/null && npm install --silent @modelcontextprotocol/server-memory 2>/dev/null)
-  ok "memory MCP"
-else
-  echo "  ✓ memory MCP (已安装)"
-fi
+# 合并去重: auto MCPs + profile MCPs
+ALL_MCPS=()
+for mcp_id in $(jq -r 'to_entries[] | select(.value.auto == true) | .key' "$REGISTRY"); do
+  ALL_MCPS+=("$mcp_id")
+done
+for mcp_id in "${P_MCPS[@]}"; do
+  # 避免重复
+  printf '%s\n' "${ALL_MCPS[@]}" | grep -qx "$mcp_id" || ALL_MCPS+=("$mcp_id")
+done
 
-# github
-if printf '%s\n' "${P_MCPS[@]}" | grep -qx "github"; then
-  if [ ! -d "$WORK_DIR/mcp-servers/github/node_modules" ]; then
-    echo "  📦 github MCP..."
-    mkdir -p "$WORK_DIR/mcp-servers/github"
-    (cd "$WORK_DIR/mcp-servers/github" && npm init -y --silent 2>/dev/null && npm install --silent @modelcontextprotocol/server-github 2>/dev/null)
-    ok "github MCP"
+for mcp_id in "${ALL_MCPS[@]}"; do
+  local_name=$(jq -r ".\"$mcp_id\".name // \"$mcp_id\"" "$REGISTRY")
+  if install_mcp "$mcp_id"; then
+    echo "  ✓ $local_name"
   else
-    echo "  ✓ github MCP (已安装)"
+    warn "$local_name 安装失败"
   fi
-fi
-
-# kibana
-if printf '%s\n' "${P_MCPS[@]}" | grep -qx "kibana"; then
-  if [ ! -d "$WORK_DIR/mcp-servers/kibana-mcp" ]; then
-    echo "  📦 kibana MCP..."
-    git clone --quiet "git@git.yamibuy.com:yami/kibana-mcp.git" "$WORK_DIR/mcp-servers/kibana-mcp" 2>/dev/null || warn "kibana-mcp clone 失败"
-    if [ -d "$WORK_DIR/mcp-servers/kibana-mcp" ]; then
-      (cd "$WORK_DIR/mcp-servers/kibana-mcp" && python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt 2>/dev/null) || warn "kibana pip install 失败"
-      ok "kibana MCP"
-    fi
-  else
-    echo "  ✓ kibana MCP (已安装)"
-  fi
-fi
-
-# openproject
-if printf '%s\n' "${P_MCPS[@]}" | grep -qx "openproject"; then
-  if [ ! -d "$WORK_DIR/mcp-servers/openproject/node_modules" ]; then
-    echo "  📦 openproject MCP..."
-    mkdir -p "$WORK_DIR/mcp-servers/openproject"
-    # 如果有源码就复制，否则 npm init
-    if [ -f "$TEMPLATE_SRC/../mcp-servers/openproject/index.js" ]; then
-      cp "$TEMPLATE_SRC/../mcp-servers/openproject/"*.{js,json} "$WORK_DIR/mcp-servers/openproject/" 2>/dev/null || true
-    fi
-    (cd "$WORK_DIR/mcp-servers/openproject" && [ ! -f package.json ] && npm init -y --silent 2>/dev/null; npm install --silent 2>/dev/null) || true
-    ok "openproject MCP"
-  else
-    echo "  ✓ openproject MCP (已安装)"
-  fi
-fi
-
-# zentao
-if printf '%s\n' "${P_MCPS[@]}" | grep -qx "zentao"; then
-  if [ ! -d "$WORK_DIR/mcp-servers/zentao/node_modules" ]; then
-    echo "  📦 zentao MCP..."
-    mkdir -p "$WORK_DIR/mcp-servers/zentao"
-    if [ -f "$TEMPLATE_SRC/../mcp-servers/zentao/index.js" ]; then
-      cp "$TEMPLATE_SRC/../mcp-servers/zentao/"*.{js,json} "$WORK_DIR/mcp-servers/zentao/" 2>/dev/null || true
-    fi
-    (cd "$WORK_DIR/mcp-servers/zentao" && [ ! -f package.json ] && npm init -y --silent 2>/dev/null; npm install --silent 2>/dev/null) || true
-    ok "zentao MCP"
-  else
-    echo "  ✓ zentao MCP (已安装)"
-  fi
-fi
+done
 
 ok "MCP 依赖安装完成"
 
@@ -257,29 +210,17 @@ ok "MCP 依赖安装完成"
 echo ""
 info "Step 5: 配置 MCP 凭证 (不需要的直接回车跳过)"
 
-MCP_FRAGMENTS=()
+# 导出变量供 mcp-collectors.sh 使用
+export WORK_DIR CODE_DIR PORT
 
-# 自动配置的 MCP (无需凭证)
-MCP_FRAGMENTS+=("$(generate_mcp_memory)")
-MCP_FRAGMENTS+=("$(generate_mcp_kiro_bridge)")
+MCP_CONFIGS=()  # 存储 "mcp_id:json" 对
 
-# 按 profile 需要的 MCP 逐个收集
-for mcp in "${P_MCPS[@]}"; do
-  MCP_ENABLED=0
-  MCP_JSON=""
-  case "$mcp" in
-    memory|kiro-bridge) continue ;; # 已自动配置
-    github)        collect_mcp_github ;;
-    kibana)        collect_mcp_kibana ;;
-    openproject)   collect_mcp_openproject ;;
-    google-sheets) collect_mcp_google_sheets ;;
-    zentao)        collect_mcp_zentao ;;
-    sql-query)     collect_mcp_sql_query ;;
-    ops-agent)     collect_mcp_ops_agent ;;
-    *) warn "未知 MCP: $mcp, 跳过" ;;
-  esac
+for mcp_id in "${ALL_MCPS[@]}"; do
+  collect_mcp "$mcp_id"
   if [ "$MCP_ENABLED" = "1" ] && [ -n "$MCP_JSON" ]; then
-    MCP_FRAGMENTS+=("$MCP_JSON")
+    MCP_CONFIGS+=("$mcp_id")
+    # 存到临时文件避免 shell 转义问题
+    echo "$MCP_JSON" > "/tmp/mcp_${mcp_id}.json"
   fi
 done
 
@@ -324,18 +265,21 @@ MEMORY_RECALL_DAYS=7
 EOFE
 echo "  + .env"
 
-# mcp.json
+# mcp.json — 从临时文件组装
 {
   echo '{ "mcpServers": {'
-  for i in "${!MCP_FRAGMENTS[@]}"; do
-    echo "${MCP_FRAGMENTS[$i]}"
-    [ "$i" -lt $((${#MCP_FRAGMENTS[@]} - 1)) ] && echo ","
+  for i in "${!MCP_CONFIGS[@]}"; do
+    local mcp_id="${MCP_CONFIGS[$i]}"
+    echo "  \"$mcp_id\":"
+    cat "/tmp/mcp_${mcp_id}.json"
+    [ "$i" -lt $((${#MCP_CONFIGS[@]} - 1)) ] && echo ","
   done
   echo '} }'
 } > "$WORK_DIR/.kiro/settings/mcp.json"
-# 格式化
+# 格式化 + 清理临时文件
 python3 -c "import json,sys; d=json.load(open(sys.argv[1])); json.dump(d,open(sys.argv[1],'w'),indent=2,ensure_ascii=False)" "$WORK_DIR/.kiro/settings/mcp.json" 2>/dev/null || true
-echo "  + mcp.json"
+for mcp_id in "${MCP_CONFIGS[@]}"; do rm -f "/tmp/mcp_${mcp_id}.json"; done
+echo "  + mcp.json (${#MCP_CONFIGS[@]} MCPs)"
 
 ok "配置文件生成完成"
 

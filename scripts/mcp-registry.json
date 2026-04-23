@@ -1,0 +1,95 @@
+{
+  "memory": {
+    "name": "Memory",
+    "auto": true,
+    "install": { "type": "npm", "package": "@modelcontextprotocol/server-memory" },
+    "command": "node",
+    "args": ["{WORK_DIR}/node_modules/@modelcontextprotocol/server-memory/dist/index.js"],
+    "env": {
+      "MEMORY_FILE_PATH": { "value": "{WORK_DIR}/.kiro/memory.db" }
+    },
+    "autoApprove": ["read_graph", "create_entities", "search_nodes", "create_relations", "open_nodes", "add_observations", "delete_observations", "delete_entities"]
+  },
+  "kiro-bridge": {
+    "name": "Kiro Bridge",
+    "auto": true,
+    "command": "python3",
+    "args": ["{CODE_DIR}/kiro-wecom-bridge/mcp_server.py"],
+    "env": {
+      "KIRO_BRIDGE_URL": { "value": "http://localhost:{PORT}" }
+    },
+    "autoApprove": ["reply_user"]
+  },
+  "github": {
+    "name": "GitHub",
+    "install": { "type": "npm", "package": "@modelcontextprotocol/server-github", "dir": "mcp-servers/github" },
+    "command": "node",
+    "args": ["{WORK_DIR}/mcp-servers/github/node_modules/@modelcontextprotocol/server-github/dist/index.js"],
+    "env": {
+      "GITHUB_PERSONAL_ACCESS_TOKEN": { "prompt": "GitHub Personal Access Token", "secret": true }
+    }
+  },
+  "kibana": {
+    "name": "Kibana",
+    "install": { "type": "git", "repo": "git@git.yamibuy.com:yami/kibana-mcp.git", "dir": "mcp-servers/kibana-mcp", "python": true },
+    "command": "{WORK_DIR}/mcp-servers/kibana-mcp/.venv/bin/python",
+    "args": ["{WORK_DIR}/mcp-servers/kibana-mcp/server.py"],
+    "env": {},
+    "autoApprove": ["list_services", "search_logs", "search_errors", "search_by_order"]
+  },
+  "openproject": {
+    "name": "OpenProject",
+    "install": { "type": "npm-local", "dir": "mcp-servers/openproject" },
+    "command": "node",
+    "args": ["{WORK_DIR}/mcp-servers/openproject/index.js"],
+    "env": {
+      "OPENPROJECT_BASE_URL": { "prompt": "OpenProject URL", "default": "https://openproject.yamibuy.net" },
+      "OPENPROJECT_API_KEY": { "prompt": "OpenProject API Key", "secret": true },
+      "OPENPROJECT_URL": { "value": "{OPENPROJECT_BASE_URL}" }
+    }
+  },
+  "google-sheets": {
+    "name": "Google Sheets",
+    "command": "uvx",
+    "args": ["mcp-google-sheets@latest"],
+    "env": {
+      "CREDENTIALS_PATH": { "prompt": "GCP OAuth credentials 文件路径" },
+      "TOKEN_PATH": { "prompt": "Google token 文件路径" }
+    }
+  },
+  "zentao": {
+    "name": "禅道",
+    "install": { "type": "npm-local", "dir": "mcp-servers/zentao" },
+    "command": "node",
+    "args": ["{WORK_DIR}/mcp-servers/zentao/index.js"],
+    "env": {
+      "ZENTAO_URL": { "prompt": "禅道 URL", "default": "https://bugs.yamibuy.tech" },
+      "ZENTAO_USERNAME": { "prompt": "禅道用户名" },
+      "ZENTAO_PASSWORD": { "prompt": "禅道密码", "secret": true }
+    },
+    "toolAliases": { "list_projects": "zentao_list_projects" }
+  },
+  "sql-query": {
+    "name": "SQL Query",
+    "command": "uvx",
+    "args": ["--index-url", "https://nexus.yamibuy.net/repository/pypi-public/simple/", "yami-sql-mcp"],
+    "env": {
+      "DB_HOST": { "prompt": "数据库地址" },
+      "DB_PORT": { "prompt": "数据库端口", "default": "3306" },
+      "DB_NAME": { "prompt": "数据库名" },
+      "DB_USER": { "prompt": "数据库用户" },
+      "DB_PASSWORD": { "prompt": "数据库密码", "secret": true },
+      "SQL_MCP_DATA_DIR": { "value": "" }
+    }
+  },
+  "ops-agent": {
+    "name": "OPS Agent",
+    "command": "python3",
+    "args": ["{WORK_DIR}/mcp-servers/ops-agent/server.py"],
+    "env": {
+      "OPS_HOST": { "prompt": "服务器地址" },
+      "OPS_USER": { "prompt": "SSH 用户", "default": "root" },
+      "OPS_KEY": { "prompt": "SSH 私钥路径", "default": "~/.ssh/id_rsa" }
+    }
+  }
+}
