@@ -2,9 +2,11 @@ import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getLogger } from '../logger.js';
 import type { IAgentRouter, AgentChunk, PromptContent } from '../agent/types.js';
+import type { AgentSpawnOptions } from '../agent/types.js';
 import type { ManagedSessionOptions } from './types.js';
 import type { MemoryManager } from '../memory/MemoryManager.js';
 import { MessageQueue } from './MessageQueue.js';
+import { getPreamble } from '../bridge/guard.js';
 
 const log = getLogger('ManagedSession');
 
@@ -30,7 +32,7 @@ export class ManagedSession {
   get sessionId() { return this.router.sessionId; }
   get workDir() { return this.opts.workDir; }
 
-  async switchAgent(name: string, spawnOpts: import('../agent/types.js').AgentSpawnOptions): Promise<void> {
+  async switchAgent(name: string, spawnOpts: AgentSpawnOptions): Promise<void> {
     log.info(`Switching agent for ${this.chatId} to ${name}`);
     await this.router.switchAgent(name, spawnOpts);
     this.bytes = 0;
@@ -100,7 +102,6 @@ export class ManagedSession {
     const parts: PromptContent[] = [];
 
     // FR-9: inject safety preamble on first message
-    const { getPreamble } = await import('../bridge/guard.js');
     parts.push({ type: 'text', text: getPreamble(this.opts.mode) });
 
     // Inject memory context

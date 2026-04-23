@@ -30,6 +30,7 @@ export class Bridge {
 
   private async handleMessage(msg: IncomingMessage) {
     const { chatId, reqId, chatType } = msg;
+    let streamId = '';
 
     try {
       const { text, content } = await this.extractContent(msg);
@@ -60,7 +61,7 @@ export class Bridge {
       // Preamble is injected by ManagedSession.injectContext on firstMsg only
 
       // 🤔 cold start placeholder
-      const streamId = randomUUID().replace(/-/g, '').slice(0, 16);
+      streamId = randomUUID().replace(/-/g, '').slice(0, 16);
       await this.platform.sendStream(reqId, streamId, '🤔', false).catch(() => {});
 
       const segmenter = new StreamSegmenter(this.platform, reqId, streamId, chatId, chatType);
@@ -82,9 +83,8 @@ export class Bridge {
       }
     } catch (err) {
       log.error(err, `Error processing message for ${chatId}`);
-      // Try to finish any open stream, then send error via stream
-      const errStreamId = randomUUID().replace(/-/g, '').slice(0, 16);
-      await this.platform.sendStream(reqId, errStreamId, '❌ 处理消息时出错，请稍后重试', true).catch(() => {});
+      // Finish the 🤔 stream with error message (same streamId)
+      await this.platform.sendStream(reqId, streamId, '❌ 处理消息时出错，请稍后重试', true).catch(() => {});
     }
   }
 

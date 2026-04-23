@@ -2,7 +2,7 @@
  * 媒体处理：图片/语音/文件的下载、AES 解密、保存
  */
 import { writeFile, mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import { createDecipheriv } from 'node:crypto';
 import { getLogger } from '../../logger.js';
 import type { IMessagePlatform } from '../types.js';
@@ -90,7 +90,7 @@ export async function saveMedia(
   const id = Math.random().toString(36).slice(2, 10);
   let name: string;
   if (filename) {
-    name = `${id}_${filename}`;
+    name = `${id}_${basename(filename)}`;
   } else if (subdir === 'images') {
     const ext = { 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp' }[detectMediaType(data)] ?? '.png';
     name = `${id}${ext}`;

@@ -178,11 +178,17 @@ export class WeComPlatform extends IMessagePlatform {
   }
 
   private async subscribe(): Promise<void> {
-    // Use a pending auth response via the normal message dispatch
+    const authReqId = reqId();
     const authPromise = new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('subscribe timeout')), 10_000);
-      this._authResolve = (resp: Record<string, unknown>) => {
+      const timer = setTimeout(() => {
+        this._pendingAuthReqId = null;
+        reject(new Error('subscribe timeout'));
+      }, 10_000);
+      this._pendingAuthReqId = authReqId;
+      this._authCallback = (resp: Record<string, unknown>) => {
         clearTimeout(timer);
+        this._pendingAuthReqId = null;
+        this._authCallback = null;
         if (resp['errcode'] !== 0) reject(new Error(`认证失败: ${JSON.stringify(resp)}`));
         else resolve();
       };
@@ -190,14 +196,15 @@ export class WeComPlatform extends IMessagePlatform {
 
     await this.sendRaw({
       cmd: 'aibot_subscribe',
-      headers: { req_id: reqId() },
+      headers: { req_id: authReqId },
       body: { bot_id: this.config.bot_id, secret: this.config.secret },
     });
 
     return authPromise;
   }
 
-  private _authResolve: ((resp: Record<string, unknown>) => void) | null = null;
+  private _pendingAuthReqId: string | null = null;
+  private _authCallback: ((resp: Record<string, unknown>) => void) | null = null;
 
   // ---- Heartbeat ----
 
@@ -262,21 +269,17 @@ export class WeComPlatform extends IMessagePlatform {
       this.handleEventCallback(rid, body);
     } else if (cmd === 'pong' || (!cmd && (msg['errcode'] as number) === 0)) {
       this.lastPong = Date.now();
-      // Also handle auth response
-      if (this._authResolve) {
-        const resolve = this._authResolve;
-        this._authResolve = null;
-        resolve(msg as Record<string, unknown>);
+      // Match auth response by req_id
+      if (rid && rid === this._pendingAuthReqId && this._authCallback) {
+        this._authCallback(msg as Record<string, unknown>);
       }
     } else if (!cmd && (msg['errcode'] as number) === 6000) {
       const failedRid = headers['req_id'] || '';
       if (failedRid) this.failedReqIds.add(failedRid);
       log.info('6000 conflict req=%s, will degrade to send_msg', failedRid);
-    } else if (!cmd && this._authResolve) {
-      // Non-zero errcode during auth
-      const resolve = this._authResolve;
-      this._authResolve = null;
-      resolve(msg as Record<string, unknown>);
+    } else if (!cmd && this._pendingAuthReqId && this._authCallback) {
+      // Non-zero errcode auth response
+      this._authCallback(msg as Record<string, unknown>);
     }
   }
 

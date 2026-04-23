@@ -14,10 +14,12 @@ import { startHttpServer } from './http/server.js';
 const log = getLogger('main');
 
 function msUntilMidnight(): number {
+  // Calculate ms until midnight in Asia/Shanghai
   const now = new Date();
-  const next = new Date(now);
-  next.setHours(24, 0, 0, 0);
-  return next.getTime() - now.getTime();
+  const shanghaiNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const shanghaiMidnight = new Date(shanghaiNow);
+  shanghaiMidnight.setHours(24, 0, 0, 0);
+  return shanghaiMidnight.getTime() - shanghaiNow.getTime();
 }
 
 async function dailySummarizeAndCleanup(memoryManager: MemoryManager, sessionsDir: string, sessionManager: SessionManager) {

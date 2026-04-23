@@ -14,7 +14,7 @@ const CLEANUP_INTERVAL = 60_000;
 export class SessionManager {
   private sessions = new Map<string, ManagedSession>();
   private pending = new Map<string, Promise<ManagedSession>>();
-  private warmPool: import('../agent/types.js').IAgentProcess[] = [];
+  private warmPool: { proc: import('../agent/types.js').IAgentProcess; command: string; args: string[] }[] = [];
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
@@ -38,7 +38,7 @@ export class SessionManager {
           cwd: this.config.env.WORK_DIR,
           env: chatConfig.agent.env,
         });
-        this.warmPool.push(proc);
+        this.warmPool.push({ proc, command: chatConfig.agent.command, args: chatConfig.agent.args });
       } catch (e) {
         log.error(e, `Warm-up ${i} failed`);
       }
@@ -77,9 +77,8 @@ export class SessionManager {
     };
 
     log.info(`Spawning agent for ${chatId}`);
-    const proc = this.warmPool.length > 0
-      ? this.warmPool.shift()!
-      : await this.agentProvider.spawn(spawnOpts);
+    const warmProc = this.takeMatchingWarmProc(spawnOpts.command, spawnOpts.args);
+    const proc = warmProc ?? await this.agentProvider.spawn(spawnOpts);
     const router = new SingleAgentRouter(proc, this.agentProvider, spawnOpts);
 
     try {
@@ -146,6 +145,13 @@ export class SessionManager {
     } catch {
       return null;
     }
+  }
+
+  private takeMatchingWarmProc(command: string, args: string[]): import('../agent/types.js').IAgentProcess | null {
+    const idx = this.warmPool.findIndex(w => w.command === command && w.args.join(' ') === args.join(' '));
+    if (idx === -1) return null;
+    const { proc } = this.warmPool.splice(idx, 1)[0];
+    return proc.alive ? proc : null;
   }
 
   getActiveChatIds(): string[] {

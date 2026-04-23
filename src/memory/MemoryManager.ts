@@ -40,7 +40,8 @@ export class MemoryManager {
       await Promise.all(this.layers.map(l =>
         l.onSummary(chatId, today, summary).catch(e => log.error(e, `onSummary failed for layer ${l.name}`)),
       ));
-    }).catch(e => log.error(e, `summarize failed for ${chatId}`));
+    }).catch(e => log.error(e, `summarize failed for ${chatId}`))
+      .finally(() => this.summarizeLocks.delete(chatId));
     this.summarizeLocks.set(chatId, current);
     return current;
   }

@@ -2,6 +2,7 @@
  * HTTP API — POST /send, GET /health
  */
 import Fastify from 'fastify';
+import { timingSafeEqual } from 'node:crypto';
 import { getLogger } from '../logger.js';
 import type { IMessagePlatform } from '../platform/types.js';
 import type { SessionManager } from '../session/SessionManager.js';
@@ -19,8 +20,13 @@ export async function startHttpServer(
   const apiKey = process.env['API_KEY'];
 
   app.post<{ Body: SendBody }>('/send', async (req, reply) => {
-    if (apiKey && req.headers['authorization'] !== `Bearer ${apiKey}`) {
-      return reply.status(401).send({ ok: false, error: 'Unauthorized' });
+    if (apiKey) {
+      const provided = (req.headers['authorization'] ?? '').replace('Bearer ', '');
+      const a = Buffer.from(provided);
+      const b = Buffer.from(apiKey);
+      if (a.length !== b.length || !timingSafeEqual(a, b)) {
+        return reply.status(401).send({ ok: false, error: 'Unauthorized' });
+      }
     }
     const { chatId, content } = req.body ?? {} as SendBody;
     if (!chatId || !content) return reply.status(400).send({ ok: false, error: 'chatId and content required' });
