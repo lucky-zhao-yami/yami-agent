@@ -108,8 +108,17 @@ async function main() {
 
   const shutdown = async () => {
     log.info('Shutting down...');
-    await bridge.shutdown();
-    await platform.disconnect();
+    const timer = setTimeout(() => {
+      log.error('Shutdown timeout, force exit');
+      process.exit(1);
+    }, 30_000);
+    try {
+      await bridge.shutdown();
+      await platform.disconnect();
+    } catch (e) {
+      log.error(e, 'Shutdown error');
+    }
+    clearTimeout(timer);
     process.exit(0);
   };
 

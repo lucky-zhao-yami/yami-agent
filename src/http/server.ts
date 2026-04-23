@@ -45,6 +45,13 @@ export async function startHttpServer(
     memory: process.memoryUsage().rss,
   }));
 
+  app.post('/shutdown', async (_req, reply) => {
+    log.info('Shutdown requested via HTTP');
+    reply.send({ ok: true, message: 'shutting down gracefully' });
+    // Let response flush, then trigger graceful shutdown
+    setTimeout(() => process.kill(process.pid, 'SIGTERM'), 500);
+  });
+
   await app.listen({ port, host: '0.0.0.0' });
   log.info(`HTTP server listening on :${port}`);
 }
