@@ -73,6 +73,9 @@ WORK_DIR="${WORK_DIR:-/mnt/d/workspace/$PROFILE}"
 read -rp "  代码仓库目录 CODE_DIR [/mnt/d/code/yami]: " CODE_DIR
 CODE_DIR="${CODE_DIR:-/mnt/d/code/yami}"
 
+read -rp "  Git 仓库地址前缀 [git@git.yamibuy.com:yami]: " GIT_BASE
+GIT_BASE="${GIT_BASE:-git@git.yamibuy.com:yami}"
+
 echo ""
 info "Step 1.5: 企微机器人凭证"
 read -rp "  bot_id: " BOT_ID
@@ -102,7 +105,7 @@ else
       git -C "$target" pull --ff-only --quiet 2>/dev/null || warn "$repo pull 失败，跳过"
     else
       echo "  ↓ $repo (clone)"
-      git clone --quiet "git@git.yamibuy.com:yami/${repo}.git" "$target" 2>/dev/null || warn "$repo clone 失败，跳过"
+      git clone --quiet "${GIT_BASE}/${repo}.git" "$target" 2>/dev/null || warn "$repo clone 失败，跳过"
     fi
   done
 fi
@@ -207,7 +210,7 @@ echo ""
 info "Step 5: 配置 MCP 凭证 (不需要的直接回车跳过)"
 
 # 导出变量供 mcp-collectors.sh 使用
-export WORK_DIR CODE_DIR PORT
+export WORK_DIR CODE_DIR PORT GIT_BASE
 
 MCP_CONFIGS=()  # 存储 "mcp_id:json" 对
 

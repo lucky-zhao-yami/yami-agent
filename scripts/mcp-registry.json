@@ -31,7 +31,7 @@
   },
   "kibana": {
     "name": "Kibana",
-    "install": { "type": "git", "repo": "git@git.yamibuy.com:yami/kibana-mcp.git", "dir": "mcp-servers/kibana-mcp", "python": true },
+    "install": { "type": "git", "repo": "{GIT_BASE}/kibana-mcp.git", "dir": "mcp-servers/kibana-mcp", "python": true },
     "command": "{WORK_DIR}/mcp-servers/kibana-mcp/.venv/bin/python",
     "args": ["{WORK_DIR}/mcp-servers/kibana-mcp/server.py"],
     "env": {},

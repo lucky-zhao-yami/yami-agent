@@ -164,10 +164,11 @@ expand_vars() {
   s="${s//\{WORK_DIR\}/$WORK_DIR}"
   s="${s//\{CODE_DIR\}/$CODE_DIR}"
   s="${s//\{PORT\}/$PORT}"
+  s="${s//\{GIT_BASE\}/$GIT_BASE}"
   echo "$s"
 }
 
 # jq 内的变量展开表达式
 expand_vars_jq() {
-  echo "gsub(\"{WORK_DIR}\"; \"$WORK_DIR\") | gsub(\"{CODE_DIR}\"; \"$CODE_DIR\") | gsub(\"{PORT}\"; \"$PORT\")"
+  echo "gsub(\"{WORK_DIR}\"; \"$WORK_DIR\") | gsub(\"{CODE_DIR}\"; \"$CODE_DIR\") | gsub(\"{PORT}\"; \"$PORT\") | gsub(\"{GIT_BASE}\"; \"$GIT_BASE\")"
 }
