@@ -111,6 +111,12 @@ export class AcpAgentProcess extends IAgentProcess {
   }
 
   private handleSessionUpdate(params: acp.SessionNotification): Promise<void> {
+    // Track sessionId changes (kiro-cli may assign a new one after loadSession)
+    if (params.sessionId && params.sessionId !== this._sessionId) {
+      log.info(`Session ID changed: ${this._sessionId} → ${params.sessionId}`);
+      this._sessionId = params.sessionId;
+    }
+
     const update = params.update;
     if (update.sessionUpdate === 'agent_message_chunk' && update.content.type === 'text') {
       this.activeQueue?.push({ type: 'text', text: update.content.text });
