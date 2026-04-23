@@ -46,7 +46,55 @@ export class WeComPlatform extends IMessagePlatform {
   async connect(): Promise<void> {
     this.closing = false;
     this.authFailures = 0;
-    await this.connectLoop();
+    // Connect and authenticate once, then run recv loop in background
+    await this.doConnect();
+    const messagePromise = this.setupRecvHandlers();
+    await this.subscribe();
+    this.lastPong = Date.now();
+    this.startHeartbeat();
+    log.info('WS connected and authenticated');
+    // Background: when connection drops, reconnect loop kicks in
+    messagePromise.then(() => this.reconnectLoop()).catch(() => this.reconnectLoop());
+  }
+
+  private setupRecvHandlers(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      this.ws!.on('message', (raw: Buffer | string) => this.onRawMessage(raw));
+      this.ws!.on('close', () => resolve());
+      this.ws!.on('error', (err) => reject(err));
+    });
+  }
+
+  private async reconnectLoop(): Promise<void> {
+    let backoff = 1000;
+    while (!this.closing) {
+      this.stopHeartbeat();
+      this.ws = null;
+      log.info('Reconnecting in %dms', backoff);
+      await sleep(backoff);
+      try {
+        await this.doConnect();
+        const messagePromise = this.setupRecvHandlers();
+        await this.subscribe();
+        this.lastPong = Date.now();
+        this.startHeartbeat();
+        this.authFailures = 0;
+        backoff = 1000;
+        log.info('WS reconnected and authenticated');
+        await messagePromise;
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes('认证失败')) {
+          this.authFailures++;
+          if (this.authFailures >= 5) {
+            log.error('Auth failed %d times, stopping reconnect', this.authFailures);
+            return;
+          }
+        }
+        log.error('Reconnect failed: %s', msg);
+        backoff = Math.min(backoff * 2, MAX_BACKOFF);
+      }
+    }
   }
 
   async disconnect(): Promise<void> {
@@ -122,34 +170,7 @@ export class WeComPlatform extends IMessagePlatform {
     return this.mediaChain;
   }
 
-  // ---- Connection lifecycle ----
-
-  private async connectLoop(): Promise<void> {
-    let backoff = 1000;
-    while (!this.closing) {
-      try {
-        await this.doConnect();
-        this.authFailures = 0;
-        backoff = 1000;
-        await this.recvLoop();
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (msg.includes('认证失败')) {
-          this.authFailures++;
-          if (this.authFailures >= 5) {
-            log.error('Auth failed %d times, stopping', this.authFailures);
-            return;
-          }
-        }
-        log.error('WS disconnected: %s, reconnect in %dms', msg, backoff);
-        await sleep(backoff);
-        backoff = Math.min(backoff * 2, MAX_BACKOFF);
-      } finally {
-        this.stopHeartbeat();
-        this.ws = null;
-      }
-    }
-  }
+  // ---- Connection helpers ----
 
   private doConnect(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -157,24 +178,6 @@ export class WeComPlatform extends IMessagePlatform {
       ws.on('open', () => { this.ws = ws; resolve(); });
       ws.on('error', reject);
     });
-  }
-
-  private async recvLoop(): Promise<void> {
-    if (!this.ws) return;
-
-    // Register message handler BEFORE subscribe to avoid race
-    const messagePromise = new Promise<void>((resolve, reject) => {
-      this.ws!.on('message', (raw: Buffer | string) => this.onRawMessage(raw));
-      this.ws!.on('close', () => resolve());
-      this.ws!.on('error', (err) => reject(err));
-    });
-
-    await this.subscribe();
-    this.lastPong = Date.now();
-    this.startHeartbeat();
-    log.info('WS connected and authenticated');
-
-    return messagePromise;
   }
 
   private async subscribe(): Promise<void> {
