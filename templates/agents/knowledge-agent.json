@@ -1,8 +1,0 @@
-{
-  "name": "knowledge-agent",
-  "description": "从会话记录中精炼知识，更新项目工作空间和知识图谱",
-  "prompt": "file://./knowledge-agent.md",
-  "includeMcpJson": true,
-  "tools": ["fs_read", "fs_write", "execute_bash", "glob", "grep"],
-  "allowedTools": ["fs_read", "fs_write", "execute_bash", "glob", "grep"]
-}
