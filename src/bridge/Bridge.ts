@@ -70,9 +70,11 @@ export class Bridge {
 
       // Preamble is injected by ManagedSession.injectContext on firstMsg only
 
-      // 🤔 cold start placeholder
+      // 🤔 cold start placeholder — include message preview so user knows which question
       streamId = randomUUID().replace(/-/g, '').slice(0, 16);
-      await this.platform.sendStream(reqId, streamId, '🤔', false).catch(() => {});
+      const preview = text ? (text.length > 30 ? text.slice(0, 30) + '...' : text) : '';
+      const placeholder = preview ? `> ${preview}\n\n🤔` : '🤔';
+      await this.platform.sendStream(reqId, streamId, placeholder, false).catch(() => {});
 
       const segmenter = new StreamSegmenter(this.platform, reqId, streamId, chatId, chatType);
 
