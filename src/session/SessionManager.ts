@@ -160,6 +160,9 @@ export class SessionManager {
 
   async shutdown(): Promise<void> {
     if (this.cleanupTimer) { clearInterval(this.cleanupTimer); this.cleanupTimer = null; }
+    // Kill warm pool processes
+    for (const w of this.warmPool) await w.proc.kill().catch(() => {});
+    this.warmPool = [];
     const tasks = [...this.sessions.entries()].map(async ([chatId, s]) => {
       log.info(`Shutting down session: ${chatId}`);
       await s.recycle().catch((e) => log.error(e, 'Shutdown recycle failed'));

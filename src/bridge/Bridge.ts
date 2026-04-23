@@ -83,8 +83,11 @@ export class Bridge {
       }
     } catch (err) {
       log.error(err, `Error processing message for ${chatId}`);
-      // Finish the 🤔 stream with error message (same streamId)
-      await this.platform.sendStream(reqId, streamId, '❌ 处理消息时出错，请稍后重试', true).catch(() => {});
+      if (streamId) {
+        await this.platform.sendStream(reqId, streamId, '❌ 处理消息时出错，请稍后重试', true).catch(() => {});
+      } else {
+        await this.platform.sendMessage(chatId, '❌ 处理消息时出错，请稍后重试', chatType).catch(() => {});
+      }
     }
   }
 
