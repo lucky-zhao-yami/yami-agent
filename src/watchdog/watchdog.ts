@@ -13,6 +13,7 @@ const MAX_DELAY = 60_000;
 
 let delay = BASE_DELAY;
 let child: ChildProcess | null = null;
+let resetTimer: ReturnType<typeof setTimeout> | null = null;
 
 function timestamp(): string {
   return new Date().toISOString();
@@ -28,6 +29,7 @@ function start(): void {
   child.on('exit', (code, signal) => {
     console.log(`[${timestamp()}] watchdog: main process exited code=${code} signal=${signal}`);
     child = null;
+    if (resetTimer) { clearTimeout(resetTimer); resetTimer = null; }
 
     if (code === 0) {
       console.log(`[${timestamp()}] watchdog: clean exit, not restarting`);
@@ -42,7 +44,7 @@ function start(): void {
   });
 
   // Reset delay on successful run (>30s alive)
-  setTimeout(() => { delay = BASE_DELAY; }, 30_000);
+  resetTimer = setTimeout(() => { delay = BASE_DELAY; resetTimer = null; }, 30_000);
 }
 
 // Forward signals to child

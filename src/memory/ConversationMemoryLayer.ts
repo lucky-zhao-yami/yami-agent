@@ -1,4 +1,4 @@
-import { readdir, readFile, writeFile, mkdir, unlink } from 'node:fs/promises';
+import { readdir, readFile, appendFile, writeFile, mkdir, unlink } from 'node:fs/promises';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { join } from 'node:path';
 import { createGzip } from 'node:zlib';
@@ -55,7 +55,7 @@ export class ConversationMemoryLayer extends IMemoryLayer {
     const memDir = this.memoryDir(chatId);
     await mkdir(memDir, { recursive: true });
     const filePath = join(memDir, `${date}.md`);
-    await writeFile(filePath, summary, 'utf-8');
+    await appendFile(filePath, `\n\n---\n\n${summary}`, 'utf-8');
     log.info(`Wrote summary for ${chatId} on ${date}`);
   }
 

@@ -36,7 +36,8 @@ export class Bridge {
       if (!text && content.length === 0) return;
 
       if (text && checkInjection(text)) {
-        await this.platform.sendMessage(chatId, '⚠️ 检测到异常指令，已忽略。', chatType);
+        const sid = randomUUID().replace(/-/g, '').slice(0, 16);
+        await this.platform.sendStream(reqId, sid, '⚠️ 检测到异常指令，已忽略。', true);
         return;
       }
 

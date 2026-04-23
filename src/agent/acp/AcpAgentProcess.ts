@@ -5,6 +5,7 @@ import { dirname } from 'node:path';
 import * as acp from '@agentclientprotocol/sdk';
 import { getLogger } from '../../logger.js';
 import { IAgentProcess, type AgentChunk, type AgentSpawnOptions, type PromptContent } from '../types.js';
+import { AsyncQueue } from '../../utils.js';
 
 const log = getLogger('AcpAgentProcess');
 
@@ -12,8 +13,7 @@ export class AcpAgentProcess extends IAgentProcess {
   private proc: ChildProcess | null = null;
   private conn: acp.ClientSideConnection | null = null;
   private _sessionId: string | null = null;
-  private chunks: AgentChunk[] = [];
-  private chunkResolve: (() => void) | null = null;
+  private activeQueue: AsyncQueue<AgentChunk> | null = null;
 
   constructor(private options: AgentSpawnOptions) { super(); }
 
@@ -69,32 +69,26 @@ export class AcpAgentProcess extends IAgentProcess {
   }
 
   async *prompt(sessionId: string, content: PromptContent[]): AsyncIterable<AgentChunk> {
-    this.chunks = [];
-    this.chunkResolve = null;
+    const queue = new AsyncQueue<AgentChunk>();
+    this.activeQueue = queue;
 
     const promptBlocks: acp.ContentBlock[] = content.map(c => {
       if (c.type === 'text') return { type: 'text' as const, text: c.text };
       return { type: 'image' as const, data: c.data, mimeType: c.mediaType };
     });
 
-    const promptDone = this.conn!.prompt({ sessionId, prompt: promptBlocks });
+    this.conn!.prompt({ sessionId, prompt: promptBlocks })
+      .then(result => queue.push({ type: 'done', stopReason: result.stopReason }))
+      .catch(err => { log.error(err, 'Prompt error'); queue.push({ type: 'done', stopReason: 'error' }); })
+      .finally(() => queue.close());
 
-    let done = false;
-    promptDone.then((result) => {
-      this.pushChunk({ type: 'done', stopReason: result.stopReason });
-      done = true;
-    }).catch((err) => {
-      log.error(err, 'Prompt error');
-      this.pushChunk({ type: 'done', stopReason: 'error' });
-      done = true;
-    });
-
-    while (!done || this.chunks.length > 0) {
-      if (this.chunks.length > 0) {
-        yield this.chunks.shift()!;
-      } else if (!done) {
-        await new Promise<void>(r => { this.chunkResolve = r; });
+    try {
+      for await (const chunk of queue) {
+        yield chunk;
+        if (chunk.type === 'done') break;
       }
+    } finally {
+      this.activeQueue = null;
     }
   }
 
@@ -114,18 +108,14 @@ export class AcpAgentProcess extends IAgentProcess {
     this.conn = null;
   }
 
-  private pushChunk(chunk: AgentChunk) {
-    this.chunks.push(chunk);
-    this.chunkResolve?.();
-    this.chunkResolve = null;
-  }
-
   private handleSessionUpdate(params: acp.SessionNotification): Promise<void> {
     const update = params.update;
     if (update.sessionUpdate === 'agent_message_chunk' && update.content.type === 'text') {
-      this.pushChunk({ type: 'text', text: update.content.text });
+      this.activeQueue?.push({ type: 'text', text: update.content.text });
     } else if (update.sessionUpdate === 'tool_call') {
-      this.pushChunk({ type: 'tool_call', title: update.title, status: update.status ?? 'running' });
+      this.activeQueue?.push({ type: 'tool_call', title: update.title, status: update.status ?? 'in_progress' });
+    } else if (update.sessionUpdate === 'tool_call_update') {
+      this.activeQueue?.push({ type: 'tool_call', title: (update as any).title ?? '', status: (update as any).status ?? 'in_progress' });
     }
     return Promise.resolve();
   }

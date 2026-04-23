@@ -28,6 +28,7 @@ export class WeComPlatform extends IMessagePlatform {
   private closing = false;
   private authFailures = 0;
   private lastSendMsg = 0;
+  private sendMsgChain: Promise<void> = Promise.resolve();
 
   /** req_id set that received 6000 errcode (stream conflict) */
   readonly failedReqIds = new Set<string>();
@@ -64,17 +65,19 @@ export class WeComPlatform extends IMessagePlatform {
   }
 
   async sendMessage(chatId: string, content: string, chatType = 2): Promise<void> {
-    // Rate limit: >= 2s between send_msg calls
-    const gap = Date.now() - this.lastSendMsg;
-    if (gap < SEND_MSG_MIN_GAP) await sleep(SEND_MSG_MIN_GAP - gap);
-    this.lastSendMsg = Date.now();
-
-    const actualId = chatType === 1 ? chatId.replace(/^dm_/, '') : chatId;
-    await this.sendRaw({
-      cmd: 'aibot_send_msg',
-      headers: { req_id: reqId() },
-      body: { chatid: actualId, chat_type: chatType, msgtype: 'markdown', markdown: { content } },
-    });
+    const doSend = async () => {
+      const gap = Date.now() - this.lastSendMsg;
+      if (gap < SEND_MSG_MIN_GAP) await sleep(SEND_MSG_MIN_GAP - gap);
+      this.lastSendMsg = Date.now();
+      const actualId = chatType === 1 ? chatId.replace(/^dm_/, '') : chatId;
+      await this.sendRaw({
+        cmd: 'aibot_send_msg',
+        headers: { req_id: reqId() },
+        body: { chatid: actualId, chat_type: chatType, msgtype: 'markdown', markdown: { content } },
+      });
+    };
+    this.sendMsgChain = this.sendMsgChain.then(doSend, doSend);
+    return this.sendMsgChain;
   }
 
   async sendWelcome(rid: string, text: string): Promise<void> {

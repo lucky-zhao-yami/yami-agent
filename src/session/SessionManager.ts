@@ -13,6 +13,7 @@ const CLEANUP_INTERVAL = 60_000;
 
 export class SessionManager {
   private sessions = new Map<string, ManagedSession>();
+  private pending = new Map<string, Promise<ManagedSession>>();
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
@@ -28,6 +29,20 @@ export class SessionManager {
 
     const existing = this.sessions.get(chatId);
     if (existing?.alive) return existing;
+
+    // Prevent concurrent creation for same chatId
+    if (this.pending.has(chatId)) return this.pending.get(chatId)!;
+
+    const p = this.doCreate(chatId);
+    this.pending.set(chatId, p);
+    try {
+      return await p;
+    } finally {
+      this.pending.delete(chatId);
+    }
+  }
+
+  private async doCreate(chatId: string): Promise<ManagedSession> {
 
     if (this.sessions.size >= this.config.env.MAX_PROCS) await this.evictLRU();
 
@@ -107,6 +122,10 @@ export class SessionManager {
     } catch {
       return null;
     }
+  }
+
+  getActiveChatIds(): string[] {
+    return [...this.sessions.keys()];
   }
 
   async shutdown(): Promise<void> {

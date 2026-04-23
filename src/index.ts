@@ -20,8 +20,9 @@ function msUntilMidnight(): number {
   return next.getTime() - now.getTime();
 }
 
-async function dailySummarizeAndCleanup(memoryManager: MemoryManager, sessionsDir: string) {
+async function dailySummarizeAndCleanup(memoryManager: MemoryManager, sessionsDir: string, sessionManager: SessionManager) {
   log.info('Running daily summarize & cleanup');
+  const activeChatIds = new Set(sessionManager.getActiveChatIds());
   let dirs: string[];
   try {
     dirs = await readdir(sessionsDir);
@@ -30,6 +31,7 @@ async function dailySummarizeAndCleanup(memoryManager: MemoryManager, sessionsDi
   }
 
   for (const chatId of dirs) {
+    if (activeChatIds.has(chatId)) continue; // skip active sessions
     try {
       const sid = (await readFile(join(sessionsDir, chatId, 'last_session_id'), 'utf-8')).trim();
       if (!sid) continue;
@@ -42,9 +44,9 @@ async function dailySummarizeAndCleanup(memoryManager: MemoryManager, sessionsDi
   }
 }
 
-function scheduleDailyCron(memoryManager: MemoryManager, sessionsDir: string) {
+function scheduleDailyCron(memoryManager: MemoryManager, sessionsDir: string, sessionManager: SessionManager) {
   const run = () => {
-    dailySummarizeAndCleanup(memoryManager, sessionsDir).catch(
+    dailySummarizeAndCleanup(memoryManager, sessionsDir, sessionManager).catch(
       e => log.error(e, 'Daily cron failed'),
     );
     // Schedule next run at midnight
@@ -75,7 +77,7 @@ async function main() {
 
   // Task 3.4 + 3.6: daily cron
   const sessionsDir = join(config.env.WORK_DIR, 'sessions');
-  scheduleDailyCron(memoryManager, sessionsDir);
+  scheduleDailyCron(memoryManager, sessionsDir, sessionManager);
 
   await platform.connect();
 
