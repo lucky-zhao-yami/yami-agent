@@ -3,10 +3,10 @@ import { Readable, Writable } from 'node:stream';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import * as acp from '@agentclientprotocol/sdk';
-import pino from 'pino';
+import { getLogger } from '../../logger.js';
 import { IAgentProcess, type AgentChunk, type AgentSpawnOptions, type PromptContent } from '../types.js';
 
-const log = pino({ name: 'AcpAgentProcess' });
+const log = getLogger('AcpAgentProcess');
 
 export class AcpAgentProcess extends IAgentProcess {
   private proc: ChildProcess | null = null;

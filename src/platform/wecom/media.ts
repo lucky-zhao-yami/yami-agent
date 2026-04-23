@@ -4,10 +4,10 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createDecipheriv } from 'node:crypto';
-import pino from 'pino';
+import { getLogger } from '../../logger.js';
 import type { IMessagePlatform } from '../types.js';
 
-const log = pino({ name: 'media' });
+const log = getLogger('media');
 
 export function isImage(data: Buffer): boolean {
   if (data.length < 12) return false;

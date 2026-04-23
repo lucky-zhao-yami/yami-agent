@@ -1,12 +1,12 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import pino from 'pino';
+import { getLogger } from '../logger.js';
 import type { IAgentRouter, AgentChunk, PromptContent } from '../agent/types.js';
 import type { ManagedSessionOptions } from './types.js';
 import type { MemoryManager } from '../memory/MemoryManager.js';
 import { MessageQueue } from './MessageQueue.js';
 
-const log = pino({ name: 'ManagedSession' });
+const log = getLogger('ManagedSession');
 
 export class ManagedSession {
   private queue: MessageQueue;

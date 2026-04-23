@@ -1,10 +1,10 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import pino from 'pino';
+import { getLogger } from '../logger.js';
 import { IMemoryRecycler } from './types.js';
 import type { IAgentProvider, AgentSpawnOptions } from '../agent/types.js';
 
-const log = pino({ name: 'AcpMemoryRecycler' });
+const log = getLogger('AcpMemoryRecycler');
 
 const RECYCLE_PROMPT = (sessionFilePath: string) =>
 `请读取以下 ACP session 文件，总结对话要点：

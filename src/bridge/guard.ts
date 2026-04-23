@@ -1,9 +1,9 @@
 /**
  * 安全防护 — 提示词注入检测 + 安全系统指令
  */
-import pino from 'pino';
+import { getLogger } from '../logger.js';
 
-const log = pino({ name: 'guard' });
+const log = getLogger('guard');
 
 const INJECTION_PATTERNS: RegExp[] = [
   // Role hijacking (English)

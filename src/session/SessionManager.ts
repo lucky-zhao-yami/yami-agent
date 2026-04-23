@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import pino from 'pino';
+import { getLogger } from '../logger.js';
 import type { AppConfig } from '../config.js';
 import { getChatConfig } from '../config.js';
 import type { IAgentProvider } from '../agent/types.js';
@@ -8,7 +8,7 @@ import type { MemoryManager } from '../memory/MemoryManager.js';
 import { SingleAgentRouter } from '../agent/SingleAgentRouter.js';
 import { ManagedSession } from './ManagedSession.js';
 
-const log = pino({ name: 'SessionManager' });
+const log = getLogger('SessionManager');
 const CLEANUP_INTERVAL = 60_000;
 
 export class SessionManager {

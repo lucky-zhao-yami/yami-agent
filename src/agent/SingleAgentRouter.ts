@@ -1,7 +1,7 @@
-import pino from 'pino';
+import { getLogger } from '../logger.js';
 import { IAgentRouter, type IAgentProcess, type IAgentProvider, type AgentChunk, type PromptContent, type AgentSpawnOptions } from './types.js';
 
-const log = pino({ name: 'SingleAgentRouter' });
+const log = getLogger('SingleAgentRouter');
 
 export class SingleAgentRouter extends IAgentRouter {
   private _availableModes: string[] = [];

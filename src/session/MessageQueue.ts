@@ -1,6 +1,6 @@
-import pino from 'pino';
+import { getLogger } from '../logger.js';
 
-const log = pino({ name: 'MessageQueue' });
+const log = getLogger('MessageQueue');
 
 type Task<T> = () => Promise<T>;
 

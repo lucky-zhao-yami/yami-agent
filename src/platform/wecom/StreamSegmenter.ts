@@ -4,10 +4,10 @@
  * 1500 字切割，换行处优先切割，表格续接
  */
 import { randomUUID } from 'node:crypto';
-import pino from 'pino';
+import { getLogger } from '../../logger.js';
 import type { WeComPlatform } from './WeComPlatform.js';
 
-const log = pino({ name: 'StreamSegmenter' });
+const log = getLogger('StreamSegmenter');
 
 const SEGMENT_LIMIT = 1500;
 const FLUSH_INTERVAL = 2000;

@@ -4,11 +4,12 @@
  */
 import WebSocket from 'ws';
 import { randomUUID } from 'node:crypto';
-import pino from 'pino';
 import { IMessagePlatform, type IncomingMessage, type PlatformEvent } from '../types.js';
 import type { BotConfig } from '../../config.js';
+import { parseMsgCallback } from './MessageParser.js';
+import { getLogger } from '../../logger.js';
 
-const log = pino({ name: 'WeComPlatform' });
+const log = getLogger('WeComPlatform');
 
 const WS_URL = 'wss://openws.work.weixin.qq.com';
 const HEARTBEAT_INTERVAL = 30_000;
@@ -255,87 +256,8 @@ export class WeComPlatform extends IMessagePlatform {
 
   private handleMsgCallback(rid: string, body: Record<string, unknown>) {
     if (!this.msgHandler) return;
-
-    const from = (body['from'] as Record<string, unknown>) || {};
-    const userId = (from['userid'] as string) || '';
-    const botUserId = (from['bot_userid'] as string) || '';
-
-    // Ignore bot's own messages to prevent infinite loop
-    if (botUserId || userId === this.config.bot_id) return;
-
-    let chatId = (body['chatid'] as string) || '';
-    if (!chatId) chatId = `dm_${userId}`;
-    const chatType = (body['chat_type'] as number) || (chatId.startsWith('dm_') ? 1 : 2);
-    const msgType = (body['msgtype'] as string) || 'text';
-
-    let text = '';
-    let items: IncomingMessage['items'];
-    let quote: string | undefined;
-
-    if (msgType === 'text') {
-      const textObj = body['text'] as Record<string, unknown> | undefined;
-      text = (textObj?.['content'] as string) || '';
-    } else if (msgType === 'mixed') {
-      items = [];
-      const mixed = body['mixed'] as Record<string, unknown> | undefined;
-      const msgItems = (mixed?.['msg_item'] as Record<string, unknown>[]) || [];
-      for (const m of msgItems) {
-        const t = (m['msgtype'] as string) || 'text';
-        if (t === 'text') {
-          const c = ((m['text'] as Record<string, unknown>)?.['content'] as string) || '';
-          items.push({ type: 'text', content: c });
-          text += c;
-        } else if (t === 'image') {
-          const mediaId = ((m['image'] as Record<string, unknown>)?.['media_id'] as string) || '';
-          items.push({ type: 'image', mediaId });
-        } else if (t === 'voice') {
-          const c = ((m['voice'] as Record<string, unknown>)?.['content'] as string) || '';
-          items.push({ type: 'voice', content: c });
-          text += c;
-        } else if (t === 'file') {
-          const mediaId = ((m['file'] as Record<string, unknown>)?.['media_id'] as string) || '';
-          items.push({ type: 'file', mediaId });
-        }
-      }
-    } else if (msgType === 'image') {
-      const img = body['image'] as Record<string, unknown> | undefined;
-      items = [{ type: 'image', mediaId: (img?.['media_id'] as string) || '' }];
-    } else if (msgType === 'voice') {
-      const voice = body['voice'] as Record<string, unknown> | undefined;
-      text = (voice?.['content'] as string) || '';
-    } else if (msgType === 'file') {
-      const file = body['file'] as Record<string, unknown> | undefined;
-      items = [{ type: 'file', mediaId: (file?.['media_id'] as string) || '' }];
-    }
-
-    // Quote — extract from quote object
-    const quoteObj = body['quote'] as Record<string, unknown> | undefined;
-    if (quoteObj) {
-      const qt = (quoteObj['msgtype'] as string) || '';
-      if (qt === 'text') {
-        quote = ((quoteObj['text'] as Record<string, unknown>)?.['content'] as string) || '';
-      } else if (qt === 'mixed') {
-        const qMixed = quoteObj['mixed'] as Record<string, unknown> | undefined;
-        const qItems = (qMixed?.['msg_item'] as Record<string, unknown>[]) || [];
-        quote = qItems
-          .filter(i => (i['msgtype'] as string) === 'text')
-          .map(i => ((i['text'] as Record<string, unknown>)?.['content'] as string) || '')
-          .filter(Boolean).join(' ');
-      } else if (qt === 'markdown') {
-        quote = ((quoteObj['markdown'] as Record<string, unknown>)?.['content'] as string) || '';
-      }
-    }
-
-    const incoming: IncomingMessage = {
-      chatId,
-      userId,
-      msgType: msgType as IncomingMessage['msgType'],
-      text: text || undefined,
-      items,
-      quote,
-      reqId: rid,
-      chatType,
-    };
+    const incoming = parseMsgCallback(this.config.bot_id, rid, body);
+    if (!incoming) return; // bot's own message filtered
     this.msgHandler(incoming).catch(err => log.error(err, 'Message handler error'));
   }
 

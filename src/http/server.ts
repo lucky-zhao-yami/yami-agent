@@ -2,11 +2,11 @@
  * HTTP API — POST /send, GET /health
  */
 import Fastify from 'fastify';
-import pino from 'pino';
+import { getLogger } from '../logger.js';
 import type { WeComPlatform } from '../platform/wecom/WeComPlatform.js';
 import type { SessionManager } from '../session/SessionManager.js';
 
-const log = pino({ name: 'HttpServer' });
+const log = getLogger('HttpServer');
 
 interface SendBody { chatId: string; content: string }
 

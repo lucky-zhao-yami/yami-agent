@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import pino from 'pino';
+import { getLogger } from '../logger.js';
 import type { AppConfig } from '../config.js';
 import type { AgentChunk, PromptContent } from '../agent/types.js';
 import type { IncomingMessage, MixedItem, PlatformEvent } from '../platform/types.js';
@@ -10,7 +10,7 @@ import { downloadMedia, saveMedia, isImage } from '../platform/wecom/media.js';
 import { checkInjection } from './guard.js';
 import { parseCommand, handleCommand } from './commands.js';
 
-const log = pino({ name: 'Bridge' });
+const log = getLogger('Bridge');
 
 export class Bridge {
   constructor(

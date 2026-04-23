@@ -1,6 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import pino from 'pino';
+import { getLogger } from './logger.js';
 import { loadConfig } from './config.js';
 import { WeComPlatform } from './platform/wecom/WeComPlatform.js';
 import { AcpAgentProvider } from './agent/acp/AcpAgentProvider.js';
@@ -11,7 +11,7 @@ import { SessionManager } from './session/SessionManager.js';
 import { Bridge } from './bridge/Bridge.js';
 import { startHttpServer } from './http/server.js';
 
-const log = pino({ name: 'yami-agent' });
+const log = getLogger('main');
 
 function msUntilMidnight(): number {
   const now = new Date();

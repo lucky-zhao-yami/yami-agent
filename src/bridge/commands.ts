@@ -1,11 +1,11 @@
 import { readdir, rename, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import pino from 'pino';
+import { getLogger } from '../logger.js';
 import type { ManagedSession } from '../session/ManagedSession.js';
 import type { SessionManager } from '../session/SessionManager.js';
 import type { AppConfig } from '../config.js';
 
-const log = pino({ name: 'Commands' });
+const log = getLogger('Commands');
 
 export interface CommandContext {
   chatId: string;

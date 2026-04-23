@@ -1,7 +1,7 @@
-import pino from 'pino';
+import { getLogger } from '../logger.js';
 import type { IMemoryLayer, IMemoryRecycler, HistoryEntry } from './types.js';
 
-const log = pino({ name: 'MemoryManager' });
+const log = getLogger('MemoryManager');
 
 export class MemoryManager {
   constructor(

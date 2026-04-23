@@ -3,11 +3,11 @@ import { createReadStream, createWriteStream } from 'node:fs';
 import { join } from 'node:path';
 import { createGzip } from 'node:zlib';
 import { pipeline } from 'node:stream/promises';
-import pino from 'pino';
+import { getLogger } from '../logger.js';
 import { IMemoryLayer, type HistoryEntry } from './types.js';
 import type { EnvConfig } from '../config.js';
 
-const log = pino({ name: 'ConversationMemoryLayer' });
+const log = getLogger('ConversationMemoryLayer');
 
 export class ConversationMemoryLayer extends IMemoryLayer {
   readonly name = 'conversation';
