@@ -30,6 +30,8 @@ export abstract class IMessagePlatform {
   abstract sendMessage(chatId: string, content: string, chatType?: number): Promise<void>;
   abstract sendWelcome(reqId: string, text: string): Promise<void>;
   abstract getMedia(mediaId: string): Promise<Buffer | null>;
+  /** req_ids that received 6000 errcode (stream conflict) */
+  abstract readonly failedReqIds: Set<string>;
 }
 
 export abstract class IStreamWriter {

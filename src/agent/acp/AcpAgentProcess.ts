@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { Readable, Writable } from 'node:stream';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname, resolve as pathResolve } from 'node:path';
 import * as acp from '@agentclientprotocol/sdk';
 import { getLogger } from '../../logger.js';
 import { IAgentProcess, type AgentChunk, type AgentSpawnOptions, type PromptContent } from '../types.js';
@@ -97,6 +97,8 @@ export class AcpAgentProcess extends IAgentProcess {
   }
 
   async kill(): Promise<void> {
+    this.activeQueue?.close();
+    this.activeQueue = null;
     if (this.proc && this.proc.exitCode === null) {
       this.proc.kill('SIGTERM');
       await new Promise<void>(r => {
@@ -130,12 +132,19 @@ export class AcpAgentProcess extends IAgentProcess {
     try {
       const content = await readFile(params.path, 'utf-8');
       return { content };
-    } catch {
-      return { content: '' };
+    } catch (e: unknown) {
+      const code = (e as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT') return { content: '' };
+      throw e; // permission errors etc. should propagate
     }
   }
 
   private async handleWriteFile(params: acp.WriteTextFileRequest): Promise<acp.WriteTextFileResponse> {
+    const resolved = pathResolve(params.path);
+    const workDir = this.options.cwd;
+    if (!resolved.startsWith(workDir)) {
+      throw new Error(`Write denied: ${params.path} is outside WORK_DIR`);
+    }
     await mkdir(dirname(params.path), { recursive: true });
     await writeFile(params.path, params.content, 'utf-8');
     return {};

@@ -5,7 +5,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import { getLogger } from '../../logger.js';
-import type { WeComPlatform } from './WeComPlatform.js';
+import type { IMessagePlatform } from '../types.js';
 
 const log = getLogger('StreamSegmenter');
 
@@ -21,7 +21,7 @@ export class StreamSegmenter {
   private streamId: string;
 
   constructor(
-    private platform: WeComPlatform,
+    private platform: IMessagePlatform,
     private reqId: string,
     streamId: string,
     private chatId: string,
@@ -102,6 +102,11 @@ export class StreamSegmenter {
 
   private clearTimer(): void {
     if (this.flushTimer) { clearTimeout(this.flushTimer); this.flushTimer = null; }
+  }
+
+  /** Clean up timer without finishing stream (for error paths) */
+  dispose(): void {
+    this.clearTimer();
   }
 }
 

@@ -50,6 +50,12 @@ export class WeComPlatform extends IMessagePlatform {
   async disconnect(): Promise<void> {
     this.closing = true;
     this.stopHeartbeat();
+    // Clean up pending media waiters
+    for (const [rid, waiter] of this.mediaWaiters) {
+      clearTimeout(waiter.timer);
+      waiter.resolve(null);
+    }
+    this.mediaWaiters.clear();
     this.ws?.close();
     this.ws = null;
   }
@@ -148,44 +154,43 @@ export class WeComPlatform extends IMessagePlatform {
 
   private async recvLoop(): Promise<void> {
     if (!this.ws) return;
+
+    // Register message handler BEFORE subscribe to avoid race
+    const messagePromise = new Promise<void>((resolve, reject) => {
+      this.ws!.on('message', (raw: Buffer | string) => this.onRawMessage(raw));
+      this.ws!.on('close', () => resolve());
+      this.ws!.on('error', (err) => reject(err));
+    });
+
     await this.subscribe();
     this.lastPong = Date.now();
     this.startHeartbeat();
     log.info('WS connected and authenticated');
 
-    return new Promise<void>((resolve, reject) => {
-      this.ws!.on('message', (raw: Buffer | string) => this.onRawMessage(raw));
-      this.ws!.on('close', () => resolve());
-      this.ws!.on('error', (err) => reject(err));
-    });
+    return messagePromise;
   }
 
   private async subscribe(): Promise<void> {
+    // Use a pending auth response via the normal message dispatch
+    const authPromise = new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('subscribe timeout')), 10_000);
+      this._authResolve = (resp: Record<string, unknown>) => {
+        clearTimeout(timer);
+        if (resp['errcode'] !== 0) reject(new Error(`认证失败: ${JSON.stringify(resp)}`));
+        else resolve();
+      };
+    });
+
     await this.sendRaw({
       cmd: 'aibot_subscribe',
       headers: { req_id: reqId() },
       body: { bot_id: this.config.bot_id, secret: this.config.secret },
     });
-    // Wait for auth response
-    const raw = await this.waitForMessage(10_000);
-    const resp = JSON.parse(raw);
-    if (resp.errcode !== 0) throw new Error(`认证失败: ${JSON.stringify(resp)}`);
+
+    return authPromise;
   }
 
-  private waitForMessage(timeout: number): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.ws?.removeListener('message', handler);
-        reject(new Error('subscribe timeout'));
-      }, timeout);
-      const handler = (data: Buffer | string) => {
-        clearTimeout(timer);
-        this.ws?.removeListener('message', handler);
-        resolve(data.toString());
-      };
-      this.ws?.once('message', handler);
-    });
-  }
+  private _authResolve: ((resp: Record<string, unknown>) => void) | null = null;
 
   // ---- Heartbeat ----
 
@@ -250,10 +255,21 @@ export class WeComPlatform extends IMessagePlatform {
       this.handleEventCallback(rid, body);
     } else if (cmd === 'pong' || (!cmd && (msg['errcode'] as number) === 0)) {
       this.lastPong = Date.now();
+      // Also handle auth response
+      if (this._authResolve) {
+        const resolve = this._authResolve;
+        this._authResolve = null;
+        resolve(msg as Record<string, unknown>);
+      }
     } else if (!cmd && (msg['errcode'] as number) === 6000) {
       const failedRid = headers['req_id'] || '';
       if (failedRid) this.failedReqIds.add(failedRid);
       log.info('6000 conflict req=%s, will degrade to send_msg', failedRid);
+    } else if (!cmd && this._authResolve) {
+      // Non-zero errcode during auth
+      const resolve = this._authResolve;
+      this._authResolve = null;
+      resolve(msg as Record<string, unknown>);
     }
   }
 

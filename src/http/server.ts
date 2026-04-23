@@ -3,7 +3,7 @@
  */
 import Fastify from 'fastify';
 import { getLogger } from '../logger.js';
-import type { WeComPlatform } from '../platform/wecom/WeComPlatform.js';
+import type { IMessagePlatform } from '../platform/types.js';
 import type { SessionManager } from '../session/SessionManager.js';
 
 const log = getLogger('HttpServer');
@@ -12,7 +12,7 @@ interface SendBody { chatId: string; content: string }
 
 export async function startHttpServer(
   port: number,
-  platform: WeComPlatform,
+  platform: IMessagePlatform,
   sessionManager: SessionManager,
 ): Promise<void> {
   const app = Fastify({ logger: false });

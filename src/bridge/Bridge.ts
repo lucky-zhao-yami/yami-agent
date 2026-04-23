@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { getLogger } from '../logger.js';
 import type { AppConfig } from '../config.js';
 import type { AgentChunk, PromptContent } from '../agent/types.js';
-import type { IncomingMessage, MixedItem, PlatformEvent } from '../platform/types.js';
+import type { IncomingMessage, MixedItem, PlatformEvent, IMessagePlatform } from '../platform/types.js';
 import type { WeComPlatform } from '../platform/wecom/WeComPlatform.js';
 import type { SessionManager } from '../session/SessionManager.js';
 import { StreamSegmenter } from '../platform/wecom/StreamSegmenter.js';
@@ -14,7 +14,7 @@ const log = getLogger('Bridge');
 
 export class Bridge {
   constructor(
-    private platform: WeComPlatform,
+    private platform: IMessagePlatform,
     private sessionManager: SessionManager,
     private config: AppConfig,
   ) {
@@ -73,11 +73,18 @@ export class Bridge {
         }
       };
 
-      await session.send(content, onChunk);
-      await segmenter.finish();
+      try {
+        await session.send(content, onChunk);
+        await segmenter.finish();
+      } catch (sendErr) {
+        segmenter.dispose(); // clean up flushTimer
+        throw sendErr;
+      }
     } catch (err) {
       log.error(err, `Error processing message for ${chatId}`);
-      await this.platform.sendMessage(chatId, '❌ 处理消息时出错，请稍后重试', chatType).catch(() => {});
+      // Try to finish any open stream, then send error via stream
+      const errStreamId = randomUUID().replace(/-/g, '').slice(0, 16);
+      await this.platform.sendStream(reqId, errStreamId, '❌ 处理消息时出错，请稍后重试', true).catch(() => {});
     }
   }
 

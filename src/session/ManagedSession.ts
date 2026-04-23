@@ -97,19 +97,25 @@ export class ManagedSession {
   }
 
   private async injectContext(content: PromptContent[]): Promise<PromptContent[]> {
-    if (!this.memoryManager) return content;
-    try {
-      const context = await this.memoryManager.recall(this.chatId);
-      if (!context) return content;
-      const preamble: PromptContent = {
-        type: 'text',
-        text: `<context>\n${context}\n</context>\n\n以上是之前对话的历史摘要，请参考。\n\n`,
-      };
-      return [preamble, ...content];
-    } catch (e) {
-      log.error(e, 'Failed to recall memory context');
-      return content;
+    const parts: PromptContent[] = [];
+
+    // FR-9: inject safety preamble on first message
+    const { getPreamble } = await import('../bridge/guard.js');
+    parts.push({ type: 'text', text: getPreamble(this.opts.mode) });
+
+    // Inject memory context
+    if (this.memoryManager) {
+      try {
+        const context = await this.memoryManager.recall(this.chatId);
+        if (context) {
+          parts.push({ type: 'text', text: `<context>\n${context}\n</context>\n\n以上是之前对话的历史摘要，请参考。\n\n` });
+        }
+      } catch (e) {
+        log.error(e, 'Failed to recall memory context');
+      }
     }
+
+    return [...parts, ...content];
   }
 
   private measureBytes(content: PromptContent[]): number {

@@ -35,7 +35,13 @@ function parseContent(msgType: string, body: Record<string, unknown>): { text: s
   switch (msgType) {
     case 'text': {
       const obj = body['text'] as Record<string, unknown> | undefined;
-      return { text: (obj?.['content'] as string) || '' };
+      let text = (obj?.['content'] as string) || '';
+      // Strip @bot prefix in group messages
+      if (text.startsWith('@')) {
+        const spaceIdx = text.indexOf(' ');
+        if (spaceIdx > 0) text = text.slice(spaceIdx + 1);
+      }
+      return { text };
     }
     case 'mixed':
       return parseMixed(body);
