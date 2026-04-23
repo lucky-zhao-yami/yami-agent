@@ -61,9 +61,9 @@ DEV_HOOKS=(
 )
 
 # ── cs ───────────────────────────────────────────────────────
-CS_SKILLS=(cs-knowledge sql-query kibana-logs)
+CS_SKILLS=(cs-knowledge sql-query kibana-logs zentao manage-openproject)
 CS_AGENTS=(cs-troubleshooter sql-query)
-CS_MCPS=(sql-query kibana zentao google-sheets google-docs)
+CS_MCPS=(sql-query google-sheets google-docs)
 CS_STEERING=(cs-global-config.md cs-yami-skills.md sub-agent-guide.md skills-path-find-guide.md)
 CS_HOOKS=(check-steering-first.kiro.hook)
 
