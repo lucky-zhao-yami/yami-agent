@@ -24,6 +24,8 @@ export class SessionManager {
   }
 
   async getOrCreate(chatId: string): Promise<ManagedSession> {
+    if (/[\/\\]|\.\./.test(chatId)) throw new Error(`Invalid chatId: ${chatId}`);
+
     const existing = this.sessions.get(chatId);
     if (existing?.alive) return existing;
 
@@ -41,17 +43,22 @@ export class SessionManager {
     const proc = await this.agentProvider.spawn(spawnOpts);
     const router = new SingleAgentRouter(proc, this.agentProvider, spawnOpts);
 
-    const lastSessionId = await this.readLastSessionId(chatId);
-    if (lastSessionId) {
-      try {
-        await router.loadSession(lastSessionId);
-        log.info(`Restored session ${lastSessionId} for ${chatId}`);
-      } catch {
-        log.info(`loadSession failed for ${chatId}, creating new session`);
+    try {
+      const lastSessionId = await this.readLastSessionId(chatId);
+      if (lastSessionId) {
+        try {
+          await router.loadSession(lastSessionId);
+          log.info(`Restored session ${lastSessionId} for ${chatId}`);
+        } catch {
+          log.info(`loadSession failed for ${chatId}, creating new session`);
+          await router.createSession();
+        }
+      } else {
         await router.createSession();
       }
-    } else {
-      await router.createSession();
+    } catch (e) {
+      await router.kill().catch(() => {});
+      throw e;
     }
 
     const session = new ManagedSession(chatId, router, {

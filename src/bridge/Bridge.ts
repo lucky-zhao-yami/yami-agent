@@ -1,14 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import pino from 'pino';
 import type { AppConfig } from '../config.js';
-import { getChatConfig } from '../config.js';
 import type { AgentChunk, PromptContent } from '../agent/types.js';
 import type { IncomingMessage, MixedItem, PlatformEvent } from '../platform/types.js';
 import type { WeComPlatform } from '../platform/wecom/WeComPlatform.js';
 import type { SessionManager } from '../session/SessionManager.js';
 import { StreamSegmenter } from '../platform/wecom/StreamSegmenter.js';
-import { downloadMedia, saveMedia, isImage, aesDecryptImage } from '../platform/wecom/media.js';
-import { checkInjection, getPreamble } from './guard.js';
+import { downloadMedia, saveMedia, isImage } from '../platform/wecom/media.js';
+import { checkInjection } from './guard.js';
 import { parseCommand, handleCommand } from './commands.js';
 
 const log = pino({ name: 'Bridge' });
@@ -56,15 +55,12 @@ export class Bridge {
         }
       }
 
-      const chatConfig = getChatConfig(this.config, chatId);
-      const preamble = getPreamble(chatConfig.mode);
-      const finalContent: PromptContent[] = [
-        { type: 'text', text: preamble },
-        ...content,
-      ];
+      // Preamble is injected by ManagedSession.injectContext on firstMsg only
 
-      // Stream response via StreamSegmenter (reqId-based, no streamOpen)
+      // 🤔 cold start placeholder
       const streamId = randomUUID().replace(/-/g, '').slice(0, 16);
+      await this.platform.sendStream(reqId, streamId, '🤔', false).catch(() => {});
+
       const segmenter = new StreamSegmenter(this.platform, reqId, streamId, chatId, chatType);
 
       let accumulated = '';
@@ -75,7 +71,7 @@ export class Bridge {
         }
       };
 
-      await session.send(finalContent, onChunk);
+      await session.send(content, onChunk);
       await segmenter.finish();
     } catch (err) {
       log.error(err, `Error processing message for ${chatId}`);

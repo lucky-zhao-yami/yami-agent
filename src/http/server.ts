@@ -16,8 +16,12 @@ export async function startHttpServer(
   sessionManager: SessionManager,
 ): Promise<void> {
   const app = Fastify({ logger: false });
+  const apiKey = process.env['API_KEY'];
 
   app.post<{ Body: SendBody }>('/send', async (req, reply) => {
+    if (apiKey && req.headers['authorization'] !== `Bearer ${apiKey}`) {
+      return reply.status(401).send({ ok: false, error: 'Unauthorized' });
+    }
     const { chatId, content } = req.body ?? {} as SendBody;
     if (!chatId || !content) return reply.status(400).send({ ok: false, error: 'chatId and content required' });
     try {

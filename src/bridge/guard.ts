@@ -28,8 +28,9 @@ const INJECTION_PATTERNS: RegExp[] = [
 ];
 
 export function checkInjection(text: string): string | null {
+  const cleaned = text.replace(/[\u200B-\u200D\uFEFF\u00AD\u2060]/g, '');
   for (const pat of INJECTION_PATTERNS) {
-    if (pat.test(text)) {
+    if (pat.test(cleaned)) {
       const desc = pat.source.slice(0, 50);
       log.info(`Injection detected: ${desc}`);
       return desc;

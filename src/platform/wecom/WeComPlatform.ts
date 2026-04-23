@@ -255,10 +255,18 @@ export class WeComPlatform extends IMessagePlatform {
 
   private handleMsgCallback(rid: string, body: Record<string, unknown>) {
     if (!this.msgHandler) return;
-    const chatId = (body['chatid'] as string) || '';
-    const chatType = (body['chat_type'] as number) || 2;
+
+    const from = (body['from'] as Record<string, unknown>) || {};
+    const userId = (from['userid'] as string) || '';
+    const botUserId = (from['bot_userid'] as string) || '';
+
+    // Ignore bot's own messages to prevent infinite loop
+    if (botUserId || userId === this.config.bot_id) return;
+
+    let chatId = (body['chatid'] as string) || '';
+    if (!chatId) chatId = `dm_${userId}`;
+    const chatType = (body['chat_type'] as number) || (chatId.startsWith('dm_') ? 1 : 2);
     const msgType = (body['msgtype'] as string) || 'text';
-    const sender = (body['sender'] as Record<string, unknown>) || {};
 
     let text = '';
     let items: IncomingMessage['items'];
@@ -269,18 +277,24 @@ export class WeComPlatform extends IMessagePlatform {
       text = (textObj?.['content'] as string) || '';
     } else if (msgType === 'mixed') {
       items = [];
-      const mixedMsg = body['mixed_msg'] as Record<string, unknown>[] | undefined;
-      if (mixedMsg) {
-        for (const m of mixedMsg) {
-          const t = (m['msgtype'] as string) || 'text';
-          if (t === 'text') {
-            const c = (m['text'] as Record<string, unknown>)?.['content'] as string || '';
-            items.push({ type: 'text', content: c });
-            text += c;
-          } else if (t === 'image') {
-            const mediaId = (m['image'] as Record<string, unknown>)?.['media_id'] as string || '';
-            items.push({ type: 'image', mediaId });
-          }
+      const mixed = body['mixed'] as Record<string, unknown> | undefined;
+      const msgItems = (mixed?.['msg_item'] as Record<string, unknown>[]) || [];
+      for (const m of msgItems) {
+        const t = (m['msgtype'] as string) || 'text';
+        if (t === 'text') {
+          const c = ((m['text'] as Record<string, unknown>)?.['content'] as string) || '';
+          items.push({ type: 'text', content: c });
+          text += c;
+        } else if (t === 'image') {
+          const mediaId = ((m['image'] as Record<string, unknown>)?.['media_id'] as string) || '';
+          items.push({ type: 'image', mediaId });
+        } else if (t === 'voice') {
+          const c = ((m['voice'] as Record<string, unknown>)?.['content'] as string) || '';
+          items.push({ type: 'voice', content: c });
+          text += c;
+        } else if (t === 'file') {
+          const mediaId = ((m['file'] as Record<string, unknown>)?.['media_id'] as string) || '';
+          items.push({ type: 'file', mediaId });
         }
       }
     } else if (msgType === 'image') {
@@ -289,17 +303,32 @@ export class WeComPlatform extends IMessagePlatform {
     } else if (msgType === 'voice') {
       const voice = body['voice'] as Record<string, unknown> | undefined;
       text = (voice?.['content'] as string) || '';
+    } else if (msgType === 'file') {
+      const file = body['file'] as Record<string, unknown> | undefined;
+      items = [{ type: 'file', mediaId: (file?.['media_id'] as string) || '' }];
     }
 
-    // Quote
-    const replyInfo = body['reply_info'] as Record<string, unknown> | undefined;
-    if (replyInfo) {
-      quote = (replyInfo['text_content'] as string) || '';
+    // Quote — extract from quote object
+    const quoteObj = body['quote'] as Record<string, unknown> | undefined;
+    if (quoteObj) {
+      const qt = (quoteObj['msgtype'] as string) || '';
+      if (qt === 'text') {
+        quote = ((quoteObj['text'] as Record<string, unknown>)?.['content'] as string) || '';
+      } else if (qt === 'mixed') {
+        const qMixed = quoteObj['mixed'] as Record<string, unknown> | undefined;
+        const qItems = (qMixed?.['msg_item'] as Record<string, unknown>[]) || [];
+        quote = qItems
+          .filter(i => (i['msgtype'] as string) === 'text')
+          .map(i => ((i['text'] as Record<string, unknown>)?.['content'] as string) || '')
+          .filter(Boolean).join(' ');
+      } else if (qt === 'markdown') {
+        quote = ((quoteObj['markdown'] as Record<string, unknown>)?.['content'] as string) || '';
+      }
     }
 
     const incoming: IncomingMessage = {
       chatId,
-      userId: (sender['userid'] as string) || (sender['user_id'] as string) || '',
+      userId,
       msgType: msgType as IncomingMessage['msgType'],
       text: text || undefined,
       items,
@@ -312,7 +341,8 @@ export class WeComPlatform extends IMessagePlatform {
 
   private handleEventCallback(rid: string, body: Record<string, unknown>) {
     if (!this.evtHandler) return;
-    const eventType = (body['event_type'] as string) || '';
+    const event = (body['event'] as Record<string, unknown>) || {};
+    const eventType = (event['eventtype'] as string) || '';
     const chatId = (body['chatid'] as string) || '';
     const evt: PlatformEvent = {
       type: eventType === 'enter_chat' ? 'enter_chat' : 'disconnected',
