@@ -72,8 +72,8 @@ export class Bridge {
 
       // 🤔 cold start placeholder — include message preview so user knows which question
       streamId = randomUUID().replace(/-/g, '').slice(0, 16);
-      const preview = text ? (text.length > 30 ? text.slice(0, 30) + '...' : text) : '';
-      const prefix = preview ? `> ${preview}\n\n` : '';
+      const preview = text ? (text.length > 50 ? text.slice(0, 50) + '...' : text) : '';
+      const prefix = preview ? `💬 **${preview}**\n\n---\n\n` : '';
       await this.platform.sendStream(reqId, streamId, prefix + '🤔', false).catch(() => {});
 
       const segmenter = new StreamSegmenter(this.platform, reqId, streamId, chatId, chatType, prefix);
