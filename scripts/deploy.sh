@@ -93,6 +93,7 @@ echo ""
 info "Step 2: 拉取代码仓库"
 mkdir -p "$CODE_DIR"
 
+PROFILE_UPPER=$(echo "$PROFILE" | tr '[:lower:]' '[:upper:]')
 eval 'P_REPOS=("${'"${PROFILE_UPPER}"'_REPOS[@]}")'
 
 if [ ${#P_REPOS[@]} -eq 0 ]; then
@@ -117,7 +118,6 @@ info "Step 3: 初始化工作空间"
 mkdir -p "$WORK_DIR"/{sessions,.kiro/{steering,skills,agents,settings,hooks}}
 
 # 合并 profile: base + 选定 profile
-PROFILE_UPPER=$(echo "$PROFILE" | tr '[:lower:]' '[:upper:]')
 eval 'P_SKILLS=("${BASE_SKILLS[@]}" "${'"${PROFILE_UPPER}"'_SKILLS[@]}")'
 eval 'P_AGENTS=("${BASE_AGENTS[@]}" "${'"${PROFILE_UPPER}"'_AGENTS[@]}")'
 eval 'P_MCPS=("${BASE_MCPS[@]}" "${'"${PROFILE_UPPER}"'_MCPS[@]}")'
