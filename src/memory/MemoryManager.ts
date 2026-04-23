@@ -4,6 +4,8 @@ import type { IMemoryLayer, IMemoryRecycler, HistoryEntry } from './types.js';
 const log = getLogger('MemoryManager');
 
 export class MemoryManager {
+  private summarizeLocks = new Map<string, Promise<void>>();
+
   constructor(
     private layers: IMemoryLayer[],
     private recycler: IMemoryRecycler,
@@ -29,12 +31,18 @@ export class MemoryManager {
   }
 
   async summarize(chatId: string, sessionId: string): Promise<void> {
-    log.info(`Summarizing ${chatId} session=${sessionId}`);
-    const summary = await this.recycler.summarize(chatId, sessionId);
-    const today = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD local
-    await Promise.all(this.layers.map(l =>
-      l.onSummary(chatId, today, summary).catch(e => log.error(e, `onSummary failed for layer ${l.name}`)),
-    ));
+    // Per-chatId lock to prevent concurrent summarization
+    const prev = this.summarizeLocks.get(chatId) ?? Promise.resolve();
+    const current = prev.then(async () => {
+      log.info(`Summarizing ${chatId} session=${sessionId}`);
+      const summary = await this.recycler.summarize(chatId, sessionId);
+      const today = new Date().toLocaleDateString('sv-SE');
+      await Promise.all(this.layers.map(l =>
+        l.onSummary(chatId, today, summary).catch(e => log.error(e, `onSummary failed for layer ${l.name}`)),
+      ));
+    }).catch(e => log.error(e, `summarize failed for ${chatId}`));
+    this.summarizeLocks.set(chatId, current);
+    return current;
   }
 
   async cleanup(chatId: string): Promise<void> {

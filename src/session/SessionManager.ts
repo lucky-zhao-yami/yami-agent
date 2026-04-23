@@ -14,6 +14,7 @@ const CLEANUP_INTERVAL = 60_000;
 export class SessionManager {
   private sessions = new Map<string, ManagedSession>();
   private pending = new Map<string, Promise<ManagedSession>>();
+  private warmPool: import('../agent/types.js').IAgentProcess[] = [];
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
@@ -22,6 +23,27 @@ export class SessionManager {
     private memoryManager?: MemoryManager,
   ) {
     this.cleanupTimer = setInterval(() => this.cleanupIdle(), CLEANUP_INTERVAL);
+  }
+
+  /** Pre-warm N idle agent processes for faster cold start */
+  async warmUp(count: number): Promise<void> {
+    if (count <= 0) return;
+    log.info(`Pre-warming ${count} agent processes`);
+    const chatConfig = getChatConfig(this.config, '__warmup__');
+    for (let i = 0; i < count; i++) {
+      try {
+        const proc = await this.agentProvider.spawn({
+          command: chatConfig.agent.command,
+          args: chatConfig.agent.args,
+          cwd: this.config.env.WORK_DIR,
+          env: chatConfig.agent.env,
+        });
+        this.warmPool.push(proc);
+      } catch (e) {
+        log.error(e, `Warm-up ${i} failed`);
+      }
+    }
+    log.info(`Warm pool: ${this.warmPool.length} processes ready`);
   }
 
   async getOrCreate(chatId: string): Promise<ManagedSession> {
@@ -55,7 +77,9 @@ export class SessionManager {
     };
 
     log.info(`Spawning agent for ${chatId}`);
-    const proc = await this.agentProvider.spawn(spawnOpts);
+    const proc = this.warmPool.length > 0
+      ? this.warmPool.shift()!
+      : await this.agentProvider.spawn(spawnOpts);
     const router = new SingleAgentRouter(proc, this.agentProvider, spawnOpts);
 
     try {

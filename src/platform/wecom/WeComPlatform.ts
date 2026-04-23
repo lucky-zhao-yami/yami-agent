@@ -29,12 +29,14 @@ export class WeComPlatform extends IMessagePlatform {
   private authFailures = 0;
   private lastSendMsg = 0;
   private sendMsgChain: Promise<void> = Promise.resolve();
+  private sendLock: Promise<void> = Promise.resolve();
 
   /** req_id set that received 6000 errcode (stream conflict) */
   readonly failedReqIds = new Set<string>();
 
   /** Pending media download futures: req_id → {resolve} */
   private mediaWaiters = new Map<string, { resolve: (v: Buffer | null) => void; timer: ReturnType<typeof setTimeout> }>();
+  private mediaChain: Promise<Buffer | null> = Promise.resolve(null);
 
   constructor(private config: BotConfig) { super(); }
 
@@ -95,24 +97,29 @@ export class WeComPlatform extends IMessagePlatform {
   }
 
   async getMedia(mediaId: string): Promise<Buffer | null> {
-    const rid = reqId();
-    return new Promise<Buffer | null>((resolve) => {
-      const timer = setTimeout(() => {
-        this.mediaWaiters.delete(rid);
-        log.error('getMedia timeout media_id=%s', mediaId);
-        resolve(null);
-      }, 30_000);
-      this.mediaWaiters.set(rid, { resolve, timer });
-      this.sendRaw({
-        cmd: 'aibot_get_media',
-        headers: { req_id: rid },
-        body: { media_id: mediaId },
-      }).catch(() => {
-        clearTimeout(timer);
-        this.mediaWaiters.delete(rid);
-        resolve(null);
+    const doGet = (): Promise<Buffer | null> => {
+      const rid = reqId();
+      return new Promise<Buffer | null>((resolve) => {
+        const timer = setTimeout(() => {
+          this.mediaWaiters.delete(rid);
+          log.error('getMedia timeout media_id=%s', mediaId);
+          resolve(null);
+        }, 30_000);
+        this.mediaWaiters.set(rid, { resolve, timer });
+        this.sendRaw({
+          cmd: 'aibot_get_media',
+          headers: { req_id: rid },
+          body: { media_id: mediaId },
+        }).catch(() => {
+          clearTimeout(timer);
+          this.mediaWaiters.delete(rid);
+          resolve(null);
+        });
       });
-    });
+    };
+    // Serialize getMedia calls to avoid binary response mismatch
+    this.mediaChain = this.mediaChain.then(doGet, doGet);
+    return this.mediaChain;
   }
 
   // ---- Connection lifecycle ----
@@ -296,7 +303,7 @@ export class WeComPlatform extends IMessagePlatform {
   // ---- Low-level send ----
 
   private sendRaw(payload: Record<string, unknown>): Promise<void> {
-    return new Promise((resolve, reject) => {
+    const doSend = (): Promise<void> => new Promise((resolve, reject) => {
       if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
         reject(new Error('WebSocket not connected'));
         return;
@@ -305,6 +312,8 @@ export class WeComPlatform extends IMessagePlatform {
         if (err) reject(err); else resolve();
       });
     });
+    this.sendLock = this.sendLock.then(doSend, doSend);
+    return this.sendLock;
   }
 }
 

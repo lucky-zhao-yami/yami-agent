@@ -37,8 +37,9 @@ export class ConversationMemoryLayer extends IMemoryLayer {
     cutoff.setDate(cutoff.getDate() - this.recallDays);
     const cutoffStr = cutoff.toISOString().slice(0, 10);
 
+    const datePattern = /^\d{4}-\d{2}-\d{2}\.md$/;
     const mdFiles = files
-      .filter(f => f.endsWith('.md') && f >= cutoffStr)
+      .filter(f => datePattern.test(f) && f.slice(0, 10) >= cutoffStr)
       .sort();
 
     if (mdFiles.length === 0) return '';

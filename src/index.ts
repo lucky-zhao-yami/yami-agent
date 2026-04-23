@@ -1,4 +1,4 @@
-import { readdir, readFile } from 'node:fs/promises';
+import { readdir, readFile, unlink, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getLogger } from './logger.js';
 import { loadConfig } from './config.js';
@@ -41,6 +41,23 @@ async function dailySummarizeAndCleanup(memoryManager: MemoryManager, sessionsDi
     } catch {
       // no last_session_id or other error — skip
     }
+
+    // FR-12: clean archive files older than 30 days
+    try {
+      const archiveDir = join(sessionsDir, chatId, 'memory', 'archive');
+      const archiveFiles = await readdir(archiveDir);
+      const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      for (const f of archiveFiles) {
+        const filePath = join(archiveDir, f);
+        const s = await stat(filePath);
+        if (s.mtimeMs < cutoff) {
+          await unlink(filePath);
+          log.info(`Deleted old archive: ${chatId}/${f}`);
+        }
+      }
+    } catch {
+      // no archive dir — skip
+    }
   }
 }
 
@@ -73,6 +90,7 @@ async function main() {
   const memoryManager = new MemoryManager(layers, recycler);
 
   const sessionManager = new SessionManager(agentProvider, config, memoryManager);
+  await sessionManager.warmUp(config.env.WARM_POOL_SIZE);
   const bridge = new Bridge(platform, sessionManager, config);
 
   // Task 3.4 + 3.6: daily cron
