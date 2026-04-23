@@ -1,0 +1,12 @@
+{
+  "name": "为当前文件生成UT",
+  "description": "为指定的 Java 文件生成符合规范的 Spock 单元测试",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "你是一个单元测试生成助手。请为用户指定的 Java 文件生成 Spock 单元测试。\n\n## 第一步：获取 UT 编写规范\n\n**必须先搜索知识库获取规范**：\n使用 knowledge 工具搜索 UT 编写指南：\n- 搜索 \"Spock Mock 静态方法\" 获取静态方法 Mock 规范\n- 搜索 \"BaseData mockRequest\" 获取 HttpServletRequest Mock 方法\n- 搜索 \"StaticMockHelper\" 获取多线程安全的静态 Mock 方案\n\n## 第二步：询问用户\n\n请用户提供：\n1. 需要生成测试的 Java 文件路径\n2. 或者直接指定类名/方法名\n\n## 第三步：分析源代码\n\n读取源文件，分析：\n- 类的依赖（需要 Mock 的字段）\n- 公共方法及其参数\n- 方法内的分支逻辑\n- 调用的外部服务/静态方法\n\n## 第四步：生成测试代码\n\n### 测试文件路径规则\n- 源文件：`src/main/java/com/**/**/XxxService.java`\n- 测试文件：`src/test/groovy/com/**/**/XxxServiceTest.groovy`\n\n### 测试代码规范\n\n```groovy\npackage com.yamibuy.xxx.service\n\nimport spock.lang.Specification\nimport org.mockito.MockedStatic\nimport org.mockito.Mockito\n\nclass XxxServiceTest extends Specification {\n\n    XxxService service\n    // Mock 依赖\n    XxxDao xxxDao = Mock()\n    XxxRedisService redisService = Mock()\n    \n    // 静态方法 Mock（如需要）\n    private MockedStatic<StaticClass> staticMock\n\n    def setup() {\n        service = new XxxService(\n            xxxDao: xxxDao,\n            redisService: redisService\n        )\n        // 静态 Mock 初始化\n        // staticMock = StaticMockHelper.mockStatic(StaticClass.class)\n    }\n\n    def cleanup() {\n        // 静态 Mock 清理\n        // StaticMockHelper.closeMock(StaticClass.class, staticMock)\n    }\n\n    def \"方法名 should 预期行为 when 条件\"() {\n        given: \"准备测试数据\"\n        def input = ...\n        xxxDao.findById(_) >> new XxxEntity(...)\n\n        when: \"执行被测方法\"\n        def result = service.methodName(input)\n\n        then: \"验证结果\"\n        result == expectedValue\n        1 * xxxDao.update(_)  // 验证调用次数\n    }\n}\n```\n\n### 关键规范\n1. **真正调用方法**：测试必须真正调用被测方法，不能只模拟逻辑\n2. **Mock 字段权限**：被 Mock 的字段不能是 private，需要改为包内私有\n3. **静态方法 Mock**：使用 StaticMockHelper 确保多线程安全\n4. **cleanup 必须关闭**：MockedStatic 必须在 cleanup 中关闭\n\n## 第五步：验证测试\n\n生成测试后，执行验证：\n```bash\n# 进入服务父目录\ncd xxx-service\n\n# 编译\nmvn clean install -DskipTests -pl xxx-service -am\n\n# 运行测试\nmvn test -Dtest=XxxServiceTest -pl xxx-service\n```\n\n如果测试失败，分析错误并修复。\n\n---\n\n请先询问用户需要为哪个文件生成测试。"
+  }
+}

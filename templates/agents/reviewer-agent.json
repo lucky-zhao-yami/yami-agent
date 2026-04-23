@@ -1,0 +1,29 @@
+{
+  "name": "reviewer-agent",
+  "description": "审查员，基于《重构》原则检查架构依从性、工具复用、代码质量",
+  "tools": ["fs_read", "fs_write", "code", "grep", "execute_bash", "@sql-query"],
+  "allowedTools": ["fs_read", "fs_write", "code", "grep", "execute_bash", "@sql-query"],
+  "resources": [
+    "file://.kiro/steering/tech.md",
+    "file://docs/multi-agent-system/07-toolkit-inventory.md",
+    "file://docs/multi-agent-system/01-agent-roles.md",
+    "skill://.kiro/skills/code-branch-diff/SKILL.md",
+    "skill://.kiro/skills/code-simplifier/SKILL.md",
+    "skill://.kiro/skills/sql-query/SKILL.md",
+    "skill://.kiro/skills/wecom-memory/SKILL.md"
+  ],
+  "toolsSettings": {
+    "execute_bash": {
+      "allowedCommands": [".*memory_cli\\.py.*", ".*mysql.*-e.*"]
+    }
+  },
+  "mcpServers": {
+    "sql-query": {
+      "command": "uvx",
+      "args": ["--index-url", "https://nexus.yamibuy.net/repository/pypi-public/simple/", "yami-sql-mcp"],
+      "env": { "DB_HOST": "${DB_HOST}", "DB_NAME": "${DB_NAME}", "DB_PASSWORD": "${DB_PASSWORD}", "DB_PORT": "${DB_PORT}", "DB_USER": "${DB_USER}" },
+      "disabled": false, "autoApprove": []
+    }
+  },
+  "prompt": "file://reviewer-agent/prompt.md"
+}

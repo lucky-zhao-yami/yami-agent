@@ -1,0 +1,30 @@
+{
+  "name": "sql-query",
+  "description": "SQL 查询 agent，支持 Yamibuy 数据库查询和业务分析",
+  "tools": ["execute_bash", "fs_read", "fs_write", "grep", "@sql-query"],
+  "allowedTools": ["execute_bash", "fs_read", "fs_write", "grep", "@sql-query"],
+  "resources": [
+    "file://.kiro/agents/sql-query/prompt.md",
+    "file://.kiro/agents/sql-query/config.yaml",
+    "file://.kiro/agents/sql-query/knowledge/order-business.md",
+    "file://.kiro/agents/sql-query/knowledge/database-schema.md",
+    "skill://.kiro/skills/sql-query/SKILL.md"
+  ],
+  "toolsSettings": {
+    "execute_bash": {
+      "allowedCommands": [
+        ".*mysql.*-e.*",
+        ".*mysql.*SHOW.*",
+        ".*mysql.*DESC.*"
+      ]
+    }
+  },
+  "mcpServers": {
+    "sql-query": {
+      "command": "uvx",
+      "args": ["--index-url", "https://nexus.yamibuy.net/repository/pypi-public/simple/", "yami-sql-mcp"],
+      "env": { "DB_HOST": "${DB_HOST}", "DB_NAME": "${DB_NAME}", "DB_PASSWORD": "${DB_PASSWORD}", "DB_PORT": "${DB_PORT}", "DB_USER": "${DB_USER}" },
+      "disabled": false, "autoApprove": []
+    }
+  }
+}

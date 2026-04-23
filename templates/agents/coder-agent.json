@@ -1,0 +1,29 @@
+{
+  "name": "coder-agent",
+  "description": "程序员，严格按契约和架构规范编写业务代码，复用公共工具",
+  "tools": ["fs_read", "fs_write", "execute_bash", "code", "grep", "@sql-query"],
+  "allowedTools": ["fs_read", "fs_write", "execute_bash", "code", "grep", "@sql-query"],
+  "resources": [
+    "file://.kiro/steering/structure.md",
+    "file://.kiro/steering/tech.md",
+    "file://docs/multi-agent-system/07-toolkit-inventory.md",
+    "skill://.kiro/skills/yami-public-toolkit/SKILL.md",
+    "skill://.kiro/skills/apollo-config-sync/SKILL.md",
+    "skill://.kiro/skills/sql-query/SKILL.md",
+    "skill://.kiro/skills/wecom-memory/SKILL.md"
+  ],
+  "toolsSettings": {
+    "execute_bash": {
+      "allowedCommands": [".*mvn.*compile.*", ".*mvn.*test.*", ".*mvn.*install.*", ".*memory_cli\\.py.*", ".*mysql.*-e.*"]
+    }
+  },
+  "mcpServers": {
+    "sql-query": {
+      "command": "uvx",
+      "args": ["--index-url", "https://nexus.yamibuy.net/repository/pypi-public/simple/", "yami-sql-mcp"],
+      "env": { "DB_HOST": "${DB_HOST}", "DB_NAME": "${DB_NAME}", "DB_PASSWORD": "${DB_PASSWORD}", "DB_PORT": "${DB_PORT}", "DB_USER": "${DB_USER}" },
+      "disabled": false, "autoApprove": []
+    }
+  },
+  "prompt": "file://coder-agent/prompt.md"
+}

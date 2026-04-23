@@ -124,10 +124,10 @@ eval 'P_MCPS=("${BASE_MCPS[@]}" "${'"${PROFILE_UPPER}"'_MCPS[@]}")'
 eval 'P_STEERING=("${BASE_STEERING[@]}" "${'"${PROFILE_UPPER}"'_STEERING[@]}")'
 eval 'P_HOOKS=("${BASE_HOOKS[@]}" "${'"${PROFILE_UPPER}"'_HOOKS[@]}")'
 
-# 模板来源：当前运行的 all 工作空间，或 yami-agent 仓库中的 templates
-TEMPLATE_SRC="/mnt/d/workspace/all/.kiro"
-if [ ! -d "$TEMPLATE_SRC" ]; then
-  TEMPLATE_SRC="$CODE_DIR/yami-agent/templates"
+# 模板来源：yami-agent 仓库内的 templates 目录
+TEMPLATE_SRC="$PROJECT_DIR/templates"
+if [ ! -d "$TEMPLATE_SRC/skills" ]; then
+  fail "模板目录不存在: $TEMPLATE_SRC/skills，请确认 yami-agent 仓库完整"
 fi
 
 # 复制 skills

@@ -1,0 +1,21 @@
+# 数据库配置
+
+database:
+  type: mysql
+  host: rds.g3-slave.yamibuy.net
+  port: 3306
+  username: "techpur"
+  password: "${GRAFANA_PASSWORD}"
+
+# 涉及数据库
+databases:
+  - yamibuy_master    # 订单主表
+  - yamibuy_finance   # 财务/退款应收
+  - yamibuy_payment   # 支付退款
+  - yamibuy_fp        # 服务监控
+
+# 查询限制
+limits:
+  max_rows: 1000
+  timeout: 30
+  readonly: true

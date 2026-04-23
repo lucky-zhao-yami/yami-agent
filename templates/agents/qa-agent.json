@@ -1,0 +1,31 @@
+{
+  "name": "qa-agent",
+  "description": "测试开发，后置补测试 + 集成测试 + Web UI 测试",
+  "tools": ["fs_read", "fs_write", "execute_bash", "code", "grep", "@sql-query"],
+  "allowedTools": ["fs_read", "fs_write", "execute_bash", "code", "grep", "@sql-query"],
+  "resources": [
+    "file://.kiro/steering/tech.md",
+    "skill://.kiro/skills/java-spock-unit-test/SKILL.md",
+    "skill://.kiro/skills/wirte-java-unit-test/SKILL.md",
+    "skill://.kiro/skills/api-test/SKILL.md",
+    "skill://.kiro/skills/web-test/SKILL.md",
+    "skill://.kiro/skills/sql-query/SKILL.md",
+    "skill://.kiro/skills/wecom-memory/SKILL.md",
+    "skill://.kiro/skills/idp-deploy/SKILL.md",
+    "skill://.kiro/skills/cli-anything-rancher/SKILL.md"
+  ],
+  "toolsSettings": {
+    "execute_bash": {
+      "allowedCommands": [".*mvn.*test.*", ".*mvn.*compile.*", ".*memory_cli\\.py.*", ".*mysql.*-e.*", ".*opencli yamibuy-idp.*"]
+    }
+  },
+  "mcpServers": {
+    "sql-query": {
+      "command": "uvx",
+      "args": ["--index-url", "https://nexus.yamibuy.net/repository/pypi-public/simple/", "yami-sql-mcp"],
+      "env": { "DB_HOST": "${DB_HOST}", "DB_NAME": "${DB_NAME}", "DB_PASSWORD": "${DB_PASSWORD}", "DB_PORT": "${DB_PORT}", "DB_USER": "${DB_USER}" },
+      "disabled": false, "autoApprove": []
+    }
+  },
+  "prompt": "file://qa-agent/prompt.md"
+}

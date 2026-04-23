@@ -1,0 +1,17 @@
+{
+  "name": "api-designer-agent",
+  "description": "API 设计师，基于需求和现有代码设计接口契约，复用现有数据结构",
+  "tools": ["fs_read", "fs_write", "code", "grep", "execute_bash"],
+  "allowedTools": ["fs_read", "fs_write", "code", "grep", "execute_bash"],
+  "resources": [
+    "file://.kiro/steering/structure.md",
+    "file://.kiro/steering/tech.md",
+    "skill://.kiro/skills/wecom-memory/SKILL.md"
+  ],
+  "toolsSettings": {
+    "execute_bash": {
+      "allowedCommands": [".*memory_cli\\.py.*"]
+    }
+  },
+  "prompt": "file://api-designer-agent/prompt.md"
+}

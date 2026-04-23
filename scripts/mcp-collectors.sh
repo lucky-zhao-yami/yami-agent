@@ -31,6 +31,9 @@ install_mcp() {
       mkdir -p "$target"
       # 从模板源复制源码
       local tmpl_src="$TEMPLATE_SRC/../mcp-servers/$(basename "$install_dir")"
+      if [ ! -d "$tmpl_src" ]; then
+        tmpl_src="$PROJECT_DIR/templates/mcp-servers/$(basename "$install_dir")"
+      fi
       if [ -d "$tmpl_src" ]; then
         cp -rn "$tmpl_src/"* "$target/" 2>/dev/null || true
       fi

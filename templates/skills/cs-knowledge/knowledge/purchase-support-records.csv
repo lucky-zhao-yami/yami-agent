@@ -1,0 +1,1184 @@
+序号,问题描述,涉及的功能/模块,解决方案、步骤,回复结果,记录,提出人,日期,耗时（h）,状态,备注,迭代,OP
+1,订单时间太久，RMA、Central无法取消，是否有办法给客人退款,退款,无,这两个订单都超过半年了，没有办法退款了,"Todd, Heaps",CS,,,已处理,,,
+2,请帮忙查看一下客人的手机号xxxxx 绑定的是哪一个邮箱,邮箱验证手机号,"1.找moc、wheat执行查询SQL（SELECT * FROM `yamibuy_crm`.`crm_bind_phone_log` where mobile_phone = '+1-xxxxxx'）
+2.找到用户id后，在central中根据用户id查询用户信息（https://central.yamibuy.net/crm/index.html?v=v1.3.7#/crm/customerList）
+3.将需要的用户信息私发给咨询人
+查询用户表手机绑定信息（SELECT * FROM `yamibuy_master`.`xysc_users`  where mobile_phone = '+1-xxxx'）",用户的邮箱是xxxxx,"Todd，Damon, Heaps",CS,,,已处理,,,
+3,邀请好友，被邀请人注册后奖励没到账,邀请好友,"
+""邀请人获奖条件：邀请人不需要验证， 被邀请人要先验证邮箱和手机后，再下单发货，注意被邀请人，绑定邀请码的时间关系、验证、下单时间 被邀请人获奖条件：注册并验证手机 如果满足获奖条件，看是否风控： 0. 查询订单下单时间 select add_time from yamibuy_master.xysc_order_info where order_sn = '2024011098771' 1.查询被邀请人是否有手机验证 SELECT is_phone_validated FROM `yamibuy_master`.`xysc_users` WHERE `user_id` = '3719711' 1.1查询被邀请人验证手机时间（判断手机验证时间在下单时间之前） SELECT * FROM `yamibuy_crm`.`crm_invite_log` WHERE `in_user` = '3747568' AND `event_type` = '2' 2.邀请人的事件日志是否有验证手机记录 SELECT * FROM `yamibuy_crm`.`crm_invite_log` WHERE `event_user` = '3719711' 3.如果以上都满足，查询是否被风控 SELECT * FROM `yamibuy_crm`.`crm_invite_risk_control` where user_id = '3719711' 4.如果风控查不到，查kibana日志，搜索ec-customer 风控情况 https://kibana.yamibuy.net/app/discover#/?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-7d%2Fd,to:now))&_a=(columns:!(),filters:!(('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'k8s-ec-customer-service-log-*',key:message,negate:!f,params:(query:%E9%A3%8E%E6%8E%A7%E6%83%85%E5%86%B5),type:phrase),query:(match_phrase:(message:%E9%A3%8E%E6%8E%A7%E6%83%85%E5%86%B5))),('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'k8s-ec-customer-service-log-*',key:message,negate:!f,params:(query:'3719711'),type:phrase),query:(match_phrase:(message:'3719711')))),index:'k8s-ec-customer-service-log-*',interval:auto,query:(language:kuery,query:''),sort:!(!('@timestamp',desc)))""",被邀请好友未验证手机，请用户验证手机成功后再查看优惠券,"Todd，Damon, Heaps",CS,,,已处理,"被邀请者B获取奖励条件
+1.没有被风控
+2.注册（填写邀请码）， 再验证手机
+
+邀请者A获取奖励条件
+1.没有被风控
+2.B要验证手机且下单发货，且B要先绑定验证码（或注册），再验证、再下单时间
+
+邀请好友关系建立条件
+1.A需要验证手机  
+2.有有效的下单记录
+3.两个用户设备ID不存在相同的
+
+奖励发放条件
+1.收货地址手机号不能相同
+2.收货地址姓名不能相同",转需求,OP-15129
+4,手机号已经被绑定到了一个注销掉的账号，希望解除绑定,验证手机号,"注销账号时会删除用户信息表里的相关信息，里面的绑定手机号会同步删除
+需要找moc查询用户表手机绑定信息（SELECT * FROM `yamibuy_master`.`xysc_users`  where mobile_phone = '+1-xxxx'）看是否有绑定了此手机号的用户；
+如果没有的话找客户联系用户重新绑定；
+如果有的话，找人帮解除手机绑定；",该手机号已经解除绑定，请用户再尝试下绑定手机,"Todd，Damon, Heaps",CS,,,已处理,,,
+5,订单取消后退款，但是使用的礼卡中有4张在11号过期了，所以退款大概率是没有退回到这些过期的礼卡中，金额 $66.32，可以帮我核实确认下吗？,退款金额不退、礼卡过期,"1.central查询订单信息(https://central.yamibuy.net/so/index.html?v=#/so/orderQuery)
+2.进入订单详情页查看退款记录，确认退款金额是否正确
+3.【退款记录】弹窗中点击 礼卡旁边的“更多”按钮，查看礼卡信息，截至时间等，对比",用户退款礼卡全退了，退款1小时候，有4张礼卡过期了，过期金额66.32,"Todd，Damon, Heaps",CS,,,已处理,退卡的时候，如果原卡过期，会生成新卡,,
+6,客人反馈在7号的时候有两笔扣款，但是并没有订单，请查看扣款是否成功了？如果成功请帮忙退款,支付后无订单，退款,"1.central查询订单信息(https://central.yamibuy.net/so/index.html?v=#/so/orderQuery)
+2.如果没有的话，找服务人员帮查看下数据库和日志中订单状态，是否临时订单，是否扣钱",1月7号那次支付成功了，但是没有生成订单，我们刚刚已经申请了那次支付的退款了,"Todd，Damon, Heaps",CS,,,已处理,,转需求,OP-15110
+7,"1. 购买了一张实体礼卡，已发货，但是订单和礼卡绑定关系错误；
+2. 实体礼卡是会绑定唯一订单吗？如果不是的话，退回的实体礼卡，仓库会再次发给其他客人？
+3. 实体礼卡我们在礼卡中心有的可以查到记录，有的查不到？",订单、礼卡,"1.central根据订单查询礼卡信息，发现礼卡和订单绑定关系错误
+https://central.yamibuy.net/crm/index.html?v=v1.3.7#/crm/giftCardDetail
+2.找仓库同事帮忙调查，发现该礼卡被另一订单绑定过，这个订单已退款，但是礼卡状态还是已绑定，导致新的订单无法绑定该礼卡。
+3.客服提到：先购买该礼卡的账户是盗刷账户，当时客服召回了包裹，停用了礼卡，然后新的订单，又将该礼卡寄出。
+4.因不影响礼卡兑换，该订单无需强行修改数据，客服后续会和RMA沟通，如何避免这种情况发生。","1. 实体礼卡是不能售后的，可能会出现卡号泄露的问题，这单如果确认是追回的，目前只能更新数据，重新建立礼卡和订单的绑定关系。
+2. 看现状追回的实体礼卡会再次发给其他客人。
+3. 实体礼卡在central查到的前提是，订单在仓库发货完成以后。 目前这单查不到的原因是因为它是退货的实体礼卡，退货订单和礼卡关系还在绑定状态，所以拿新的订单号查不到，但是拿旧的订单号可以查到。","Alan, Damon, Heaps, Roy",CS,,,已处理,,,
+8,邀请好友，被邀请人注册后奖励没到账,邀请好友,同上方第3条,"受邀账户1月11号下单时，并未验证手机，不符合获奖条件。
+现在已验证了，还需要下一单且发货，才能获奖","Alan，Damon, Heaps",CS,,,已处理,,同问题3,
+9,tiktok订单 顾客说到货地址与其填写的地址不符,订单地址,"1.central查看订单详情地址，到货地址与顾客填写一致
+2.找Simon查看tiktok原始订单地址信息是否正确，也与到货地址一致",订单地址与到货地址一致,"Alan, Simon",CS,,,已处理,,,
+10,订单显示发货仓库是LA，配送商Piggy，但物流显示是FedEx从NJ发出,物流,"1.数据库查询到订单记录的track_number和物流推送过来的track_number不一致
+2.仓库同事回复：单子打包时时piggy的LA仓，但是后面被人工干预，在官网生成了新的物流单，并且写错了发货地变成了NJ",同左侧步骤2,"Alan, Heaps, Roy",CS,,,已处理,,,
+11,礼卡订单，客人说没收到，帮忙充值,礼卡充值,"查询订单相关的礼卡充值情况， is_redeem是否兑换   redeem_user 兑换人
+SELECT * FROM `yamibuy_master`.`xysc_egift_card` WHERE `source_order_sn` = 'xxxxx'
+central地址
+https://central.yamibuy.net/crm/index.html?v=v1.3.7#/crm/giftCardDetail
+
+查询礼卡的兑换方式，receive_type=2 发送邮箱 1直充账户， receive_emails 接收礼卡的邮箱
+SELECT * FROM `yamibuy_so`.`so_order_ext` WHERE `order_id` = 'xxxxx' ",对应的礼卡号,"Alan, Damon",CS,,,已处理,,,
+12,有三笔退款，其中两笔成功，一笔没成功,退款,"1.yamibuy_master.xysc_order_info查询订单purchase_id 
+2.使用步骤1查出的purchase_id 在yamiuby_payment.payment_refund查退款记录 及退款状态
+3.在相应支付方式的退款表中查找网管返回的具体信息 和步骤2的退款状态对比",我们这边查到，三笔退款都是成功的，还有问题，可能得让用户联系自己的银行咨询~,"Alan, Heaps, Damon",CS,,,已处理,,,
+13,订单没有提交成功，收到扣款短信，帮忙查询是否被扣款,订单，扣款,"1.查询用户支付记录 yamibuy_so.so_order_purchase_record
+2.使用步骤1查出的purchase_id 在yamibuy_payment.payment_charge表中查询支付状态
+3.在网关中确认支付状态",没有被扣款,"Alan, Heaps, Damon",CS,,,已处理,,,
+14,收不到我们的发货通知邮件 和 订单确认通知邮件,邮件,"1.在ec-so-job日志中查询 ""用户邮箱""  and ""Order Submit Email Send Success"" ，如果有日志说明代码没问题
+2.查询yamibuy_master.ym_sendmail 表中，看是否有该用户的邮件，如果无说明邮件已发出
+日志链接：
+https://kibana.yamibuy.net/app/discover#/?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-15h,to:now))&_a=(columns:!(),filters:!(),index:'k8s-ec-so-job-service-log-*',interval:auto,query:(language:kuery,query:'%22heidihot85@hotmail.com%22%20%20and%20%22Order%20Submit%20Email%20Send%20Success%22'),sort:!(!('@timestamp',desc)))",经查询日志邮件已经发送出去了，可以请用户找找垃圾邮件或者广告邮件，看邮件是不是在其他文件夹中,phoebe,CS,3/2,1,已处理,,,
+15,客人下单一直支付失败,订单，扣款,如果是stripe，最好是直接登录stripe.com 查看，能直观看到原因。账号可以用测试账号Renee Zhang,,Damon，Heaps,CS,3/2,1,已处理,Jason联系Stripe，回复是由于card issuer服务中断导致,,
+16,Grafana 支付订单未落表,订单,"1.查询用户支付记录 yamibuy_so.so_order_purchase_record
+2.使用步骤1查出的purchase_id 在yamibuy_payment.payment_charge表中查询支付状态
+3.ec-payment-service服务日志查找(日志关键字""OrderService dofinishOrder access ec-so pay order response"")调用ec-so接口是否成功
+4.如果3返回成功，使用purchase_id查看ec-so-job日志，查看落库失败的原因",下单流程在走到最后一步时数据库连接超时导致订单落库失败了，给用户退款,Damon，Heaps,internal,3/2,1,已处理,,,
+17,购物车和结算页运费展示不一样,订单,购物车的支付金额和是否免邮是预估值；实际支付金额和免邮情况以结算页为准。比如会出现夏威夷订单 购物车显示免邮 但结算页不免邮,购物车的金额是预估值，以结算也金额为准；且夏威夷地区不包邮,Damon，Heaps,CS,3/2,1,已处理,,,
+18,支付但是没有订单，希望退款（paypal）,订单，退款,"1.查询支付日志（https://kibana.yamibuy.net/app/discover，项目选择ec-payment-service-log）,筛选条件输入purchse_id
+2.检查该订单的支付状态和退款状态
+3.一般这种都是 支付成功时，临时订单已经取消了；系统会自动退款","我们查询日志，系统已经在27号那天自动退款了，请客人留意一下paypal的退款信息或者邮件呢；
+退款到账时间参考下paypal的官方说明: https://www.paypal.com/c2/cshelp/article/where-is-my-refund-help130",Damon，Todd,CS,3/5,1,已处理,,同问题6,
+19,取消订单后，用户说没有收到退款,退款,"1.central查询是否有订单，订单是否退款
+2.如果central显示已经退款，则到Stripe网站内查询该订单的银行卡支付流程记录
+3.Stripe退款成功则点击“查看详情”，将订单支付信息包含“收单行参考号码(ARN)” 的截图发给客服，让客户与相关银行练习根据收单行参考号码(ARN)查询退款状况",我们从stripe这里看到，客户这单在2月13号已经成功退款了，请客户与银行联系根据收单行参考号码 (ARN)查询下退款情况,"Damon，Gavin, Todd",CS,3/5,1,已处理,,,
+20,邀请好友数据表字段说明,邀请好友,"奖励发放记录表
+in_dtm 表示该数据记录的入库时间，
+validate_type  表示拿到该奖励，获奖者应该验证哪些
+validate_type_other 表示拿到该奖励，另一方应该验证哪些
+event_type  表示奖励发放触发的时机，触发由被邀请的人触发
+",讲解邀请好友相关表字段含义,Damon,Stella,3/5,0.5,已处理,,,
+21,会员的等级]升级提示的信息有误,用户信息,经排查，属于代码逻辑问题,修正逻辑,Damon,Ivy,3/5,1,已处理,,,
+22,"lemonmilklalala@163.com
+下单后银行卡被扣款但是亚米这边没有生成订单",订单，退款,"1.根据邮箱查询到用户的id
+2.根据用户ID，查询用户交易记录，因为没有生成订单，所以只能拿到交易ID后，去查询日志
+SELECT * FROM `yamibuy_so`.`so_order_purchase_record` WHERE `user_id` = '2342583' LIMIT 0,100
+3.根据交易查询日志查询连接
+https://kibana.yamibuy.net/app/discover#/?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-30d%2Fd,to:now))&_a=(columns:!(),filters:!(('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'k8s-ec-payment-service-log-*',key:message,negate:!f,params:(query:'210922560'),type:phrase),query:(match_phrase:(message:'210922560')))),index:'k8s-ec-payment-service-log-*',interval:auto,query:(language:kuery,query:''),sort:!(!('@timestamp',desc)))
+4.根据链路查询当时交易情况
+https://kibana.yamibuy.net/app/discover#/?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-30d%2Fd,to:now))&_a=(columns:!(),filters:!(('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'k8s-ec-payment-service-log-*',key:message,negate:!f,params:(query:'1841f9912c2fc1bd75097ab4026f5fd0,e3904013a03659a2'),type:phrase),query:(match_phrase:(message:'1841f9912c2fc1bd75097ab4026f5fd0,e3904013a03659a2')))),index:'k8s-ec-payment-service-log-*',interval:auto,query:(language:kuery,query:''),sort:!(!('@timestamp',desc)))",,Damon,Support群,3/7,1,已处理,,同问题6,
+23,2024022892599  客人反馈 下单的时候凑够了免邮的商品，但是今天才发现图片中的商品遗漏在了购物车，并没有一起结算， 是我们系统造成的这个问题，辛苦查看一下客人当时下单时候的具体情况,免邮问题,"1.central查询订单状态，商品信息
+2.kibana查询购物车接口日志，去结算接口日志、提单日志，发现都没有这两个商品
+3.推断为进入购物车时 这两个商品时已经失效了，所以去结算和提单都没有该商品",客户刚开始可能是凑够免邮费了，但是过了一段时间再进入购物车的时候这两个商品已经是失效状态，客户没注意到 点击去结算提单了，之后这两个商品恢复了库存可以购买了，就会恢复到购物车里,Todd,CS,3/7,1,已处理,,,
+24,被邀请人jialun.luo.1900@gmail.com收到了优惠券，但是邀请人lushuwen0127@gmail.com没收到，客户反馈都验证了手机邮箱。而且收件人信息不一样,邀请好友,同问题三,"我们查到被邀请人jialun.luo.1900@gmail.com，是在下单之后 才 验证了手机号，所以不满足赠送邀请人优惠券的规则；
+
+被邀请人jialun.luo.1900@gmail.com下次下单发货后，邀请人lushuwen0127@gmail.com就可以获得优惠券了。","Todd, Heaps",Support群,3/8,0.5,已处理,,,
+25,给 Erin Lin & Stella Wang 查询邀请好友相关规则问题,邀请好友,,,,Erin Lin,3/9,2,已处理,,,
+26,有一个商品https://www.yamibuy.com/zh/p/coconut-bliss-boba-drink-7-05-oz/1159001031  客人在加购的时候被留在购物车了，客人的收件地址是夏威夷，订单2024030899133  可以帮忙查看一下具体原因吗,订单,"1.kibana查询购物车 商品检查接口(item_check)、 结算接口(physical)、提单接口(submit/physical/v2)，判断是否是结算提单时商品失效
+2.kibana查询是否有取消勾选的接口(check_item)日志，判断是否用户手动取消过
+3.提单完成后的购物车商品记录，检查原购物车的商品勾选状态（https://kibana.yamibuy.net/app/discover#/?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-7d%2Fd,to:now))&_a=(columns:!(),filters:!(('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'k8s-ec-so-job-service-log-*',key:message,negate:!f,params:(query:'8caa31836cc6ee122e5248770c3342bd,3d64cf999c161584'),type:phrase),query:(match_phrase:(message:'8caa31836cc6ee122e5248770c3342bd,3d64cf999c161584')))),index:'k8s-ec-so-job-service-log-*',interval:auto,query:(language:kuery,query:''),sort:!(!('@timestamp',desc)))）
+4.查询商品的库存记录（https://central.yamibuy.net/im-react/index.html?v=v3.6.3.3.20191224#/im/itemSaleDetails?goods_id=620341）",这个商品 用户是在2023年12月11日加入购物车的，这个商品在2024年2月1日到3月1号之间是无库存的，虽然后面商品恢复了库存，但是在购物车中是默认未勾选的状态，用户结算的时候就不会带入这个商品,"Todd, Heaps",CS,3/9,3,已处理,,,
+27,2024031014095   我们是不配送至 波多黎各的，但是客人的收件地址是波多黎各  成功下单了，请查看，谢谢,订单,"1.直接使用用户地址添加到自己账户，尝试相同商品下单看是否能配送。
+2.发现可以配送，但是PR州是自动推荐设置的，下拉框无法选择
+3.确认问题，是推荐地址导致",这个我这边验证了下，用户应该是添加地址，系统推荐了地址，推荐地址为PR州成功设置的。后续我反馈到产品,Damon,CS,3/12,1,已处理,反馈产品，看是否需要优化迭代,转需求,OP-15261
+28,"打开邀请链接，触发风控。
+我刚试了一下也是这个情况，就是微信分享出去，直接点击链接打开没有问题，但是用Google 浏览器打开就有这个提示。是下面这个邀请信息：",邀请好友,用户同一设备触发风控。同一设备是指历史上，只要两个账号有共同设备记录就不可以,这个提示是正常的，表示两人共用一个设备号，你这边的邀请链接是客户的吗？,Damon,CS,3/12,0.5,已处理,,,
+29,2024031680016 客人下单留有赠言，包裹内没有,礼品赠言,central内查询订单详情，有赠言信息，找仓库查询为什么包裹没有。,@William He(何书斌)  订单里有赠言，需要看下箱子里没有的具体原因~,Alan,CS,3/19,0.1,已处理,,,
+30,客人说只修改了一次密码，用验证码后被提示次数过多，三小时后再试。,修改密码,"查询改用户修改密码日志次数，验证码失败两次，被禁止3小时
+https://kibana.yamibuy.net/app/discover#/?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-30d%2Fd,to:now))&_a=(columns:!(),filters:!(('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'k8s-ec-customer-service-log-*',key:message,negate:!f,params:(query:'bluesky.cecelia@gmail.com'),type:phrase),query:(match_phrase:(message:'bluesky.cecelia@gmail.com'))),('$state':(store:appState),meta:(alias:!n,disabled:!t,index:'k8s-ec-customer-service-log-*',key:message,negate:!f,params:(query:%2Fusers%2Freset_password),type:phrase),query:(match_phrase:(message:%2Fusers%2Freset_password))),('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'k8s-ec-customer-service-log-*',key:message,negate:!t,params:(query:'redis%20user'),type:phrase),query:(match_phrase:(message:'redis%20user'))),('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'k8s-ec-customer-service-log-*',key:message,negate:!t,params:(query:'db%20user'),type:phrase),query:(match_phrase:(message:'db%20user')))),index:'k8s-ec-customer-service-log-*',interval:auto,query:(language:kuery,query:%22%E4%BA%9A%E7%B1%B3%E7%BD%91%E5%AF%86%E7%A0%81%E9%87%8D%E7%BD%AE%22),sort:!(!('@timestamp',desc)))","客人尝试修改了一次密码，但是连续两次验证码输入错误，导致修改密码被禁用3小时，3小时后再尝试。
+修改密码的规则就是：3h内修改密码只能错误两次，否则第三次就开始提示次数过多。",Alan,CS,3/19,1,已处理,,,
+31,客人谷歌账户被限制禁止访问，提示 错误403:disallowed_useragent,谷歌账户,看客人的谷歌账户被限制截图，像是在三方APP（DealMoon）内使用webview的方式打开H5，谷歌官方从2021年9月30日开始禁止webview登录，所以被限制了。,google登录我们刚尝试是正常的，麻烦客人到时再尝试下，看用户的截图很像是在模拟器中使用YamiApp，这是可能被google安全检测到的。 可以和用户确认下，是在什么设备上访问的，尽量使用网站或者真机APP。,Alan,CS,3/19,1,已处理,反馈产品，看是否需要优化迭代,,
+32,"flora.zheng99@hotmail.com
+这个客人说自己之前可以帮别人砍单砍两次，但是今天只砍了一次，就无法再次砍单了，请查看一下。",跟买 砍单,"1. 在central通过邮箱查到用户id
+2. 在表(yamibuy_activity.fo_join)里查询该用户近期看单记录
+SELECT *, FROM_UNIXTIME ( in_dtm + 3600 * 8 ) FROM `yamibuy_activity`.`fo_join` WHERE user_id = 2956363 AND `type` = 1 AND in_dtm > UNIX_TIMESTAMP() - 86400 * 2
+3. 发现昨天到今天砍了三单，并且最后两单是在24h内，而砍单的每天限制不是按照自然日算的，而是当前时间向前推算24h，所以24h内有两单，被限制了。",每次发起砍单的时候， 都会查一下，从当前时间，往前24小时之内，有多少次砍单，小于两次才能继续发起。客人3.18号有两次砍单，最后一次是10:50，而19号第一次砍单是10:26，所以24h内已有两次，被限制了。过了10:50应该就可以再砍了。,Alan,CS,3/19,1,已处理,,,
+33,客人在3/15 的时候联系我们说自己 查看自己的账户的优惠券， 注册邮箱：55669977@egusd.com   中英文显示的过期时间不一致，请查看一下,优惠券时间,"1. 查看后端返回的时间戳，两个环境是一致的
+2. 该页面是服务端渲染的，所以开始时服务端渲染的时间，后面又变成客户端渲染的时间，需要修复",页面格式化时间确实有点问题，我们尽快修复，其实两个环境的时间是一样的，只是一个环境截图快，一个截图慢，两个页面完全加载后，时间是一样的。,Alan、Todd,CS,3/19,0.5,已处理,前端BUG已修复,转需求,OP-15380
+34,2023010854681 这单查询3.15日的退款显示失败，然后我点了手动退款还是失败，麻烦给这个单退款 $576.45,退款,微信支付的，并且订单时间超出一年，无法退款,退不了了，订单时间超过一年了，微信不能退款,Alan、Damon,CS,3/20,0.5,已处理,,,
+35,2143019022 麻烦查看一下这个电话绑定的亚米账户邮箱,手机号查邮箱,同上方第二条,邮箱是xxx,Alan,CS,3/22,0.1,已处理,,,
+36,"问题一：客人提供的截图都是自营的商品  但是显示两个订单    会收取两笔运费，麻烦查看是什么原因 ，谢谢 
+
+问题二：这个只针对two day的配送方式，还是所有只要支付了运费的订单？ 因为我们之前有看到 订单没有支付运费的情况下（standard shipping），有一个商品从其他仓库发出，另一个仓库发出的订单就没有收取运费，另一个仓库发的商品是不满包邮的 ",共享库存,共享库存：虽然都是亚米发货，但是是从两个仓库发出,"答复一：这是正常逻辑，上面那个商品是从单独的仓库发货，因为Two-Day是不免邮，所以需要收取两次邮费
+
+答复二：是的，目前只针对two day，因为two day不免邮",Alan,CS,3/23,0.1,已处理,,,
+37,"客人账户：srephan.jianglx2167858@gmail.com        
+客人说他已支付成功，微信也提示了扣款但是没订单号码，我也在系统查不到订单，麻烦查询我们是否扣客人钱了？",订单 退款,同上方第22条,这笔没订单，系统已自动退款，需要客人后续关注下自己的账单信息,Alan、Damon,CS,3/23,0.5,已处理,,,
+38,客人订单号： 2024030908424 ，paypal支付退款失败,退款,"1.在表（yamibuy_payment.payment_refund）查出refund_id
+2.在表（yamibuy_payment.payment_refund_paypal）查出退款银行返回response",这笔交易用户开启了争议，无法退款，请用户联系银行。,Renee,CS,3/26,,已处理,,,
+39,订单2024032593450客人反馈无法分享订单中的商品,发起跟买,"1.在central订单详情页找到订单中的这个商品item_number
+2.商品不允许发起跟买的情况：商品无库存，下架，不允许发起的商品（central中配置not_allowed_item_number），不允许发起的分类",这个商品，业务限制不允许发起跟买活动,Renee,,,,,,,
+40,PO自动下单的技术方案需要review,PO项目,架构组Review,-,Damon,Architecure,2024/4/3,2,已处理,,,
+41,支持 Pre-Purchase 面试,/,/,/,Stone,Pre-Purchase,2024/4/5,0.5,已处理,/,/,/
+42,支持 Pre-Purchase 面试,/,/,/,Stone,Pre-Purchase,2024/4/5,0.5,已处理,/,/,/
+43,登录输入密码后，验证邮箱弹窗里，用户无法输入验证码,,点击验证弹窗的输入框以外部分后，输入框失去焦点了，但是输入框还是有黑色边框显示，导致用户以为还能输入，容易判断为无法输入,"1.请用户手动点击一下验证方框后直接就可以输入数字了，没有光标显示
+2.光标失焦点、获取焦点交互优化",Todd,Purchase,,,已处理,,转需求,OP-15852
+44,central-resouce 上传webp图片报错无法识别,resource,1. 支持webp上传（办法转png） 2. FIX 业务异常AOP没兜住问题,,Damon,waylon,2024/4/10,1,已处理,,,
+45,RMA退款时没有查询相关订单的补偿退款数据，导致多给用户退款,RMA,/,Rma 这边的退款单 没有 和 订单补偿做关联，是会导致给客户多退钱，这个问题我等会给 Hank 反馈一下，后续在代码层面 优化一下，将 Rma 退款单 和 订单补偿 关联起来，避免这种多退款的情况，目前还需要客服在审核RMA 单时， 先在订单补偿页面根据订单搜索一下，看该订单有没有补偿金额。,Phoebe,CS,2024/4/11,0.5,已处理,反馈gavin，后面优化,转需求,OP-16087
+46,"RMA退款时,退款金额大于退款商品金额，为啥没有提示：不能over refund",RMA,/,"RMA退款时，只会检查 订单当前退款金额 + 补偿退款金额  是否 大于  订单总金额，如果退款金额 + 补偿退款金额 大于 订单总金额，会提示 不能over refund，如果退款金额 + 补偿退款金额 小于等于 订单总金额，不会提示的
+这个订单 退款金额+补偿金额 = 订单总金额，所以没提示退款超额",Phoebe,CS,2024/4/11,0.5,已处理,,,
+47,"邀请人：936162376@qq.com
+好友账户：Lantian196986@gmail.com 
+请人和她好友地址1信息是一样的，但是好友首单发货后邀请人收到券了，请问系统在筛查的时候地址必须是一模一样的才会被筛出是不符合邀请规则的邀请？还是说好友的地址有可能是在验证后才添加的所以系统没识别呢？",邀请好友,同上方第3条,"奖励发放风控只检查： 用户的姓名 和 手机号是否一致，如果有一致的才会风控，不发放奖励，如果不一致是不会拦截发放奖励，和address1 没关系
+刚查询这两个用户的 姓名 和 手机号 都是不一样的，所以不属于风控的对象",Phoebe,CS,2024/4/12,0.3,已处理,,转需求,OP-16088
+48,邀请者  tt309533786@gmail.com   我们查看被邀请者sen920596@gmail.com 的订单已经发货了，但是邀请者还差一个优惠券，请查看一下,邀请好友,1.查询被邀请者下了几个订单,邀请者获得奖励的条件是，被邀请者首单发货后奖励一张优惠券，被邀请者第二单发货后，奖励一张优惠券，刚检查，被邀请者只下单并发货了首单，所以奖励了一张优惠券，没有问题,Phoebe,CS,2024/4/13,0.5,已处理,,转需求,OP-16088
+49,"邀请人：pyx00125@163.com
+被邀请人：zengsiyu10086@gmail.com
+被邀请人反馈：
+手机型号：iPhone14pro
+客人收到朋友的邀请（亚米 - 北美领先的亚洲商品购物平台，亚裔线上购物优选。不仅为用户提供优质丰富精选的亚洲特色商品，更让你足不出户也能享受家的便利。100% 正品保证，无忧售后，品牌官方授权，低价保证。快来领取 $20 亚米新人福利！邀请码：57303711）
+具体问题是无法输入邀请码，我填不了邀请码，显示我只可以复制我的码，我已经注册了",邀请好友,"1.查询被邀请者用户信息
+2.查询被邀请者的下单情况
+3.填写邀请码的前提条件是 无下单记录的用户",账号如果有下单记录 不能输入邀请码；这边查到被邀请人于2024-04-15 04:01:17 注册账号， 2024-04-16 14:27:52下首单；被邀请人四月十六日下午两点半之后就不能输入邀请码了,Heaps,CS,2024/4/16,0.5,已处理,邀请好友页面添加邀请规则，风控规则和填写条件,,
+50, ychen_daily@hotmail.com 这个顾客反馈尝试下单但是不成功， 银行先扣款然后又退回了， 麻烦可以帮忙查看一下原因吗？,订单，退款,"1.根据邮箱查询用户ID
+2.查询用户的临时订单
+3.payment表里查询用户订单的支付记录
+4.去网关查询支付失败具体信息",查询到用户一笔支付成功其余支付失败被网关拦截CVC验证失败,Heaps，Damon,CS,2024/4/18,1,已处理,,,
+51,"客人电话：9293926919
+客人反馈自己有很多个账户，不知道这个电话绑定了哪个账户，要求解绑；
+请帮客人查一下这个号码绑定哪个邮箱并解绑，谢谢。",手机号解绑,查询用户表手机绑定信息（SELECT * FROM `yamibuy_master`.`xysc_users`  where mobile_phone = '+1-xxxx'）,"查到客人手机号绑定的邮箱；
+解绑建议客人注销当前账号，或更换账号中的手机号",Heaps,CS,2024/4/18,0.5,已处理,,,
+52,请帮忙查看一下订单2024042312778 客人反馈无法分享，查看系统显示库存是0，但是页面还是在售状态也可以加入购物车，请帮忙查看一下，谢谢,跟买,"1.查询yamibuy_so.so_order_follow表 查看订单是否可以发起跟买
+2.查看商品是否有库存 001库存是1  002无库存
+3.查找用户Token，确认用户发货仓库 002仓
+4.由于客户可以加购，确认商品未共享库存商品
+6.业务上确认共享库存可以发起跟买
+7.网站上查找该商品发现 搜索结果页无库存单详情页有库存
+8.请search同事同步该商品的库存，库存同步后即可发起跟买",商品无法分享是因为库存不足导致；库存不足原因是search库存不同步，同步完数据就好了,Heaps,CS,2024/4/24,1.5,已处理,,,
+53,最近有客人反馈收到的订单通知邮件里面地址前面会莫名添加一些额外的信息。我们的label上地址查了是没有问题的，麻烦上班后帮忙查看一下是什么问题。谢谢。,邮件,邮件显示规则是 姓名+address+address2+city+province+zipcode,最前面的是用户名，地址显示规则是：姓名+address+address2+city+province+zipcode,Heaps,CS,2024/4/22,0.5,已处理,转换成需求优化显示：收货人+address+address2+city+province+zipcode,,
+54,"2024042191703  
+第一次尝试的PayPal交易ID是：12H09574VR757431N
+
+客人意思第一次支付后没有收到订单号码，第二次才收到，意思重复扣款，麻烦查询这单是否有重复扣款呢？",订单,,查到有一笔北京时间2024-04-22 12:31:41的paypal订单显示支付成功但是没有生成订单,Heaps,CS,2024/4/22,1,已处理,,,
+55,"客人账户：yangpeili131202@gmail.com 
+订单号： 2024042531614
+
+客人反馈发起跟买分享后，她朋友想跟买但系统提示缺货导致朋友一直无法跟买，但实际上这个商品是有库存的，麻烦查询下，谢谢。",跟买、共享库存,"找客服问道跟买人的账号邮箱：tomatica90@gmail.com
+kibana查询对应的跟买领取优惠券时间、商品库存变化历史
+调查https://ecapi.yamibuy.net/ec-activity/fo/v1/page/coupon?fo_id=702300&language=zh_CN接口查询商品库存的服务接口
+search服务查询库存时没有返回共享库存，跟search服务人员沟通等待调查结果",搜索服务异常，等待search调查中,"Todd, Heaps",CS,2024/04/29,3,处理中,,,
+56,tiffany_mai7715@yahoo.com 顾客说自己被扣款（非pending），但是没有订单生成,订单，退款,"1.根据邮箱查询到用户的id
+2.根据用户ID，查询用户交易记录，因为没有生成订单，所以只能拿到交易ID后，去查询日志
+SELECT * FROM `yamibuy_so`.`so_order_purchase_record` WHERE `user_id` = '2342583' LIMIT 0,100
+3.根据交易查询日志查询连接，在日志内找到对应金额的订单
+https://kibana.yamibuy.net/app/discover#/?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-30d%2Fd,to:now))&_a=(columns:!(),filters:!(('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'k8s-ec-payment-service-log-*',key:message,negate:!f,params:(query:'210922560'),type:phrase),query:(match_phrase:(message:'210922560')))),index:'k8s-ec-payment-service-log-*',interval:auto,query:(language:kuery,query:''),sort:!(!('@timestamp',desc)))
+4.在订单表(yamibuy_master.xysc_order_info)内根据purchase_id确认订单是否正常生成；在退款表(yamibuy_payment.payment_refund)内根据purchase_id查询退款状态
+5.如果还未确认，可在https://dashboard.stripe.com/payments/xxxxxx 查询支付明细，看具体情况（无账号，需要找damon或者renee查询）
+PS：支付记录在central有菜单","顾客有两笔支付失败，未扣款。
+一笔支付成功，支付成功的订单号是 2024051537266",Alan，Damon,CS,2024/05/16,0.5,已处理,,,
+57,"latinossmokeshop2226@gmail.com        
+支付类型： MASTERCARD        尾号： 6340
+下单时间： 2023-07-29 
+客人反馈现在卡用不了了，这个可以查看一下具体的原因么？",支付失败,"情况一：如果顾客最近每笔支付都失败，可直接在stripe网站根据邮箱查询对应的支付记录，查看阻止原因
+https://dashboard.stripe.com/dashboard（Renee有账号）
+
+情况二：如果顾客是某一笔支付失败，需要查询原因：
+1.根据邮箱查询到用户的id
+2.根据用户ID，查询用户交易记录. 
+SELECT * FROM `yamibuy_so`.`so_order_purchase_record` WHERE `user_id` = '2342583' LIMIT 0,100
+3.根据交易查询日志查询连接，在日志内找到对应金额的订单（可选步骤）
+https://kibana.yamibuy.net/app/discover#/?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-30d%2Fd,to:now))&_a=(columns:!(),filters:!(('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'k8s-ec-payment-service-log-*',key:message,negate:!f,params:(query:'210922560'),type:phrase),query:(match_phrase:(message:'210922560')))),index:'k8s-ec-payment-service-log-*',interval:auto,query:(language:kuery,query:''),sort:!(!('@timestamp',desc)))
+4. 在表(yamibuy_payment.payment_charge)内根据purchase_id查询transcation_id，然后在stripe网站根据该id查询对应支付记录的失败原因。
+或者在该步骤查询到tx_id，然后用tx_id在表(yamibuy_payment.payment_charge_card_stripe)内查询charge_response内找到失败原因。","Your card was declined.
+客户银行拒绝的
+(Little回复的)",Alan,CS,2024/05/17,0.5,已处理,,,
+58,有两个客人反馈自己的卡无法用，之前一直用同一张卡，今天就提示支付失败了。账户：by@hvc.rr.com，MASTERCARD 尾号6855，也有尝试别的卡还是不行。客人比较着急下单，可以帮忙看看吗？谢谢。,支付失败,"1. 使用客服提供邮箱在stripe网站未搜索到
+2. 在central模糊搜索到另一个邮箱kirby@hvc.rr.com
+3. 使用该邮箱在stripe搜到对应客户，并且信用卡尾号一致，查询得到该客户支付被银行阻止(CVC不可用)","邮箱是这个吧：kirby@hvc.rr.com
+银行阻止的(CVC检查不可用)，但是我看他用新卡已经支付成功了",Alan,CS,2024/05/17,0.5,已处理,,,
+59,根据Tony反馈 订单211831858的商品5029106881 在订单取消后还了两次库存，查一下出现原因是啥,库存不平,"1.查看订单状态，取消时间，操作人等信息
+2.查询yamibuy_so.order_cancel_queue查看取消订单消息是否正常
+3.kibana日志显示正常，请wms同事帮忙查后续流程是否有问题",取消订单时已经还了库存但是此时订单正在出库，由于订单已取消导致出库失败，仓库再次重试出库失败后选择归还库存；导致库存归还两次,Heaps,Tony,2024/05/17,2,已处理,仓库继续观察这样的情况是否经常出现，然后确定是否优化流程,,
+60,您好，客人注册邮箱maggie.chan095@gmail.com，客人反馈想更改登录密码，但是一直没有收到系统发送的验证码，昨天尝试了两次，今天尝试了两次都没有收到，请问是否可以帮忙查看具体原因呢？谢谢,邮件未收到,"1. 查看日志，邮件是否正常发送
+https://kibana.yamibuy.net/app/discover#/?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-2M,to:now))&_a=(columns:!(),filters:!(('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'k8s-ec-customer-service-log-*',key:message,negate:!f,params:(query:'maggie.chan095@gmail.com'),type:phrase),query:(match_phrase:(message:'maggie.chan095@gmail.com')))),index:'k8s-ec-customer-service-log-*',interval:auto,query:(language:kuery,query:''),sort:!(!('@timestamp',desc)))
+2. 在PC上用自己的账号点击忘记密码，检查是否能收到亚米的验证码邮件，如果不能收到，则可能是邮件服务器堵塞了；如果自己能收到验证码邮件则说明邮件服务器正常，是用户自己邮箱的问题。
+3. 正常发送，客户说还是找不到邮件，直接找后台查到验证码私发给他了(需要找用户发送一张邮箱截图，证明邮箱是自己本人的，就可以从把日志中的验证码发给用户)",经查询日志邮件已经发送出去了，可以请用户找找垃圾邮件或者广告邮件，看邮件是不是在其他文件夹中,Alan，Damon,CS,2024/05/24,1,已处理,,,
+61,客人等着用礼卡，距离客人下单时间已过去5个小时了，显示是支付验证  2024060215776   ,订单状态101不流转,"1.查看订单状态 101
+2.查看 订单支付状态60，stripe 上显示支付已完成
+3.查找日志找出订单状态不流转问题，是某个节点挂掉，通过接口修数据", 订单状态已经正常，用户可以使用礼卡了,Phoebe,CS,2024/6/3,2,已处理,需要找wheat 查找节点挂掉的原因,,
+62," 账户 janie.wangjy@gmail.com 客人说姓名一直都有的，现在因为个人简
+介没有完善导致无法收到生日惊喜，可以帮忙查看下是什么原因吗？
+Ivy反馈这个客人在central中的姓名信息同个人个人资料中的显示
+不一致， 目前看app的姓名是以前订单收货人的姓名，",生日惊喜,"1.central系统里的姓名和个人信息的姓名取的不是同一个字段，所以显示不同，但是不影响生日惊喜领取
+2.查询Kibana日志发现该用户无领取记录
+3.查看/ec-customer/vip_rights接口代码，看是否显示领取按钮；经代码查询  用户只能在生日当月领取生日惊喜，客人生日在五月，所以
+无法领取"," 用户只能在生日当月领取生日惊喜，客人生日在五月，所以
+无法领取",Heaps,CS,2024/6/5,1,已处理,,,
+63,"商品5022142251在2024-04-30 16:00:00-2024-06-30 23:59:59设置了买赠活动，赠品为5022348431；
+订单2024053197940下单时间为2024-05-31 16:44:09，查看订单后只有赠品没有原品，需要确认一下原因",订单，赠品,"1.核实问题，查订单是否有赠品，yamibuy_master.xysc_order_goods表，如果无，继续。 （有看down单，找仓库）
+2.查看日志，这个订单在购物车，结算页时候日志详情，为什么没有赠品
+3.经查，是MKT接口未返回赠品。一般只要赠品活动没问题，都是赠品库存没了，直接找MKT看即可",顾客操作购物车和结算的时候，未MKT接口未查到赠品,Barry,CS,2024/6/6,0.5,已处理,找下游查就行了,,
+64,请帮忙查看一下客人账户qianyu.chen16@gmail.com 反馈无法绑定手机3472675207，显示已绑定其他账户，客人说没有绑定其他账户，请帮忙查看一下,手机绑定查询,同第二条,该手机号已绑定至其他手机,Heaps,CS,2024/6/12,0.5,已处理,,,
+65,"chrdhvw9vc@privaterelay.appleid.com
+客人说我们扣款了他三次，但我在系统没查到订单，三次扣款截图如下，麻烦看下，谢谢。",扣款,"https://central.yamibuy.net/so/index.html?v=#/so/customerPaymentCharge
+在上述页面中查询支付具体情况",这三笔扣款都被stripe拦截了，拦截原因都是cvc验证未通过,Heaps,CS,2024/6/13,0.5,已处理,,,
+66,2024060328030 商家咨询为何另外2个商品有税，但是睡衣没税费，麻烦查询是商家自己后台设置问题吗？,算税,"1.查询yamiuby_im.im_item_taxcode表是否有商品税码
+2.查询yamiuby_im.im_category_taxcode是否有分类税码
+算税逻辑是：优先去商品税码，如果取不到 则取分类税码，拿到税码后请求avalara算税，拿不到税码则不算税","这个订单里三个商品都没有税码，其中一个商品的分类也没有税码，所以未算税
+经查在四月建立的分类上都没有相应的税码，协调IM同事尽快维护数据",Barry，Heaps,CS,2024/6/13,1,已处理,im同事尽快把税码信息维护起来,,
+67,2024052646426  订单有28个商品，目前我们已经处理了全单退款，但是系统这里显示只有27个商品， 实际退款的金额是225.8， 差了一个5.99美金的退款。 客人目前一共收到了27笔退款（包含手动退款的3笔）， 麻烦查看一下，谢谢。  ,部分商品退款失败,"1.查询订单详情，确实退款商品数量和金额不一致。
+2.查询售后详情里，订单发起了两次售后，退款总金额与订单支付金额一致。
+3.查询退款数据，有一个5.99的商品调用退款接口失败了，没有退款，所以订单详情页的退款没有显示这个商品退款信息。"," 你好，我们调查了central的售后详情里，是发起了两次售后退款，算出来退款金额是$143.80+$87.99=$231.79，跟原订单金额一致的；
+
+目前看是订单详情中的退款记录显示有异常，还在继续调查中，有消息会再回复你的；
+
+新：有一个5.99商品退款接口调用失败，退款不成功，我们已经手动退款了。","Todd, Heaps, Damon",CS,2024/6/18,1,已处理,Damon手动调用退款接口，退款完成后，在订单详情页确认全部退款，然后通知客服人员,,
+68,wms反馈 订单212154323 down时的shipping_id=15，但是该配送方式无法配送到 zipcode=25404区域,无法配送,"1.在yamibuy_master.xysc_order_info查询订单基本信息
+2.kinbana日志里查询用户token
+3.结合token和订单信息查询用户下单时的shipping_id和zipcode 发现下单时shipping_id=15但是zipcode=11220并不是25404
+4.查询yamibuy_so.so_log表 查询订单更改日志 发现客服更改过配送方式
+5.查询central-so /order/updateShippingAddress/{orderId}接口 kibana日志，发现客服更改了配送地址接口改了地址并没有改配送方式",下单时配送方式和zipcode是匹配的，后面客服手动改了配送地址，但是配送方式未改；导致了配送方式和zipcode对不上,"Gavin,Heaps",Roy,2024/6/21,2,已处理,,,
+69,订单2024061885094  客人注册邮箱osiasperez91@yahoo.com， 收货邮箱 ashleyperez91@yahoo.com，订单中有一个缺货商品退款了，客人说没有收到邮件通知，客人反馈收货邮箱从来没有收到过任何邮件，都是注册邮箱收到订单确认邮件，请帮忙查看一下这个订单缺货通知邮件是否有发送成功呢？,订单缺发邮件,订单缺发邮件 operations那边控制；通知william帮忙查看,@roy 帮忙调查下,"Givin, Todd",CS,2024/06/22,0.5,已处理,,,
+70,"LA:
+1021003841(OrderId:212319147无下单占用记录)
+NJ:
+1030084691(OrderId:212322612无下单占用记录)",库存不平,"1.yamibuy_so.so_inventory_change_queue查询扣减库存消息是否正常请求
+2.在kinbana日志显示下单正常
+3.确认订单扣减库存正常，再次确认问题，发现订单占用正常但是订单取消没还库存
+4.查询订单状态和取消时间
+5.查询订单状态流转 yamibuy_so.so_log
+6.订单是在拣货状态下被取消的，为何没还库存请WMS同事看一下",库存扣减请求正常发送，取消订单时订单处在拣货状态，拣货状态下取消订单不库存,Heaps,Tony,2024/07/04,1,已处理,,,
+71,"客人反馈被盗刷，麻烦看看能否找到订单，谢谢
+卡尾号4191，金额787.31，时间 6/24",订单，支付,"1.`yamibuy_payment`.`payment_charge`  查询时间段内同一金额的数据
+2.有数据，根据purchase_id查询订单，查到user_id, pay_id 
+3.如果pay_id =4 ,再查询yamibuy_payment`.`payment_profile_card ’表中 tail 是否一致",刚查询 这个时间段内，同样的金额确实有一单，但是这一单用户是用paypal 支付的,Phoebe,CS,2024/7/23,0.5,已处理,,,
+72,"您好，实体礼卡号0453041848452146  客人反馈别人赠送的礼卡无法绑定账户，目前这个礼卡显示停用，但是查询不到其他信息，可以帮忙查看一下吗
+查询订单号",礼卡,"1.用户卡号输入格式错误，中间不需要空格
+2.Yamibuy_Master.xysc_egift_card表中source_order_id字段值为0 ，需要用户自己提供订单号","Little 回复：
+这个礼卡，是实体礼卡，有可能呢， 仓库出库的时候，没做礼卡出库，所以礼卡没激活，请客户找对应的订单号码，我们可以帮他重新激活",Phoebe,CS,2024/7/23,0.5,已处理,,,
+73,"1.第三方商家台湾购订单2024071241981 收取了顾客 $9.48 的税费 顾客购买的是食品， 地址在加州， 加州是食品是免税的 并且商家表示他们后台也设置了免税的 麻烦可以看一下是什么情况吗？
+2.商家设置的免税 是针对之前 亚米自己计算税费 生效的，现在第三方 商家的税都接了 avalara 算税，CA 在算税的范围内，收的税没有问题",订单，税,"1.根据商品查询税码，先查`yamibuy_im`.`im_item_taxcode`，查不出来税码，再查`yamibuy_im`.`im_category_taxcode`里面的税码
+2.查出税码，查出purchase_id,查yamibuy_so.tax_avalara_sales表中 ava_response的json串，找出里面商品的税码是否和 步骤1 中是否一致","1.商家设置的免税 是针对之前 亚米自己计算税费 生效的，现在第三方 商家的税都接了 avalara 算税，CA 在算税的范围内，收的税没有问题
+2. 刚查询了 购买商品对应的税码，这个收税是没有问题的，如果还有疑问，可以请Simon 查询下，这个商品的税码 是否正确",Phoebe,CS,2024/7/23,0.5,已处理,"-- 查商品税码
+SELECT
+        a.category_id,b.tax_code,a.item_number
+FROM
+        `yamibuy_im`.`im_item` a
+        LEFT JOIN `yamibuy_im`.`im_category_taxcode` b ON a.category_id = b.category_id 
+WHERE
+        `item_number` IN ( 3016056961);
+        
+select * from `yamibuy_im`.`im_item_taxcode` where `item_number`  IN ( 3016056961);
+
+
+SELECT * FROM yamibuy_so.tax_avalara_sales where purchase_id = '212441981';",,
+74,订单号： 2024072250920  麻烦帮忙看看这个订单的order confirmation 邮件是发到哪个邮箱了呢？客人说已经改了联系邮箱但还是发到旧邮箱了。,ec-so-job,"1.根据订单号查order_id 
+2.ec-so-job 日志中查询该订单，日志中显示 email send succeed，可以看到邮箱","  刚查询 这个订单下单后， 给用户的收货地址中的邮箱 发送了一封order confirmation 邮件，也给用户的注册邮箱发送了一封 order confirmation 邮件
+我们 订单确认邮件发送逻辑是：判断用户注册邮箱 和 收货地址中的邮箱 是否一致，如果一致，只给发一封 邮件，如果不一致，会给注册邮箱 和 收货地址邮箱 各发一封邮件",Phoebe,CS,2024/7/23,0.5,已处理,,,
+75,2024080367796 同一单，客人又提供了这个截图，也是两笔扣款记录，请查看，谢谢,扣款,"1. kibana中查询订单提单信息，判断是否有多条提单信息
+2. kibana中查询支付信息，查询支付链路信息，判断是否有多条支付信息
+3.stripe中查询用户的支付信息记录，确认没有重复扣款信息","我们这边查询了stripe上用户的支付记录，8月3日这里只有一次扣款并且已经退款了，没有重复扣款，请用户联系下银行咨询下呢。
+（附带stripe支付记录图）","Todd, Heaps, Damon",CS,2024/8/6,2,已处理,,,
+76,账户 anne@koontzs.com，客人自己删除账户时收到了以下提示，请问一下是什么意思呢？,删除账户,1. 查询账户的绑定信息,该账户绑定了第三方的谷歌账号，需要用户在个人中心->账户信息->第三方账户中解绑后才能删除,"Todd, Heaps",CS,2024/8/7,0.5,已处理,,,
+77,ys@yshirazi.com 客人反馈已删除账户，但还是收到了活动邮箱，要求取消订阅，麻烦帮客人取消，谢谢。,删除账号、邮件订阅,"1.查询用户是否删除
+2.找服务人员查询iterable网站上用户是否还有订阅
+3.调用接口删除
+
+通过邮箱删除DELETE / 查询GET
+curl --location --request GET 'https://api.iterable.com/api/users/ys@yshirazi.com?api_key=f562f2e17f8a42bcb5a8460f5fa87722' 
+curl --location --request DELETE 'https://api.iterable.com/api/users/ys@yshirazi.com?api_key=f562f2e17f8a42bcb5a8460f5fa87722' ",删除了该用户的邮箱订阅了,"Todd, Heaps, Damon",CS,2024/8/9,0.5,已处理,,,
+78,客人账户ting7913123@gmail.com，反馈手机验证收不到验证码，手机号是(646) 475-3814，运营商是tmobile三大运营商,手机验证码,"""1. 通过日志 email 查找，手机号是否给的正确
+https://kibana.yamibuy.net/app/discover#/?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-15h,to:now))&_a=(columns:!(),filters:!(),index:'k8s-ec-customer-service-log-*',interval:auto,query:(language:kuery,query:'%22chenb.12@outlook.com%22%20'),sort:!(!('@timestamp',desc)))
+
+2. 手机号正确，用sql查询，手机号 phone type ,如果 PhoneType=VOIP 或 INVALID 。 则无法发送验证码，请用户联系运营商。
+SELECT mobile_phone, phone_type as phoneType, phone_type_code as phoneTypeCode FROM yamibuy_crm.crm_aws_phone_validation WHERE mobile_phone = '+1-2063955801' LIMIT 1;
+"" ",这个用户绑定的手机号是虚拟号码，无法发送验证码，让用户联系运营商,"Todd, Damon",CS,2024/8/10,0.5,已处理,,,
+79,帮查看一下客人的手机号6282896310绑定的是哪一个账户吗？谢谢,验证手机号,参考第2条,zhengpeiyius@gamil.com绑定了这个手机,"Todd, Heaps",CS,2024/8/10,0.5,已处理,,,
+80,"ywang324@cougarnet.uh.edu
+该账户注册完毕，且验证了手机号码和邮箱，但是并没有得到$150的优惠券礼包，请查看，谢谢",edu邮箱注册获取$150优惠券,"1. central系统检查用户是否新用户且验证邮箱和手机了
+2. 找服务端人员查询ywang324@CougarNet.UH.EDU邮箱发送优惠券的状态
+3. 找负责人确认.EDU邮箱后缀是否有效，有效则服务人员手动发送优惠券，并更新邮箱验证规则","这个用户的真实邮箱是ywang324@CougarNet.UH.EDU，目前.EDU这个邮箱后缀没被有通过返校活动的邮箱有效性验证，麻烦你给用户说下 ，我们这边确认邮箱有效后会给用户补发优惠券的。
+是否有效有结果了，我们会再回复你的;
+
+优惠券已经发送到用户邮箱。","Todd, Barry",CS,2024/8/14,1,已处理,,,
+81,订单号： 2024081386409 这订单一周了还未预占，麻烦帮忙处理一下，谢谢。,订单、仓库,在 wh_order info表内根据order_sn查询订单已经到了仓库，将问题转给仓库,艾特仓库,"Alan, Damon",CS,2024/8/20,0.5,已处理,,,
+82,顾客sunxiangnvpiao@gmail.com 今天尝试使用尾号 5838 的银行卡下单，一直支付失败，顾客联系发卡银行，银行说是亚米这边返还的款项  银行那边是approve 的 ，麻烦可以帮忙查看一下什么情况吗？ 谢谢,支付失败,"1. stripe查询有问题
+2. 加入白名单",这个用户卡校验stripe那边有点问题。如果可以确认用户确实是本人，我这边可以把他加入白名单，让他再尝试,Damon,CS,2024/8/21,1,已处理,,,
+83,客人账户ximinsun@gmail.com，反馈无法使用支付宝支付，请帮忙查看 ,支付宝,查询支付宝政策,"这个可能是政策或者支付宝的限制，我google到了相关类似新闻
+
+https://www.sohu.com/a/565112322_121124361 ",Damon,CS,2024/8/21,0.5,已处理,,,
+84,请帮忙查看一下订单2024081625989 在central里更换为英文页面的时候商品名称还是显示中文是什么原因呢？,central 订单,"查订单
+SELECT * FROM `yamibuy_master`.`xysc_order_info` WHERE `order_sn` = '2024081625989' LIMIT 0,100
+查商品
+SELECT * FROM `yamibuy_master`.`xysc_order_goods` WHERE `order_id` = '212825989' LIMIT 0,100
+
+查订单看下单时是什么语言，因为central订单列表的商品信息是从订单直接查询的，语言也是跟订单走的",因为用户下单的语言是繁体， 所以central切英文的时候，取英文商品名是繁体。如果下单是韩文，你在英文情况下看到的就是韩文,Damon,CS,2024/8/22,0.5,已处理,,,
+85,"scong@andrew.cmu.edu 
+客人反馈：我刚刚点进微信付款但是不小心退出来了，回来再试一次就显示我的积分不能用了
+但是账户里显示积分还在，麻烦您帮我看看
+
+请查询这种情况下积分多久会返回账户呢？",积分 预占,"1. central内根据邮箱查询用户id
+2. yamibuy_so / so_order_purchase_record内根据user_id查询订单状态
+3. 发现用户确实有一笔预占的订单，in_dtm转时间，发现还未过15分钟。","15分钟会返回
+这个用户刚查询到一笔被预占的，这会刚过15分钟，已经返还了",Alan,CS,2024/8/22,0.5,已处理,,,
+86,Freemarketingprograms@gmail.com 刚才尝试使用自己的另外一张尾号5471 的银行卡下单，但是下单失败，显示款项退回给他了，可以帮忙看一下是stripe 拒付了吗？ ,支付失败,"https://dashboard.stripe.com/dashboard（Renee有账号）
+查询拒付状态，发现是 check_cvc!=pass(stripe返回有问题，有时cvc正确也返回不通过)
+如果用户确认是自己的卡，并且cvc输入没问题，需要加入白名单，找(Damon)",是的,Alan,CS,2024/8/22,0.5,已处理,,,
+87,shellsmile.li@gmail.com客人反馈已删除账户，但还是收到了活动邮箱，要求取消订阅，麻烦帮客人取消，谢谢。,删除账号、邮件订阅,"参考77条
+通过邮箱删除DELETE / 查询GET
+curl --location --request GET 'https://api.iterable.com/api/users/shellsmile.li@gmail.com?api_key=f562f2e17f8a42bcb5a8460f5fa87722' 
+curl --location --request DELETE 'https://api.iterable.com/api/users/shellsmile.li@gmail.com?api_key=f562f2e17f8a42bcb5a8460f5fa87722' ",删除了该用户的邮箱订阅了,"Todd, Damon",CS,2024/8/27,0.5,已处理,,,
+88,2024082667117 请问我们能看到客人下单时给出的预计送达时间么？,exdd 时间,"1.查走yamibuy_so.so_order_ext 表中order_exddTime 时间 - order_bufferTime 就是预计送达时间,要带时区",订单下单时 预计送达时间 九月一日,Phoebe,CS,2024/8/31,0.5,已处理,,,
+89,"亚米实体礼品卡，反馈无法兑换绑定到账户上，提示""卡号或验证码错误，请重新输入""
+2024082432923，2024082432928  这个跟礼卡是否在central激活有关系吗？",wms 出库礼卡是否绑定成功,"1.yamibuy_master.xysc_egift_card 表中未查询到和这俩订单绑定的礼卡，找william 组查找未绑定原因
+2.wms 组查找发现 该订单绑礼卡失败，导致无法查询到礼卡信息
+3.找Tina ，要了用户的礼品卡卡号，cvc，给用户在central 进行激活，用户可直接使用礼卡",,phoebe,CS,2024/8/31,0.5,已处理,,,
+90,您好，客人注册邮箱vfang1424@gmail.com 反馈之前生日是9月1日，上个月的时候客人说之前注册的时候生日写错了，改成8月11日了，但是一直没有收到生日礼卡，请帮忙查看一下系统是否没有发放呢？谢谢,Customer会员权益,"1.查表看领取记录 yamibuy_crm.crm_customer_vip_rights_info
+2.查看用户信息是否完整 yamibuy_master.xysc_users user_name、sex、birthday、description、country、avatar 6个信息是否完整
+3.查看用户生日是否当前月份","生日惊喜，需要用户在“生日当月”在会员中心自行领取。非系统主动发放（1.未主动领取，2.时间过了）
+
+如果用户还想要领取生日惊喜，请修改生日为当前月，完善信息，并主动领取。",barry,CS,2024/9/5,0.5,已处理,,,
+91,rma中点击退款审核通过时提示“订单中商品有补偿退款，请核对退款金额”，为什么没有通过,补偿退款，退货退款,找barry heaps确认为什么审核没有通过，出现这个提示后应该注意什么，怎么继续退款,这个订单有一次补偿退款，所以这里会提示，审核人确认退款金额没有超多时，点击弹窗中的审核通过就可以了,"Todd, Barry, Heaps",CS,2024/9/14,0.5,已处理,central rma中出现这种需要确认补偿退款的订单时，是否能在页面中显示补偿退款的详细信息，或者在提示弹窗中显示按钮点击后能打开新页面到订单详情中查看 补偿退款信息,,
+92,订单 2024092272711 重复扣款，麻烦帮忙退一次，谢谢。,重复扣款退款,"1.在yamibuy_payment数据库中查询payment_charge表中查看是否是支付成功没有订单；
+2. 确认是；
+3. 在yamibuy_refund表中查看是否已经自动退款。
+4. 已经自动退款；",这个重复扣款已经自动退款了,"Todd. Heaps, Damon",CS,2024/9/24,0.5,已处理,,,
+93,账户还没订单记录，告知客人输入邀请码的步骤，但是客人说输入后（邀请码：91971046）提供显示不对，如下图，请查询，谢谢。,邀请好友,参考28条,我们查询到了日志，用户使用同一设备触发了风控，所以绑定邀请不会成功,Todd. Heaps,CS,2024/9/24,0.5,已处理,,,
+94,devil666146@gmail.com，没有亚米账户，麻烦帮忙取消订阅邮件，谢谢。,邮件订阅,"查询用户无亚米账号，查询用户无iterable订阅；
+请客户收集下用户的邮件截图",在我们的iterable邮件系统中没有发现该邮件有订阅，能请用户提供下邮件截图看一下发件人吗？,Todd. Damon,CS,2024/9/29,0.5,已处理,,,
+95,"hjingruo@gmail.com
+客人反馈：我在19年左右曾注册过亚米买过几次东西，绑定的邮箱就是现在这个谷歌邮箱hjingruo@gmail.com
+，但是今年我再次登录后发现这个邮箱账户显示是新账号，看不到之前购买的商品。请问这种情况下能协助帮我看一下问题出在哪吗？",账户异常,"1. 查询用户是否删除过账户：SELECT * FROM `yamibuy_master`.`xysc_users_delete` where email = 'hjingruo@gmail.com'
+2. 如果没有删除过，查询用户在22年的订单信息: SELECT * FROM `yamibuy_master`.`xysc_order_info_2022` WHERE `email` = 'hjingruo@gmail.com' OR `email_zd` = 'hjingruo@gmail.com' LIMIT 0,1000
+3. 根据用户的user_id，查询用户信息，判断是否是账号邮箱和收货邮箱不一样",,用户以前使用的是其他邮箱账号，收货的邮箱是hjingruo@gmail.com，具体账号和用户名已经私发给你了,CS,2024/9/29,1,已处理,,,
+96,"客人邮箱851772939@qq.com
+客人说他在微信小程序注册后在邀请码这里输入了686950，但是显示不符合条件，麻烦帮忙看下是什么原因哈，谢谢。",邀请好友 - 建立关系失败,"1. 根据邮箱在central查到被邀请人用户id
+2. 在 yamibuy_master.xysc_users 根据邀请码找到邀请人的id
+3. 在kibana搜索 ""1022773-3961987"" (邀请人-被邀请人)，找类似这样的文案 ""用户1022773-3961987，相同设备结果: true""；说明是同一设备
+
+https://kibana.yamibuy.net/app/discover#/?_g=(filters:!(),refreshInterval:(display:Off,pause:!f,value:0),time:(from:now-30m,to:now))&_a=(columns:!(),filters:!(),index:'k8s-ec-customer-service-log-*',interval:d,query:(language:lucene,query:%221022773-3961987%22),sort:!(!('@timestamp',asc)))",用户使用了同一设备，不能绑定,"Alan, Phoebe",CS,2024/10/15,0.5,已处理,,,
+97,您好，订单2024101475734 客人在15号取消订单后收到了退款$41.42，但是同一天收到一笔扣款记录 $43.68，没有查到这笔扣款来自哪个订单，请帮忙查看一下感谢,未知扣款,"1. 在表内根据金额查询大概时间区间的支付记录，发现仅有一条记录并且是stripe的，并非客人截图中的paypal
+SELECT
+        * 
+FROM
+        yamibuy_so.so_order_purchase_record a 
+        left join `yamibuy_payment`.`payment_charge`  b on a.purchase_id = b.purchase_id
+        where b.amount = '43.68'
+        and b.charge_dtm > 1728877215
+
+2. 找gavin在paypal后台根据金额和时间查询，并无记录","在系统和paypal都没有查到 43.68 这笔交易。
+如果用户还有疑问，看用户能否点进那笔交易详情，截图发下交易Id相关信息。","Alan, Damon, Heaps",CS,2024/10/19,2,已处理,,,
+98,"客人注册邮箱tigrera84@hotmail.com，是否有在7月份领取过生日礼卡？
+客人说才更新了生日但是没法领",Customer会员权益,"1.查找日志表：yamibuy_crm.crm_customer_log表是否有ref_id=3的记录，发现没有
+2.查找领取记录表：yamibuy_crm.crm_customer_vip_rights_info表，是否有rights_id=3的记录，发现没有
+3.查找礼卡表：yamibuy_master.xysc_egift_card表，是否有add_user=from vip rights_id 3的记录，发现没有
+确认用户未领取过生日礼卡
+4.查看用户信息是否完整 yamibuy_master.xysc_users user_name、sex、birthday、description、country、avatar 6个信息是否完整
+5.查看用户生日是否当前月份
+发现用户description未填写","用户未领取生日礼卡
+用户未填写个人简介，请客人填写完个人简介，再去领取。",Renee,CS,2024/10/22,0.5,已处理,,,
+99,"mellyum.ca@gmail.com  顾客说填写邀请码显示Not meeting the conditions to participate in the Invite Friends program."" 但是顾客确认和邀请人不是使用的同一个设备 麻烦可以帮忙查看一下吗？",邀请好友 - 建立关系失败,"1. 根据邮箱在central查到被邀请人用户id
+2. kibana种搜索“相同设备结果” ,添加filter “用户id”，查询日志是否是相同设备结果
+3. 在数据库表：yamibuy_crm.crm_customer_device中搜索 user_id=""338206"" or user_id=""3886211""，确认device_id不是都为NULL
+4.如果都为NULL则找服务人员 修复邀请人数据device_id，如果不都为NULL则给客服说 用户使用了相同设备。",这个用户的设备id数据有异常我们已经修复了，请用户再尝试下邀请,Todd Heaps Damon,CS,2024/11/19,0.5,已处理,,,
+100,yan4li@hotmail.com客户反馈注册的时候收不到邮箱验证码，可以麻烦看看吗,邮件未收到,参考第60条,"哈罗Eloise ,yan4li@hotmail.com这个用户的验证码 我们这边是正常发送了的，请用户注册查看验证码邮件的时候，检查下 邮箱里的 垃圾邮件 、广告邮件等分组里是否能找到。
+如果他换个邮箱也不行的话，可以提供下邮箱的截图，确认是本人的邮箱后，可以找我们开发要下验证码。",Todd Damon,CS,2024/11/21,0.5,已处理,,,
+101,您好，客人账户bun.cari@yahoo.com 客人反馈自己用PayPal支付了五六次都失败了，可以帮忙看一下吗？,支付失败,"central中查询用户id，3803036。
+查询kibana中ec-payment是否有""/paypal_braintree/charge""且用户id是3803036的日志；没有相关日志。
+找gavin查询paypal后台中的支付日志；没有相关支付记录。",我们查询了日志，paypal中没有该用户的任何支付日志，推测应该是paypal支付网关出问题了，请用户稍后再尝试下,Todd Damon,CS,2024/11/22,0.5,已处理,,,
+102,8bu@gmx.com 这个账户之前参与了咱们的转盘抽奖，请帮忙看看后台数据有中奖过实体礼品吗？谢谢，,抽奖记录,@pre-purchase组负责人，帮忙查询,已转给vanessa帮忙查询,Todd,CS,2024/11/23,0.5,已处理,,,
+103,Yhan4@student.cccs.edu 客人收不到更改密码的验证码邮件，请查看一下，谢谢,验证码邮件未收到,"1. 自己在线上修改密码，看邮件是否能收到，能收到说明邮件服务器正常
+2. 在当前日志链接，修改搜索条件为对应的邮箱，找到 类似这样的格式：[ec-customer,349ceb65aa319cdf06a73cba169e77fe,d72035cdc260b229]
+3. 再将搜索条件改为 349ceb65aa319cdf06a73cba169e77fe，检索出最新的验证码 CustomerRedisService res:795772 
+https://kibana.yamibuy.net/app/discover#/?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-2M,to:now))&_a=(columns:!(),filters:!(('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'k8s-ec-customer-service-log-*',key:message,negate:!f,params:(query:'349ceb65aa319cdf06a73cba169e77fe'),type:phrase),query:(match_phrase:(message:'349ceb65aa319cdf06a73cba169e77fe')))),index:'k8s-ec-customer-service-log-*',interval:auto,query:(language:kuery,query:''),sort:!(!('@timestamp',desc)))","验证码发送了的，请用户检查下垃圾邮件 、广告邮件等。
+如果实在找不到，可以提供下邮箱的截图，确认是本人的邮箱后，找我们开发要下验证码。",Alan,CS,2024/12/3,0.5,已处理,,,
+104,"账号 tyftrrqqvs@privaterelay.appleid.com 邀请了 1469243020@qq.com
+后者账号 11/11注册，11/13首单发货，11/26第二单发货，但是查看邀请人的邀请好友查询显示未发货，辛苦帮忙查看一下，谢谢",邀请者奖励未收到,同上方第3条,Logan: 已恢复，是数据有点问题，目前已经修复。,Alan、Damon,CS - Support群,2024/12/4,4,已处理,https://openproject.yamibuy.net/projects/tech-team/work_packages/21685/activity,,
+105,"客人账户：sadie000@163.com 
+显示支付成功了，但是没有订单，麻烦给客人退款，谢谢",扣款没订单,"同上方第56条
+理论上不会有这种问题了，所以只能找Damon查询具体原因：
+查询发现redis不稳定报错，导致订单落库失败，Damon会在本月修复该问题，后续应该就不存在了。
+对于本单，Damon手动调用退款接口，已退款",已退款,Alan、Damon,CS,2024/12/4,1,已处理,,,
+106,"账户：hong_ke76@yahoo.com
+信用卡后四位数字：8696
+说已在银行卡管理里面添加好信用卡信息了，但是无法支付，其他网站都可以买，就是亚米网买不了，说换卡还是这样，麻烦查询，谢谢。",支付失败,https://dashboard.stripe.com/dashboard（Renee有账号）,"被银行拒付了，拒付原因需要联系银行
+目前看到的现象就是 这张卡绑定了两个账户：
+hong_ke76@yahoo.com
+jason10300@yahoo.com",Alan,CS,2024/12/5,0.5,已处理,,,
+107,"被邀请人awls.08.trusts@icloud.com
+邀请人flappy_gilded0m@icloud.com
+可以麻烦看一下这个邀请者的优惠券为什么没到账吗，收货信息都是不一样的。",邀请者奖励未收到,"同上方第104条
+背景：目前线上配置是 验证手机和邮箱，服务端bug导致了一批脏数据，需要识别是否是脏数据
+
+1. central 邀请好友查询 邀请人和被邀请人的状态，发现被邀请人手机邮箱都已经验证，也已发货(并看下是不是在下单前验证的)
+2. 根据用户id 在 yamibuy_crm.crm_invite_log查询记录，理论上有三条： 
+    event_type=1 的注册邮箱的数据，2条event_type =2 邮箱验证 + 手机号验证的数据
+如果缺一条，说明是脏数据，需要找服务端修复数据",已恢复，是数据有点问题，目前已经修复。,Alan,CS,2024/12/6,1,已处理,,,
+108,glorialuvwing@gmail.com 现在亚米没有办法支付宝或微信付款，会在那里卡住 转圈圈 然后也不显示失败，就是没有然后了 在操作一遍再这样一遍，尝试微信打开付款，显示无法到达页面服务器内部错误,微信、支付宝无法支付,测试 web和APP是否正常,刚试了下 web和APP的微信和支付宝都正常，该用户刚也已经成功支付了,Alan,CS,2024/12/7,0.5,已处理,,,
+109,"账户 rachelle.kt@gmail.com
+支付失败扣款了，麻烦帮忙退一下。另外，请问一下这种情况下会自动处理退款吗？如果自动退，大概需要多久会退回呢？谢谢。",订单，退款,参考56条,已经退款了；支付超时是马上退款、退还优惠券等的；,Todd,CS,2025/1/7,0.5,已处理,,,
+110,2024113057380 顾客反馈被扣款了两次，麻烦帮忙查看一下 谢谢 谢谢,重复扣款,参考76条,查看了stripe上的支付记录，只有一次扣款没有重复，用户可以找银行确认下,"Todd, Damon",CS,2025/1/7,0.5,已处理,,,
+111, 734-368-7784 麻烦可以查看一下这个电话绑定的哪一个邮箱账户吗？ ,邮箱验证手机号,参考2条,私发邮箱给你了,Todd,CS,2025/1/8,0.5,已处理,,,
+112,"客人账户：katherinejia4@gmail.com
+好友账户：yayajia77@gmail.com
+邀请好友，我看这2个账户收货信息不一样，好友已下单且已发货，但是邀请人没收到优惠券，麻烦查询，谢谢。",邀请好友,"参考第三条
+
+数据库中风控表有相关数据，但是central系统中没有显示；heaps调查是bug，新建OP跟踪记录：",触发风控了，邀请人和被邀请人的地址中有相同手机号和收货人，相关信息截图私发给你,Todd， Heaps,CS,2025/1/8,0.5,已处理,,,
+113,您好，客人的注册邮箱yuxueling341@gmail.com，反馈自己想绑定手机号9497928943显示已被绑定，可以帮忙查看一下绑定哪个账户了吗？谢谢,邮箱验证手机号,参考2条,私发邮箱给你了,Todd,CS,2025/1/9,0.5,已处理,,,
+114,您好，订单2025010964451  客人注册邮箱rosegao2015@gmail.com，客人反馈自己账户有1556个亚米积分，自己明明选择了积分，但是提交的时候没有扣到积分，客人非常生气，要我们给个说法，可以帮忙查看客人的当时购物轨迹吗？感谢,积分未勾选,"查询kibana结算日志
+ec-so 结算信息
+
+查询神策用户的点击取消积分事件","第一次回复：你好, 用户使用的ios设备，查询到结算信息经过几次变化以后从勾选积分变成了未勾选积分，目前查询神策埋点能看到用户没有点过积分取消按钮，需要等周二找其他人联合查下是否是bug
+
+barry调查:
+用户在 23:51:32 提单，勾选了积分。产生了订单A, 但是订单A未支付
+用户在 23:53:03 取消支付，回到了结算界面。（前端调后端取消接口，会删除积分预占）
+用户在 23:55:03 再次提单，未勾选积分。产生了订单2025010964451，支付成功。
+
+第二次回复：
+你好，这个用户当时有两次提单支付，第一次勾选了积分提单支付，然后取消了支付；
+取消支付以后预占的积分退回会有短暂延迟，当时应该是偶然的积分退回时间较长，并且用户在短时间里再次提单，此时积分还不可使用，用户的订单就没有使用积分了",Todd,CS,2025/1/12,1,已处理,,,
+115,"账户：dan.guo.999@gmail.com， 订单号： 2025020321165
+完整地址： 9050 Arcadia Ave  Apt A San Gabriel CA 91775
+这个地址可以用local配送，我们自己测试了一下APP端可以看到配送备注，但是客人账户不显示，可以帮忙看看吗？客人说已经更新APP了，谢谢。",送货备注,查询ec-so-service送货备注显示逻辑,因为订单包含FBY item#5016199241，导致不显示送货备注，跟hank 、barry沟通，需要跟礼品赠言保持一致为可显示,Todd 、 Barry,CS,2025/2/11,1,已处理,,,
+116,您好，订单2025020546359客人在2月5日申请取消订单，还未收到包裹，您可以帮忙查看一下退款是否有问题吗？谢谢,退款,"1.central查询订单状态；
+2.找damon查询支付单退款状态",已退款，资金到达客户的银行账户可能会需要几天时间，具体截图和查询退款号码已经私发你了,Todd 、 Damon,CS,2025/2/11,0.5,已处理,,,
+117,feiqian34@gmail.com 订单2025020441216 这个订单取消的，累计了 6的积分，取消后扣除了 18积分，是什么原因呢？系统的问题吗？我这边也添加了 12积分给客人，辛苦核对下我们系统的退款积分逻辑，谢谢！,取消订单扣积分,需要改代码，rma扣积分有问题,"1. rma扣积分订单维度
+2. customer扣积分达到下单赠送上限不再扣除",Barry,CS,2025/2/11,2,已处理,,,
+118,"dan.guo.999@gmail.com， 订单号： 2025020321165
+完整地址： 9050 Arcadia Ave  Apt A San Gabriel CA 91775
+这个地址可以用local配送，我们自己测试了一下APP端可以看到配送备注，但是客人账户不显示，可以帮忙看看吗？客人说已经更新APP了，谢谢。",下单填写送货备注,需要改代码，支持fby添加送货备注,配送备注，此前只支持亚米自营 (含亚米预售) 商品的Local、Next Day两种配送方式添加。目前已修改FBY与自营保持一致。,Barry,CS,2025/2/11,2,已处理,,,
+119,"客人账户：calvin.stewart.shuler@gmail.com
+
+客人反馈：过去一周，我一直试图登录你们的网站购买更多箱。我尝试了所有可能的方法来更改密码，但都没有成功。我甚至花钱请了维修店，看看我的电脑是不是出了什么问题，导致无法访问。他们向我保证，我没有问题。
+你们的密码重置程序不起作用。只要您选择忘记密码选项，它就会要求您输入通过电子邮件发送给我的代码。我花不到 10 秒钟就获得了该代码并输入了该代码号。只要我输入通过电子邮件发送给我的代码号，就会收到一条错误消息。我尝试了该程序 30 多次，但结果都一样。
+
+客人重置密码一直不成功，麻烦看下该怎么处理，谢谢。",修改密码,需要改代码，PC无防抖请求两次会覆盖验证码,此用户习惯性双击。验证码每次使用的前一次的，所以用户验证了三次都无法通过。我们已经对此类情况加了限制，请用户重新尝试即可。,Barry,CS,2025/2/12,2,已处理,,,
+120,订单2025020673229客人在2月7日取消了订单，由于订单中有FBY订单，分三笔退款给客人，目前客人只收到了两笔退款$36.37、$8.05，同时又收到了一笔44.42的扣款记录，请问一下目前stripe是否是有FBY订单产生退款后再发一遍扣款记录给客人，还是所有产生退款的订单都会生成新的扣款记录给客人呢？客人以为我们又扣了一笔款，联系银行申请charge back,退款,了解内部逻辑，退款是按照商家子单退款，所以fby会发有多比退款，且退款有8小时延迟,"1. FBY订单，是有多个商家，系统是按照子单退款的，分了三笔退回，paypal网关全部退款成功。 
+2. 退款订单，不会出现退款后  又扣款的情况，除非在退款到账的时候正好下单了。（我们退款有8小时延迟，除非正好在退款到账的时候 产生了消费）  
+3. 此后的44.42扣款记录，在系统内并未发现 与此用户相关的此金额的任何记录。请用户核实扣款来源",Barry,CS,2025/2/12,2,已处理,,,
+121,您好，客人注册账户hg497@cornell.edu 反馈使用微信支付无法跳转，页面一直转，客人使用的是iPhone 最新版本，使用WiFi和手机流量都不行，请帮忙查看一下，谢谢,支付问题,APP版本问题，咨询stone,"微信旧版本SDK在iOS 18的某些系统版本中偶现无法唤起的问题。我们已经定位到问题，并将在下个版本中解决。
+
+该版本预计于下周推送更新，麻烦用户近期先选择其他支付方式，同时也建议用户尝试将手机中的微信升级到最新版本，并将手机的iOS系统升级为最新版本。",Barry,CS,2025/2/13,0.5,已处理,,,
+122,您好，客人账户250606782@qq.com也是收藏问题，看不到收藏的商品了，请查看，谢谢,用户收藏商品,需要改代码，收藏数量超过限制，BFF接口仅支持1000,此用户收藏商品数量超过1000。已超服务最大限制。我们会进行调整，处理好后同步你。,Barry,CS,2025/2/13,1,已处理,,,
+123,您好，客人反馈自己付款成功，但是没有新的订单生成，客人账户：katie.jiahua@gmail.com 麻烦帮忙查看下，感谢~~,支付,查日志，看代码逻辑,用户在扫码付款的过程中，点了关闭，可能会造成这种情况。  若发生，系统会直接给用户退款。已退款$35.64,Barry,CS,2025/2/14,0.5,已处理,,,
+124,"订单号： 2025022474537
+FIBOO 爆料超模蛋白代餐奶昔 轻食代餐营养食品 主食速食代餐 400g 牛油果椰椰味 低卡 清爽酸奶碗/饱腹叶麦杯/营养奶昔碗可做
+--这个商品价格$29.99
+这单支付金额是 $78.96，这个商品因缺货没有发出系统给客人退款了$29.99，但客人的意思是我们重复扣款，再次扣了$29.99，请看下客人提供的途中的pending的$29.99是什么，谢谢",退款，重复扣款,"先跟客人解释pending的款项并没有被扣款的，客人的缺货商品退款2/25日提交处理，请客人等待3-5个工作日再查看自己的账单更新情况（1. 这个29.99是否真的扣款 2. 是否将会产生一笔29.99的退款）如果客人需要对账单展示的问题进一步确认，建议客人联系发卡银行  -tina
+
+1、找服务端人员或者renee帮查询stripe上对应订单的支付及退款记录；
+2、确认退款是否正常","请按照tina的说法先回复，我们这边会查询stripe支付退款记录确认一下
+
+我们这边查询stripe确认退款了，到账时间需要等待几天，截图私发给你了","Todd, Barry",CS,2025/2/27,0.5,已处理,,,
+125,"您好，订单2025011951081 来自第三方商家，17track显示22日送达，客人反馈是今天收到我们系统的通知，您看一下是否是第三方物流对接有问题呢？感谢
+
+人反馈是邮件发送有延迟，不确认是否我们系统对接到的送达信息也有延迟",物流邮件通知,"1、找服务端人员帮查询数据库中，物流数据是否有异常；
+2、查询到送达时间是22号，第三方通知送达是27号，延迟日期较多，",这单物流送达时间是22号，但是我们系统接受到第三方物流的送达通知是27号，然后才给客户发送的邮件,"Todd, Barry",CS,2025/2/27,2,已处理,,,
+126,您好，客人的注册账户ch4236@nyu.edu，邀请的好友账户chou7@pride.hofstra.edu，新用户在填写邀请码的时候系统提示不符合，客人说没有使用同一个设备，可以帮忙查看一下吗？谢谢,邀请好友 - 建立关系失败,参考96条,根据我们的日志看到，这两个用户绑定的时候 触发了相同设备，数据库中也看到确实有相同的设备id,Todd,CS,2025/2/28,0.5,已处理,,,
+127,"订单号： 2025022832533
+配送方式： Local Express
+配送商Carrier： 7 Hours
+
+但物流单号不是local，是USPS物流单号 9434636208303274692481;麻烦看下这是为何，谢谢。 ",物流信息不一致,kibana日志查询到是 仓库操作人员修改了物流信息,"这个是仓库的操作人员, 通过central端手动更换的.
+是否需要我这边咨询一下相关操作人员具体原因的更换原因?","Todd, Damon",CS,2025/3/1,0.5,已处理,,,
+128,客人反馈个人信息都完善了，但是在生日惊喜那无法领取生日礼卡，请帮忙查看一下，谢谢,会员领取生日礼卡,"查询用户信息是否齐全，查询生日是否超过了当月；
+查询用户是否领取过今年的生日惊喜；",这个可能是用户填写的生日2月的原因，让用户先改为三月就可以出现按钮领取后再改为自己真正生日呢,"Todd, Barry",CS,2025/3/1,0.5,已处理,,,
+129,"订单号： 2025030888776 
+这个订单取消了，但是显示有两次收款，可以麻烦查一下吗。谢谢~",重复扣款,"根据订单号在central查询用户邮箱
+根据用户邮箱在stripe官网查询是否重复扣款",stripe查询，仅一笔扣款，并且已退款,Alan,CS,2025/3/11,0.5,已处理,,,
+130,z756787920@gmail.com 顾客已经完善了自己的个人信息 但是还是无法领取生日福利 麻烦帮忙查看一下 谢谢,会员领取生日福利,同上方问题序号98,用户未填写个人简介，请客人填写完个人简介，再去领取。,Alan,CS,2025/3/13,0.5,已处理,,,
+131,"1342978963@qq.com
+绑定的信用卡后四位：xxxx
+
+客人反馈：我的信用卡忘记更新了。然后支付次数多，不让支付了
+我刚刚重新绑定了一下，还是不让我支付
+提示是：让我更换支付方式或者换卡支付
+
+ 麻烦看下，谢谢",支付失败,stripe官网查询该用户的支付记录,回复stripe截图：由于客户输入的 CVC 不正确，这笔付款失败了。查找更多有关付款时间线的详细信息。,Alan,CS,2025/3/14,0.5,已处理,,,
+132,订单 2025030280180这个物流单号上传错了，能查到正确的物流单单号吗~,物流信息不一致,"首先在 yamibuy_master.xysc_order_info 和 yamibuy_so.so_tracking_info表中根据order_id查询信息，发现xysc_order_info表的invioce_no 和so_tracking_info表中的tracking_number不一致
+去kibana日志查询，发现是订单第一次发货的时候物流是正常的，之后仓库人员调用 deliver/tracking_number 接口把物流改错了","目前查到：286061114686,286061120729,286061125396
+
+仓库现场人员上传物流单号有误，目前数据已经修复~",logan,CS,2025/3/14,0.5,已处理,,,
+133,您好，客人邮箱virginiaacastellano@gmail.com，反馈注册亚米账户收不到验证码，请帮忙查看一下是否发送成功，感谢,验证码邮件未收到,"--todd
+参考81条，查询customer日志","--wheat
+看起来这个用户开始发邮件不成功，状态：status=deferred（延迟发送）。看起来是收件人的 Gmail 邮箱存储空间已满。邮件服务器（在这里是 Google 的邮件服务器）无法接收新的邮件。
+ 后面看发送成功了。",Todd，Wheat,CS,2025/4/1,0.5,已处理,,,
+134,您好，订单2025010590804请帮忙查看一下退款，系统还是显示异常，客人还未收到退款，也没有收到银行的联系，谢谢,退款失败，交易争议,"1.找renee或者服务端人员查询stripe交易日志
+2.交易有争议，亚米获胜
+3.找客服确认是否要单独退款
+4.是，找damon调用接口单独退款","查询到交易这里有争议，我们这边赢得了争议所以不会退款给用户，交易图片已经私发给你了；
+确认退款的话，我们单独调用接口退款，完成后再回复你","Todd, Renee, Damon",CS,2025/4/2,0.5,已处理,,,
+135, 订单编号 No.2025033184629 请看一下这个系统发给客人的邮件是bug么？客人收到了一封 自提订单确认邮件,订单确认邮件、自提,"查询central订单，确认不是自提订单
+查询https://central.yamibuy.net/crm/index.html?v=v1.3.7#/crm/mailList，搜索 “自提”
+确认邮件模板跟 客户接收邮件是同样的
+查询服务端代码看下触发时机，purchase项目代码无此模板
+查询github上组织代码里 有这个模板的项目，发现是seller-portal。
+联系simon，一起调查为何会发出这封邮件","--todd
+@Simon Miao(苗建毅) 麻烦一起看下这个邮件的发送机制是否有问题，这个订单是美瞳商品，普通发货订单
+
+--jeremy
+麻烦回复用户请忽略这封邮件，确实是系统问题导致，我们调查完马上处理","Todd, Barry, Jeremy",CS,2025/4/2,1.5,已处理,,,
+136,"yiyi18618@gmail.com
+好友：yiyi18620@gmail.com  
+系统显示好友下了一单且这个订单已发货了，为何客人账户还是没有-10的好友券，有没有可能因为是同一个设备登录的？麻烦查询，谢谢 
+
+问2：
+抱歉，我发错了，想问的时这个好友的：
+yanlin-jiang@hotmail.com                
+
+这个好友已下单，2025040833324且已发货，但是系统显示是未发货，也没券，这是为何呢
+
+问3：
+好友的：
+yanlin-jiang@hotmail.com  这个好友现在看是已验证手机了，后面若再下2单，系统会给邀请人账户发券吗？  ",邀请者奖励未收到,"参考上方第3(邀请规则、风控等) 和 107条(脏数据)
+
+符合邀请规则、也没有风控，也不是脏数据。
+找服务端查询，发现优惠券已经发放，并且被使用了。
+
+问2：
+central查询下单支付时间和验证时间","查到邀请人的券已经发了，被用在了订单2025041344605上
+
+答2：
+需要先验证，再下单支付
+
+答3：
+可以",Alan，Damon,CS,2025/4/15,1,已处理,,,
+137,2025041716019 这个用户在下单这个礼卡前是gold会员，可以购买700刀礼卡。但是礼卡取消后就降级为ruby了。现在无法购买700的礼卡了。我跟客人解释说因为消费保级，取消后就无法保级，但是客人的问题是，为什么购买礼卡前是gold，取消后就降级为ruby了呢,会员等级,"在central查询到相关事件线：
+支付时间：2025-04-18 14:47:10
+发起退款：2025-04-19 00:42，退款后用户从 Gold -> Ruby
+后面用户又下一单，2025-04-19 01:03:55 从 Ruby -> Gold
+
+备注：
+2024-12-12 19:00:14 已经是Gold
+用户还未到6个月扫描日期，下次扫描是 2025-06-14 08:00:00
+
+Phoebe提到：
+去年做会员价，做过一个逻辑是，买的礼卡如果取消订单，是要降级的，但问题是用户本来就是gold，取消订单应该只是更新金额不做降级处理，这个需要服务查下日志，是为啥会触发降级
+
+怀疑是服务端BUG，由服务端调查
+
+Damon:
+这个查了下代码。是因为用户对扫描周期半年内的订单发起了退款，所以等级根据新周期内的消费金额重新计算，回到了ruby，没有参考用户历史的等级情况",暂未回复，待下周一核实需求,Alan，Damon,CS,2025/4/19,2,处理中,,,
+138,您好，客人注册邮箱，likemi6868@gmail.com，使用的app登录，客人反馈今天突然需要输入密码，客人更改了密码登录不进去，可以帮忙查看一下客人操作具体问题吗？谢谢,登录,"查询kibana日志，检查用户近期是否登录过；
+检查用户日志是否重置密码成功；
+检查用户登录日志是否成功",我们看日志，用户很久没有登录过，登录过期了，然后今天重置过密码，重置成功后登录失败，原因是密码不正确，请用户再确认登录时候的密码大小写和特殊字符输入正确,"Todd, Damon",CS,2025/05/28,1,已处理,,,
+139,"账户异常被拉黑了 zhangyuansong@qq.com，该账户中有一张礼卡没有使用完，
+订单号： 2025020670215，剩余金额$240.4，辛苦协助下退款，非常感谢",礼卡部分退款,咨询renee phoebe礼卡订单怎么部分退款,你好，原则上不支持礼卡部分退款，可以尝试退款（订单补偿），还是不行的话，找财务退款。,"Todd, Renee, Phoebe",CS,2025/05/28,0.5,已处理,,,
+140,"您好，订单2025052878682          
+zipcode： 92610 客人的地址： 46 Swift   Lake Forest CA 92610 United States  只能选择standard物流，但是前台显示当天发货当天送达，提交订单的时候页面显示的是正常的预计送达时间，请帮忙查看一下前台zipcode派送范围设置是否有问题，感谢。",送达时间,"联系so服务端人员和item服务端人员，查看预计送达时间逻辑；
+logan: 详情页 和 结算页，是不同的预计送达时间逻辑，详情页使用的是最快的，结算页使用的是 可用配送方式的，所以两边是不一样的
+
+barry:检查后发现zipcode配送信息没有同步导致，结算页配送方式缺少，明日达
+",barry: 数据问题，此zipcode已经支持local配送。详情页和结算页数据可以保持一致,"Todd, Barry",CS,2025/05/29,2,已处理,,,
+141,您好，客人反馈自己刷单被骗，但是没有订单号，请帮忙查看是否可以根据客人的支付信息查询到相关订单号码，感谢 ,根据支付记录截图找订单,"kibana搜索交易id (transaction_id)
+https://kibana.yamibuy.net/app/discover#/?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-5d,to:now))&_a=(columns:!(),filters:!(),index:'k8s-ec-payment-service-log-*',interval:auto,query:(language:kuery,query:%221000415482620553195525%22),sort:!(!('@timestamp',desc)))",订单号,Alan，Barry,CS,2025/06/10,2,已处理,,,
+142,"gaokaininfikn@163.com        
+faesslertorlando8@gmail.com
+麻烦帮忙看看这两个账户是不是同一个IP，都是刷单被骗客人来反馈，我们反查到的只购买$25礼卡的账户，用的都是Alipay。strip没拦截",查询账户IP，是否盗刷,"找运维执行sql，查询用户id
+select user_id,email,last_ip from yamibuy_master.xysc_users WHERE email in (""gaokaininfikn@163.com"",""faesslertorlando8@gmail.com"")
+
+查询两个用户的Ip情况：
+SELECT user_id,ip,count(*) FROM `xysc_order_info` where user_id in (4146284,4215024)
+GROUP BY user_id,ip",这两个账号，有部分订单的下单IP确实是一致的~,Alan，Logan,CS,2025/06/10,1,已处理,,,
+143,您好，订单2025061090557 客人注册邮箱misayahui@gmail.com。客人的app显示预计送达时间是6/16，物流官网显示预计送达时间是6/12，可以帮忙查看一下吗？感谢，https://www.ontrac.com/tracking/?number=D10016449675993,物流送达时间不一致,"如果确认是自营的，然后咱们表 yamibuy_so.so_tracking_info 里存的没问题就艾特William，
+@William He(何书斌) 麻烦看下这个问题",,Alan,CS,2025/06/12,0.5,已处理,,,
+144,"订单号： 2025050264621
+提示退款失败，原因是超额？但商品本身也是187.84",退款失败，交易争议,"1. 查询到交易id
+SELECT pc.*
+FROM yamibuy_payment.payment_charge pc
+JOIN xysc_order_info oi ON pc.purchase_id = oi.purchase_id
+WHERE oi.order_sn = '2025050264621';
+
+2.在stripe官网用交易id查询","用户发起了争议提交，又同时自己在网站退了款。
+支付金额300.53,  申请退款订单金额187.84，客户在银行发起争议金额$181.94 ,   所以我们剩余可退金额118.59
+导致退款失败。理论上不应该给用户退款，因为他已经发起了银行争议~",Alan，Damon,CS,2025/06/13,0.5,已处理,,,
+145,"订单：2025061221147
+ 客人说礼品卡的接收邮箱 momolee23ro@gmail.com 没有收到，垃圾邮箱也没有，麻烦查看一下看能不能重新发一次，谢谢",礼卡派发邮件未收到,"一、查看邮件派发情况（可跳过）：
+1. 查询订单id
+SELECT order_id 
+FROM yamibuy_master.xysc_order_info 
+WHERE order_sn = '2025061221147';
+2. 根据id查询ec-so-job邮件日志
+https://kibana.yamibuy.net/app/discover#/?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-15d,to:now))&_a=(columns:!(),filters:!(),index:'k8s-ec-so-job-service-log-*',interval:auto,query:(language:kuery,query:'217621147'),sort:!(!('@timestamp',desc)))
+3. 看见 ""pay git card order success send email""，说明邮件发送正常
+
+二、直接帮忙查询兑换码
+查询订单相关的礼卡充值情况， is_redeem是否兑换   redeem_user 兑换人，cvv_code 兑换码
+SELECT * FROM `yamibuy_master`.`xysc_egift_card` WHERE `source_order_sn` = 'xxxxx'
+central地址
+https://central.yamibuy.net/crm/index.html?v=v1.3.7#/crm/giftCardDetail
+
+查询礼卡的兑换方式，receive_type=2 发送邮箱 1直充账户， receive_emails 接收礼卡的邮箱
+SELECT * FROM `yamibuy_so`.`so_order_ext` WHERE `order_id` = 'xxxxx' ",私发兑换码,Alan,CS,2025/06/13,1,已处理,,,
+146,您好，客人注册邮箱guohong_gu@yahoo.com，客人使用iPad网页版登录，忘记密码需要发验证码重置密码，但是客人每次收到的验证码都很慢，导致无法输入，您这边可以帮忙查看客人的验证吗？,查询重置密码验证码,"直接访问：
+https://kibana.yamibuy.net/app/discover#/?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-1h,to:now))&_a=(columns:!(),filters:!(('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'k8s-ec-customer-service-log-*',key:message,negate:!f,params:(query:'094a9689f0094ac59fe0b1e74f1dceeb,e54e75be06c1a785'),type:phrase),query:(match_phrase:(message:'094a9689f0094ac59fe0b1e74f1dceeb,e54e75be06c1a785')))),index:'k8s-ec-customer-service-log-*',interval:auto,query:(language:kuery,query:''),sort:!(!('@timestamp',desc)))
+
+1. 将message改为当前邮箱，找到最新的包含CustomerRest.forgetPasswordV2日志记录，复制该条记录的追踪码：094a9689f0094ac59fe0b1e74f1dceeb,e54e75be06c1a785
+2. 将message改为刚才的追踪码，找到最新的验证码：CustomerRedisService res:950571",私发验证码,Alan，Damon,CS,2025/06/14,1,已处理,,,
+147,"订单号： 2025060632071
+物流单号： D10016442029387;D10016442029379;
+完整地址： 8450 Baltimore National Pike  #135(SUSHI Q) Ellicott City MD 21043
+ @Alan Li(李鸿飞)  有办法查看到包裹打印的运单上面的地址信息么？客人反馈收到的包裹运单上面米有 #135(SUSHI Q)",运单地址缺信息,"1. 查询down单（我们给仓库传的地址）地址是否正常，数据脱敏，需要找运维执行sql
+SELECT order_id,address,address2 FROM yamibuy_wh.`wh_order_info` WHERE order_id = ""217532071"";
+
+2. 正常，@William",@William He(何书斌) 刚查到down单地址是正常的，需要麻烦你们看下~,Alan，Barry,CS,2025/06/14,0.5,已处理,,,
+148,"订单号： 2025060388676
+已经除了物流单号了但是却显示结算失败，可以看下原因吗，谢谢~ ",订单结算失败，却有物流信息,很难搞，找Damon.Li,"@Roy Zhang(张少飞) 帮忙看下这个，订单结算失败了，但是在调用结算失败前推送了物流单号过来。
+
+@Logan 生成label 后,  三方就会有推送.
+  结算是在 label 生成后, 最终出库是调用的. 
+这个订单虽然生成了label , 但是包裹最终不会出库. 
+
+@Eloise Zhao(赵琳) 那这种情况是正常的，仓发包裹都准备好了，在发货前准备向客户结算费用，发现被网关拒绝了。所以就出现了已取消的订单存在物流信息的情况。",Alan，Damon,CS,2025/06/14,1,已处理,,,
+149,请问我们这个营销邮件，客户想收到英文的营销邮件，是不是只需要在app更改他的默认语言？谢谢。,邮件语言,"邮件模板基本都在这个表里：
+SELECT * FROM `yamibuy_central`.`template` WHERE `key` LIKE '%vip_upgrade_gold%' LIMIT 0,100",是根据用户的账户设置的语言来发送邮件的，可以让用户重新设置下语言试试,Alan，Damon,CS,2025/06/14,0.5,已处理,,,
+150,bobo 咨询 会员升级礼卡领取及相关的业务逻辑和mq,会员中心、权益领取," select * from yamibuy_master.xysc_egift_card where activity_id = 400 以查询用户会员领取的礼卡
+会员升级 mq   central-customer.exchange，key是user.vip.upgraded",进行业务讲解并且提供了表结构 、mq,Logan,Growth,2025/7/3,0.5,已处理,,,
+151,jason 咨询Venmo的dispute比较多以及支付账号相关问题,支付,"使用sql 查询该用户对应的支付账号
+SELECT * FROM yamibuy_payment.payment_attempts_log where pay_by_id in
+(SELECT pay_by_id FROM yamibuy_payment.payment_attempts_log where customer_id = 3561137)","查询后发现该用户的支付账号确实已经给16个亚米用户支付过了，并且我们在页面上也做了提示。
+后续会计划把这个规则放到FP里面",Logan,Jason,2025/07/11,0.3,已处理,,,
+152,hank rma数据统计,RMA,统计数据,数据发给hank,Logan,hank,2025/07/11,1.5,已处理,,,
+153,hello，辛苦上班后帮忙给未注册的客人邮箱 jing.joos@yahoo.com  取消订阅，感谢,邮件订阅,参考77条,已取消订阅,Todd,CS,2025/07/08,0.5,已处理,,,
+154,麻烦帮忙查一下电话6162279005绑定了哪个账户，谢谢。,手机号查邮箱,参考2条,已私发你,Todd,CS,2025/07/08,0.5,已处理,,,
+155,麻烦帮我确认下星辰埋点中语言上报的这个值 Traditional Chinese 也是中文繁体吗？,埋点调查,检查app PC H5项目埋点语言设置逻辑,"H5语言上报的中文繁体用的是“Traditional Chinese”，App和PC语言上报的中文繁体用的是“Chinese-T”;
+H5这边我更新下配置重发下，PC 和 app是使用的接口，不用修改;","Jaxson, Todd",Wenzel Wu,2025/07/11,0.5,已处理,,,
+156,"@Logan  订单号： 2025061822665
+这个订单显示7月9号已经退款，客人这边联系说退款后隔天又再次扣款了，辛苦帮忙看下这个是什么情况哈，非常感谢~",支付退款,直接查看stripe官网dashbord，正常,@Jenny Li(李珍) 看该笔交易退款正常，该用户也没有相同金额扣款。看你发的截图有么有可能第二条是退款处理中，第一条是退款到账。余额变多了,Damon,Jenny Li,2025/07/15,0.2,已处理,,,
+157, 2025070621755  @Logan   这单无法发起RMA 退款 麻烦帮忙查看下 谢谢,RMA,与下面问题相同,,Damon、Logan,Rita Shan,2025/07/15,0.1,已处理,,,
+158,R2025796T96717001 查询rma单失败,RMA,跟踪代码发现是空指针，然后查看yamibuy_rma.rma_order_detail 表中该商品的target_item_number中没有对应的商品，但是查询im的接口发现是有mapping商品，然后查询rma的创建时间和查询yamibuy_im.im_item_relation表中的商品关联时间发现关联时间晚于rma创建时间，因此判断是因为该商品在创建rma单时还是一个普通商品，但是在后续又变成了一个combo商品,原因是因为该商品在创建rma单时还是一个普通商品，但是在昨天变成了一个combo商品，所以rma展示子品的逻辑就有点问题，后续会优化这块逻辑。,Logan,lily,2025/07/15,1,已处理,,,
+159," @Logan  麻烦帮忙看看账户 mickyzheng85@gmail.com        
+订单 2025061828651
+客人发起了跟买，但是说积分还没有到账，已经发货了。可以帮忙确认一下吗？这个账号实在太多记录了，好几百页，central里面找不到这个订单的跟买记录。谢谢。[图片]",跟买,"1.先找到用户id，根据id查看用户邮箱是否已经验证，因为邮箱不验证积分无法发放的。
+2.查询该订单发起的跟买，在fo_activity  跟买发起记录 和 fo_join 参与跟买的人。结合crm_point 表看积分是否发放
+ SELECT SUM(afj.points)
+FROM yamibuy_activity.fo_activity afa
+join yamibuy_activity.fo_join afj on afa.fo_id = afj.fo_id
+LEFT JOIN yamibuy_crm.crm_point cp on cp.refer_id = afj.rec_id and reason_third in (1006002,1006001) and afa.user_id = cp.user_id
+WHERE afa.order_id in (
+SELECT order_id
+FROM Yamibuy_Master.xysc_order_info
+WHERE purchase_id = '217728651'
+) and cp.`status` = '1'","@Lydia Guo(郭美霞) 查询该参与该订单跟买的积分都已经发放
+
+一共3396积分，发放时间集中在 LA的  2025-07-06 18:56",Damon,Lydia Guo,2025/07/16,1,已处理,,,
+160, @Logan  请问我们邀请好友绑定手机号的话，加拿大的手机号可以绑定吗？谢谢。,短信验证码,查看系统发送手机验证码的代码，发现正则是支持加拿大号码的，具体还是得看ec-msg服务,@Eloise Zhao(赵琳) 这个按道理是支持的，加拿大手机号格式和美国一致系统没限制，以最终的发送结果为准。,Damon,Eloise Zhao,2025/07/16,0.2,已处理,,,
+161,https://tableau.yamibuy.net/#/views/Strip/1?:iid=1 报表 stripe block的数据一直无更新,支付,通过查看tableau 的 sql后发现查询的是payment_charge_applepay_stripe 和 payment_charge_card_stripe ，但是这个表在2025.2月已经不再写数据了,原本的支付表里面已经没有blocked数据都需要去新表 payment_attempts_log中去查，这个情况在今年2月的时候已经告知大数据和分享团队了，你们看的报表有数据是因为我们一直没有强更线上的APP，所以老版本的用户还会有零星的支付数据进来，今年6.18强更APP版本后就再也没有数据了。,Logan,Blanche,2025/07/16,0.5,已处理,,,
+162,调查ec-customer/users/user_name接口和限制,用户,查看代码和目前前端的修改昵称，发现目前系统中已经不使用/users/user_name接口而使用PUT   users/account_info,目前APP WEB都是使用ec-customer 的 PUT   user/account_info接口去修复昵称的，建议你们也使用这个接口，方便后期维护，该接口会限制用户昵称不能为空，昵称不能使用已经存在的，昵称不能包含 亚米 和YMB,Logan,gavin,2025/07/16,0.3,已处理,,,
+163,"ec-payment 服务异常报警，请注意修复！
+环境: 生产环境
+项目: ec-payment
+时间: 2025-07-17T08:25:15.182
+方法: com.yamibuy.ec.payment.rest.CardStripeController.paymentIntent
+参数: [""eyJhdXRoIjoiYzI2NDczYjFjMjY0N2JjM2UxNDg5MjYwOTc5YTgzN2YiLCJkYXRhIjoiNDI1Mjk3MiIsIm5vbmNlIjoiODQ5MSIsInQiOjIsInRzIjoxNzUyNzA4NTExLCJ2IjoxfQ=="",{""code"":"""",""piId"":""pi_3RlfdMA1KmcXQec81Y3NtQhd""}]
+堆栈: 
+  java.lang.NullPointerException
+    at com.yamibuy.ec.payment.service.card.CardStripeService.lambda$handlePaymentIntent$14(CardStripeService.java:640)
+    at java.util.Optional.ifPresent(Optional.java:159)
+    at com.yamibuy.ec.payment.service.card.CardStripeService.handlePaymentIntent(CardStripeService.java:638)
+    at com.yamibuy.ec.payment.rest.CardStripeController.paymentIntent(CardStripeController.java:11  ",支付,1.查看异常日志，发现调用了废弃的card 支付处理接口，旧表已经不会落库数据了。报错了,"PC调用了废弃的接口，人为在使用网站过程中清理浏览器存储可能出现这种情况，今天会加强兜底逻辑废弃旧接口的调用。
+影响：无，用户正常支付处理成功了。",Damon、Todd,-,2025/07/17,0.5,已处理,,,
+164," @Logan  订单号： 2025061822665
+以下是客人提供的完整截图，订单是6月18号下单的，客人这边是20号扣款，然后亚米系统显示7月9号退款给客人的，客人希望我们再帮他看看为什么被扣款两次但是只收到一次退款，谢谢",退款,"1.查询stipe支付网关，看着不像重复扣款，但是用户提供了账单截图，看着像有问题。
+2.问题抛给jason帮忙看一下
+3.同时让用户联系银行看看",@Jenny Li(李珍) 这个还麻烦让用户自己也联系银行，看看银行的解释，我这边联系stripe看看,Damon,@Jenny Li(李珍) ,2025/07/17,0.2,已处理,,,
+165," @Logan  
+chunliyuting@hotmail.com        
+客人在APP从会员中心进去找不到700礼卡的购买从哪里进去，卸载APP后还是看不到，gold会员，手机截图如下，客人很着急，请尽快查询，谢谢",礼卡不见了,"1.查看发现700礼卡在002仓库没货了，001仓有货。
+","@Christina Jiao(焦洋洋) 
+查看002仓700礼卡没库存了， 001仓可以正常搜索显示。可以让用户先切区域购买， @Garen Dong(董文强) 帮忙看是否要补足库存",Damon,@Christina Jiao(焦洋洋) ,2025/07/18,0.15,已处理,,,
+166,"damon 你有时间了帮我确认一个问题:
+   yamibuy_so.so_order_ext
+   order_exddTime ,  order_exsdTime 
+ 的数据数据是从wms 发过去的物流消息中的那个字段获取的, 是否做过转化",物流,查看代码是否是该逻辑,"查询的这个接口：
+curl -X ""GET"" ""/expectedTime/zipcode_u8pvb/wh_number_j19g1?vendorId=1&shippingId=1"" \
+-H 'token: eyJhdXRoIjoiYzQwZTAyZDgwOTIwMzk0NDE4MmRiMTgyNDc5NDljNWQiLCJkYXRhIjoiMTAwMTY1NzciLCJub25jZSI6IjQyNzEiLCJ0IjoyLCJ0cyI6MTc0NDI1NTEyMCwidiI6MX0=' \
+-H 'y_platform: ios' \
+-H 'y_language: zh_CN' \
+-H 'y_version: 200' \
+
+
+值获取的代码，没有自己处理
+ .setOrder_exddTime(response.getExddTime())
+.setOrder_exsdTime(response.getExsdTime())
+
+没有做过转换",Damon,Roy Zhang(张少飞),2025/07/19,0.15,已处理,,,
+167,"帮我查一下
+ymb_cs.back_order中的reason和sub_reason对应枚举值",RMA,查看代码逻辑,ymb_cs.back_order中的reason和sub_reason对应枚举值 在 ymb.ticket_sub_reason_code 和 ymb.ticket_reason_code的，这个值和yamibuy_rma_reason_code  有个映射关系，具体可以参考ReasonMapping.java,Logan,owen.li,2025/07/23,0.2,已处理,,,
+168,"异常群里的消息
+处理连续退款网关报错，手动补偿退款，并分析结算失败导致退款失败的原因。",支付,查看退款和支付失败原因,已处理,Damon,Damon,2025/07/23,0.2,已处理,,,
+169,为Alan Ren提供SQL查询示例，帮助分析风险类型（如risk_type='blocked'）,支付,分析Alan Ren的需求，提供正确SQL给他,已处理,Damon,alan.ren,2025/07/23,0.1,已处理,,,
+170,小红书处理机器人登录问题，包括重新设置机器人、确认登录成功，并检查客服账户（如Lisa、Lydia等）的登录状态。,小红书,查看异常信息，修改代码，新增验证机器人,已处理,Damon,Damon,2025/07/23,1,已处理,,,
+171,用户已经到生日了，但是没有礼卡,customer,查看crm_customer_log表中用户的领取记录，发现用户在今年已经领取了,用户在今年已经领取过了，因此不能领取,Logan,CS,2025/07/25,0.2,已处理,,,
+172,帮调查一下，我们返回的exdd时间，如果送达时间调成当地的23:59:59秒，天不变，现有对前台显示是否有影响,order exdd,查看代码逻辑," 目前前端展示的exdd，我们是会根据wms传入的时间戳与用户当前的时区做转换，比如说，之前你传入的是 7.24 01:00:00，此时时区是 -7小时，那么前台展示的就会是 7.23日到达
+如果现在改成 7.24 23:59:59 此时时区是 -7小时，那么前台展示的就会是 7.24日到达",Logan,wiliam,2025/07/25,0.4,已处理,,,
+173,帮客服核实用户重复支付，退款是否到账；去年的订单退款是否成功,payment,查看数据库,已处理,Renee,"Christina Jiao
+Lydia Guo",2025/07/22,0.1,已处理,,,
+174,帮客服核实用户被盗刷卡的支付记录，用户提供的卡尾号有误差，费时,payment,查看订单表，支付表，stripe后台,已处理，用户提供的尾号差一个，疑似盗刷,Renee,Ada Nan,2025/07/24,0.5,已处理,,,
+175,给prepurchase组多次修改邮箱验证配置，讲邮箱验证逻辑,customer,讲解邮箱验证的逻辑,已处理,Renee,Irelia,2025/07/25,0.1,已处理,,,
+176,帮客服确认手机号绑定账户,customer,写出查询SQL，交给运维执行，拿到绑定账户,已处理,Lucky,Rita Shan,2025/07/29,,,,,
+177,用户邮箱取消促销邮件订阅,customer,在iterable查询用户是否有订阅，存在订阅调用接口解绑,已处理,Lucky,"Tina Jia
+Rita Shan",2025/07/29,,,,,
+178,查看客户积分是否正常,customer,在crm_point查看客户积分领取原因,已处理,Lucky,Rita Shan,2025/07/30,,,,,
+179,查看客户砍单记录是否正常,customer,在crm_point查看客户砍单积分领取时间，发现22年一天有几十条砍单记录，需要确认当时是否正常,未处理,Lucky,Rita Shan,2025/07/30,,,,,
+180,订单2025071558673  central端订单详情展示的预计送达时间有问题,order exdd,"so_shipping_exdd_log表没有订单送达的记录
+ 原因是代码逻辑判断了送达消息exddDateStr字段和表中已有记录exdd_time_format字段是否相同 相同就不保存","做的人已经离职 历史逻辑代码为什么做这种判断无法确定
+后续需要梳理逻辑之后 再修复",miles,Roy Zhang,2025/08/02,,,,,
+181,您好，订单2025080256880 首单挂失，可以查询到这个客人账户是否异常吗？,"customer,payment","1. 查询了这个用户无邀请关系，所以不是为了邀请好友的优惠券退单
+2.查询了用户微信支付账号，没有在其他订单中使用过，所以支付这边也没问题
+SELECT DISTINCT pay_by_id FROM `yamibuy_payment`.`payment_attempts_log` WHERE `customer_id` = '4270799' LIMIT 0,100;
+SELECT *  FROM  `yamibuy_payment`.`payment_attempts_log`   WHERE  pay_by_id = '907b4ec09a4b68e996b5db7a';","1. 查询了这个用户无邀请关系，所以不是为了邀请好友的优惠券退单
+2.查询了用户微信支付账号，没有在其他订单中使用过，所以支付这边也没问题
+这个客人账号是正常的，如果还有其他需要查询的数据，你告诉我，我来查",phoebe,Lisa Li,2025/08/05,0.5,已处理,,,
+182,"麻烦帮忙看看这两件商品无法寄送到夏威夷 
+账户：shujuanl123@icloud.com
+item#1022464771， item# 1022464761
+地址：16-2169 Emerald Dr   Pāhoa HI 96778 ",payment,"SET @item_number=1022464761;
+
+-- 商品共享库存标记
+ select a.share_inventory,a.* from yamibuy_im.im_item_extend a where item_number=@item_number;  -- (高价值商品双仓)共享库存: 0 否, 1 是')
+
+-- 商品库存
+select * from yamibuy_inventory.inventory_transaction where item_number=@item_number; ","这两个商品是 共享库存商品，其中一个商品无货了，并且用户配送地址是夏威夷，所以在结算页定仓和购物车不一致，系统会判定这两个商品都有问题，会强制返回购物车
+加购的时候没配送地址，只判断页面zipcode是否有库存，因为这俩商品是共享库存，所以会读两个仓的库存，所以加入购物车是正常显示的，到结算页，如果地址是 AK/HI，逻辑上不支持共享库存商品
+如果整单有共享库存商品只要有一个上需要从另一个仓发货，这个订单无法提单，会强制回到购物车
+
+昨天这两个商品都是共享库存商品，用户购物车zipcode 定仓是 001仓，并且其中一个商品 001仓无货，按正常001无货，应该从002 发货，但是到结算页，发现用户是往 HI 发货，按照上面逻辑就不能从002 仓发货，只能走001仓发货，但是001仓 有个商品又没库存，所以逻辑上判单，这个订单无法提单，会强制回到购物车
+",phoebe,Lydia Guo,2025/08/05,1,已处理,,,
+183, 2025073019152 这单取消后没有退款记录，麻烦帮忙查看下,payment,"-- 2.查询订单支付信息         结算状态( 0 未结算 1已结算 2失败 3取消)
+-- pay_provider:0元(0), alipay(3), wechat(4), paypal(5), card_tree(6),venmo(7), alipay_citcon(8), apple_tree(9),card_stripe(10),apple_stripe(11),             cashapp(12), wechat-upi(13), alipay-upi(14)
+        select a.charge_type,a.settlement,a.settlement_amount,
+        a.* from yamibuy_payment.payment_charge a where a.purchase_id = @purchase_id;
+-- 3. 支付拆单表   状态( 10初始化  20授权；40失败；50取消；51取消中;60成功)
+  select a.auth_type,a.status,a.* from yamibuy_payment.payment_charge_order a where a.purchase_id = @purchase_id;
+-- 4. 授信支付log表  type(1-成功 2-取消 3-取消中 4-失败)
+  select * from yamibuy_payment.payment_charge_order_log where purchase_id = @purchase_id;",这个订单是第三方商家的订单，当时下单用户是和自营商品一起下的单，订单一起走授信，这个第三方商家的订单 在还没有结算的时候用户就取消了订单，所以这个订单就没有付钱，就不存在退款，只是取消授信了，所以看不到退款记录,phoebe,Rita Shan,2025/08/07,0.5,已处理,,,
+184,025080630580 这单顾客买了  1148094391 畅想 香辣龙虾调料 小龙虾调味料 200g*9  但是发货的时候系统通知有三件缺货，办理了三件的缺货退款，但是顾客发现商品页面还是有货状态，还可以添加三件到购物车进行下单，麻烦可以帮忙查看下是什么情况吗？,so,查询了商品是全国商品，两个仓库都有库存，查看 inventory_log  表中有人操作了商品库存,"@William He(何书斌) 我查看 inventory_log 表中有人操作了这个商品的库存，请帮忙查看下 操作库存的原因是啥
+
+以上问题产生的原因如下：
+1. 初始状态：D20625库位可用库存 9个
+2. 拣货阶段：记录拣货9个，实际上只捡了6个
+3. 打包阶段：发现只有6个商品，然后进行补单
+4. 补单处理：数据库显示可用库存已清零，补单任务结束
+5. 出库：出库6个，由于缺发，所以添加了D20625库位， 商品 1148094391的盘点任务
+6. 做盘点：发现D20625库位有三个商品，进行了盘盈操作",phoebe,Rita Shan,2025/08/08,0.5,已处理,,,
+185, 2025073137139 订单取消但是没看到退款记录,payment,"查看授信支付log表  type(1-成功 2-取消 3-取消中 4-失败)
+  select * from yamibuy_payment.payment_charge_order_log where purchase_id = @purchase_id;",这个订单是一个子单，一块进行付款之后用户取消了这个子单，但是取消操作在结算之前，所以在日志中可以发现支付金额和结算金额不一致，是在结算时直接把这个子单的金额扣除了,lucky,Rita Shan,,,,,,
+186,反馈区域修改后，ec-customer缓存有问题,ec-customer,查看后发现是eric组copy了ec-customer服务，导致消息路由到了他们的新服务。,手动idp删除了缓存，后续通知eric整改,damon,Vanessa Wang,2025/08/19,1,已处理,,,
+187,"damon gqc环境帮我定位一个问题
+我和三方在联调, 日志报错如下, 帮我看看是什么导致的",central-so,查看central-so的代码，并查询报错的原因。,"我看是因为商家1171   是禁用状态。购买商品需要这个SQL能查出来商家
+
+select
+                vendor.vendor_id,
+                vendor.vendor_name,
+                vendor.vendor_ename,
+                vendor.quality_en,
+                vendor.points,
+                vendor.points_en,
+                vendor.return_policy,
+                vendor.return_policy_en,
+                vendor.delivery,
+                vendor.delivery_en,
+                vendor.ah_flag,
+                vendor.ca_flag,
+                vendor.zipcode_limit_id,
+                vendor.info_img_cn,
+                vendor.info_img_en,
+                vendor.is_active,
+                vendor.email_flag,
+                vendor.vendor_logo_cn,
+                vendor.vendor_logo_en,
+                vendor.vendor_background,
+                vendor.business_type,
+                vendor.is_tax,
+                vendor.ship_type,
+                vendor.seller_sn,
+                vendor.announcement_zh as seller_announcement_zh,
+                vendor.announcement_en as seller_announcement_en,
+                shipping.free_shipping_amount,
+                shipping.shipping_fee as shipping_fee_amount,
+                calc.base_expression,
+                calc.append_expression,
+                zip.zipcode,xve.is_fo
+                from Yamibuy_Master.xysc_vendor_info vendor
+                left JOIN Yamibuy_Master.xysc_shipping shipping on shipping.vendor_id=vendor.vendor_id and shipping.is_primary=1
+                left JOIN Yamibuy_Master.xysc_shipping_calculate calc on shipping.shipping_id=calc.shipping_id
+                left JOIN Yamibuy_Master.xysc_shop_rule xsr on xsr.seller_id = vendor.vendor_id
+                left join yamibuy_master.xysc_shop_district_rule rule on xsr.rule_id = rule.rule_id
+                left JOIN Yamibuy_Master.xysc_shop_district_zipcode zip on zip.rule_id = xsr.rule_id and rule.status =1
+                left JOIN Yamibuy_Master.xysc_vendor_ext xve on xve.vendor_id=vendor.vendor_id
+                where 
+                1 = 1
+                # and shipping.enabled =1 
+                and vendor.vendor_id in (select a.seller_id from yamibuy_im.im_item  a where item_number = '8156014351')
+                order by shipping.shipping_id;",damon,Roy Zhang,2025/08/19,0.5,已处理,,,
+188,H5登录成功用户量在8.16从750掉到150左右，这个今天要查下，看是功能问题还是埋点问题——尤其是中文下,ec-customer,查看服务端日志，是否有明显的断层,"
+@Hank Zhao(赵宇航) 
+
+服务端15号左右没发布日志。查询服务日志上报埋点相关日志数量如下
+：
+登录接口调用
+                                    全平台    仅H5
+15 08:00 ~ 15 23:59     6984      2258  
+16 00:00 ~ 16 23:59     10215    3333
+17 00:00 ~ 17 23:59     6035      1080
+18 00:00 ~ 18 23:59     7767      1881
+
+登录成功
+15 08:00 ~ 15 23:59     3853      1343
+16 00:00 ~ 16 23:59     5642      1956
+17 00:00 ~ 17 23:59     3610       857
+18 00:00 ~ 18 23:59     4558      1350",damon,Hank Zhao,2025/08/19,2,已处理,,,
+189,7n2w8dz8jr@privaterelay.appleid.com @Lucky Zhao(赵星幈) 我们可以查看到这个账户中的购物车的商品信息吗,购物车,查询redis用户购物车数据,"1016005261,1016013801,1021028561,1020014091,1147003811,1150003941,1020090861,1155004671,1150009591,1150009601,1150009781,1017090171,1150011151,1019163991,1019164011,1022431311,5159003001,5175018681,1019180101,5159004511,1149057251,5024142021,5024148901,5175030321,1150014261,5175031371,5150014651,1016258061,1016264501,5175044401",lucky,Tina Jia,2025/08/20,0.5,已处理,,,
+190,"Order#2022012279478 
+Login Email: zohu919@gmail.com
+财务需要recharge $70，客人说信用卡已绑定，但是财务一直找不到，麻烦看下客人账户是否已绑定尾号8272信用卡？ ",信用卡,"查询stripe卡记录及数据库
+SELECT * FROM `yamibuy_payment`.`payment_profile_card` WHERE `user_id` = '389135' LIMIT 0,100",我们查到客户只有两个卡，尾号5237，另一个尾号是0038,"damon, todd",Christina Jiao,2025/08/20,0.5,已处理,,,
+191,yidanzhu@berkeley.edu 顾客注册完账户，找不到填写好友邀请码的地方 可以查看下原因吗？,邀请好友,查询代码显示未下单用户，未参加edu活动才会显示填写模块，查询这个用户没有参加edu，但是有下单,这个用户已经下单不属于新用户了，所以隐藏了填写邀请码模块,todd,Rita Shan,2025/08/20,0.5,已处理,,,
+192,"terri.men@outlook.com
+您好，客人反馈自己支付成功，但是并没有收到订单确认邮件，我们通过客人提供的支付信息也无法查看到相关订单记录。辛苦帮忙查看下，十分感谢~~",支付无订单,"1.central查询用户订单
+2.根据用户ID，查询用户交易记录，因为没有生成订单，所以只能拿到交易ID后，去查询日志
+SELECT * FROM `yamibuy_so`.`so_order_purchase_record` WHERE `user_id` = '2342583' LIMIT 0,100
+3.如果交易记录也没有，则很可能是用户记错账号了
+4.数据库中查询交易金额相同交易时间接近的订单，然后根据purchase_id在central中查看详情；
+5.发现收货人姓名与email中姓名一致的订单","terri.men@outlook.com这个邮箱账号没有找到支付记录和订单，我们在一个苹果登录账号下找到了订单 收货人是Terri Men
+订单号是2025081732010 ","damon, todd",Ada Nan,2025/08/22,0.5,已处理,,,
+193,1120893805@qq.com @Todd Zhu(朱良富)  请帮忙查看一下这个账户是谁删除的呢，谢谢,删除账户,查询数据库和kibana删除日志,这边查询到是用户自己删除了账户。北京时间  2025-08-16 19:58:31,damon,Tina Jia,2025/08/22,0.5,已处理,,,
+194,"1.hj0013@nmjc.edu  想要填写好友justinz124@yahoo.com的邀请码 但是系统报错 顾客表示他们是室友， 排除了用同一设备的问题，麻烦可以帮忙查看下原因吗？
+2.顾客说他更换了设备 之前用手机 现在用电脑了 这样也不行了是吗 
+3.注销后用邀请链接再注册账户 也会排查是否是同一设备是吗 
+ ",邀请好友,参考以前的邀请好友风险日志,"1.用户触发风控同设备了，我看了设备日志，确实有相同设备记录
+2.是的，用过的设备会有记录，记录里有相同的就不行
+3.不一定，注销后再注册会员id会改变，但是用的设备跟邀请者的设备历史还是有一样的话，还是会被风控",todd,Rita Shan,2025/08/23,1,已处理,,,
+195,"礼卡订单 2025082505991
+客服的新同事本来想自己测试一下提交订单，就提交支付了这个礼卡订单，本来要取消，但是操作错误，现在是停用+作废状态，没有办法做RMA 退款了，系统提示已使用。这个情况下该怎么退款呢？",礼卡,1.实际操作查看代码逻辑，为什么不能退,"我看了下，虚拟礼卡感觉不能作废再发起RMA
+那我尝试恢复下",damon,Lydia Guo,2025/08/26,1,已处理,,,
+196,您好，可以帮忙查看一下这个预售订单2025082631912 被取消的原因吗？,预售，取消订单,"1.查询订单商品及订单时间
+2.查询商品库存日志，找到商品的当时的库存日志",目前看是补单的时候商品库存不足，出发的自动取消订单，我看这个商品当时库存是0和-87,todd,Lisa Li,2025/08/30,0.5,已处理,,,
+197,"您好，账户：zyang1205@gmail.com 客人联系，自己是用微信直接登录我们亚米账户的，然后填写订单信息开始下单的，但是客人说自己并没有 zyang1205@gmail.com 这个邮箱，客人说别人接收到了这个邮件然后将客人所有的信息都放到小红书上去了，客人坚持自己没有这个邮箱，不知道自己使用微信登录的，不知道怎么会有这个邮箱的账户，麻烦请帮忙查看一下，谢谢。
+
+客人现在已更改了邮箱，客人的订单号是：2025082865624",邮箱,central查询订单，发现收货邮箱是这个,客人的收货邮箱是这个,Alan,Amy Li,2025/09/02,0.5,已处理,,,
+198,"xieyx@mail.uc.edu
+请问这个邮箱是什么时候验证的，谢谢~",邮箱,kibana搜索邮箱日志,北京时间 2025-08-31 09:21:39,"Alan, Todd",Eloise Zhao,2025/09/02,0.5,已处理,,,
+199,"2025081098122 可以帮忙看一下这个订单物流显示damage 有没有给顾客发邮件通知吗？ 
+图片内容是物流信息：
+Delivery exception
+Damaged, handling per shipper instructions",物流 邮件,"1. yamibuy_mail.hms_mail_send_status根据邮箱查询邮件发送记录，发现没有物流异常的邮件。
+2. 服务端查代码逻辑","没有给顾客发送物流异常邮件
+这个时间太长，日志查不到了，具体原因暂时分析不了
+看了下其他类似物流，邮件推送都是正常的","Alan, Damon",Rita Shan,2025/09/02,1,已处理,,,
+200,您好，订单2025082110405 来自商家亚米日本仓，产生了税费： $10.97，客人反馈海外仓不应该在缴纳当地税，客人还收到了关税支付，相当于要付两次税，客人认为很不合理，客人反馈自己在亚马逊购买日本直邮的都不会收当地的税，请帮忙查看一下日本仓的收税是否合理呢,日本仓收税,咨询产品,,Alan,Lisa Li,2025/09/03,0.5,处理中,产品和业务核对中,,
+201,客户bernice0918@sina.com最近有下单记录，说今天还没砍单够十次就不让了，可以麻烦看下吗。谢谢~  ,跟买 砍单,"同上方 序号32
+
+
+规则：
+亚米客户(最近180天有下单历史)每24小时可以参加跟买砍单30次，非亚米客户(最近180天无下单历史)每24小时可参加跟买砍单2次。","砍单限制不是按照自然日算的，往前算24小时
+次数超出了30次",Alan,Eloise Zhao,2025/09/03,0.5,已处理,,,
+202,"客人要验证邮箱，但是一直收不到验证码
+amandazhao266@gmil.com改为anamdazhao266@gmail.com
+然后又改为jiaoxiong19771129@gmail.com
+还是收不到验证码，客人说垃圾信箱也看了，没有，麻烦看下",邮件 验证码,central查询,"这里能查系统发送邮件的状态：
+https://central.yamibuy.net/hermes/index.html?v=#/hermes/mailSearch
+
+看起来jiaoxiong19771129@gmail.com这个账户第一次发提示没有这个邮箱，第二次发送成功",Alan,Christina Jiao,2025/09/03,0.5,已处理,,,
+203,您好，订单2025072051247 系统显示退款失败了，可以帮忙查看一下原因吗？谢谢,退款 paypal,同上方 序号38,这笔交易用户开启了争议，无法退款，请用户联系银行。,Alan,Lisa Li,2025/09/03,0.5,已处理,,,
+204,账户信息里面的“用户消费”情况里的信息都不显示了，可以辛苦查看一下吗？谢谢,central 账户信息,访问central查看,我们这边看了下是正常的，你有空要不再试下？,Alan,Blanche Zhang,2025/09/04,0.5,已处理,,,
+205,"/ec-so/orders/$orderId/fo_banner
+
+这个接口拿的， 得让服务端查一下 他们从哪里取的
+
+Damon  你帮我查下跟买链接在哪配置的",跟买,查询代码看最终的跟买链接哪里配置的,ec-activity 项目的apollo 配置的 FO_SHARE_URL,Damon,may,2025/09/10,0.2,已处理,,,
+206,架构委员会 PO 多商家评审,架构,-,-,Damon,Simon,2025-09-18,1,已处理,,,
+207,"昨天lasfit 有一单前后台状态不一直.仓库512, purchase 552
+我发现有调过接口 
+http://intranet-centralapi.yamibuy.net/so/deliver/shipping
+{""carrier_type"":2,""trackNo_carrier_map"":{""393297875611"":""yami""},""tracking_number"":""393297875611"",""shipping_carrier"":""yami"",""order_id"":219383119,""shipping_time"":1758141284} @Logan  看下这个问题‘",订单发货,查询到日志，发现同时调用了发货和打包,看日志基本上是同时调用的,Damon,Roy,2025-09-18,1,已处理,,,
+208,"亚米账户 chenb.12@outlook.com 
+手机号码 2063055801
+运营商 Google fi
+绑定手机号码没有收到验证码，发送 START到9093142643 收不到回复。麻烦帮忙看看我们的验证码有没有发送成功？",customer,"1. 通过日志 email 查找，手机号是否给的正确
+https://kibana.yamibuy.net/app/discover#/?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-15h,to:now))&_a=(columns:!(),filters:!(),index:'k8s-ec-customer-service-log-*',interval:auto,query:(language:kuery,query:'%22chenb.12@outlook.com%22%20'),sort:!(!('@timestamp',desc)))
+
+2. 手机号争取，用sql查询，手机号 phone type ,如果 PhoneType=VOIP 或 INVALID 。 则无法发送验证码，请用户联系运营商。
+SELECT mobile_phone, phone_type as phoneType, phone_type_code as phoneTypeCode FROM yamibuy_crm.crm_aws_phone_validation WHERE mobile_phone = '+1-2063955801' LIMIT 1;
+",这个用户绑定的手机号是虚拟号码，无法发送验证码，让客户联系运营商,phoebe,Lydia Guo,2025-9-24,0.5,已处理,,,
+209,RMA无法创建,售后RMA,"1.页面复现错误，发现接口报错
+https://centralapi.yamibuy.net/rma/order/getYamiOrderDetail/2025100767260
+429 Too Many Requests
+2.查询接口日志，发现没有日志
+3.找wheat查询网关是否拦截，确认被拦截，等待wheat修复
+",已恢复，请再试一下,"Todd, Lucky",Tina,2025-10-14,0.5,已处理,,,
+210,"nadiasin@zoominternet.net
+订单号： 2025100882646
+客人反馈：我从未收到任何邮件确认或其他相关邮件，例如我的订单已发货或已送达。
+Yami邮箱（例如help@yami.com或Yami <donotreply@mta.yamibuy.com>）从未出现在我的垃圾邮件文件夹中，我已经将它们添加到了安全发件人列表中。
+麻烦查下这单下单以及发货后的系统给发的邮件，是否发送成功了？谢谢。",订单确认邮件,"邮件查询系统，查询用户邮箱的发送日志，detail和log中可以看到细节
+https://central.yamibuy.net/hermes/index.html?v=#/hermes/mailSearch",用户的订单和发货状态邮件确实没有发送成功，我们调查了日志发现是他们的邮件服务器拒绝了我们的下单确认、发货状态邮件，说有垃圾信息，可能需要用户联系他们的邮箱管理员。放行我们,"Todd, Lucky, Damon",Christina,2025-10-14,0.5,已处理,,,
+211,"账户 discovernj@netzero.net，电话 9083862703
+客人要验证绑定手机号码，收不到验证码，麻烦帮忙看看是什么原因，这个客人电话在线等，谢谢。",手机验证码,参考序号78,这个9083862703是虚拟号，请用户联系运营商；另外查询日志发现用户最近还尝试绑定9087988386这个号码，这个号码是正常号，发送验证码成功了,"Todd, Damon",Lydia Guo,2025-10-15,0.5,已处理,,,
+212,"客人账户：nymaxma@163.com
+客人反馈输入了邀请码，但是我在系统没查到邀请关系，客人说之前已填写了，现在已经没填写邀请码地方了，麻烦看下客人之前填写的邀请码为何没有产生邀请关系",邀请好友,"central查询用户邀请记录；无
+central查询用户信息；查询注册以来的订单信息；有
+判断有下单为非新人则不展示入口是正常的", 该用户没有绑定邀请人，他以前有下单记录，所以不是新人，不是新人的话，我们系统就不会展示填写邀请码的入口了,"Todd, Damon",Christina Jiao,2025-10-28,0.5,已处理,,,
+213,客人订单号： 2025103089966 ，可以帮忙看看这个加拿大订单为什么有tax吗？,税,"1.先查看用户订单中的商品所属的商家是否收取加拿大税：central-商家管理-商家列表-财务信息-启动加拿大税
+2.查看用户订单收货地址是加拿大的哪个州
+3.根据州在Apollo中根据州查询税率： https://apollo-portal.yamibuy.net/config.html?#/appid=central-sellerportal-service  key: CA_TAX_REGION_LIST_STR
+4.根据商品金额和税率计算税",这个商家设置了加拿大收税，用户地址为加拿大，州BC，按12%收取税。收取12$没问题。,Myth,Lydia Guo,2025-11-4,1,已处理,"加拿大网站上可以看到最新的消费税税率：
+https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/gst-hst-businesses/charge-collect-which-rate/calculator.html#rt 
+如果有PST的话需要计算GST+PST。",,
+214,"2025110655466LA Warehouse
+客户地址是夏威夷的 78-7090 Heeia Way   Kailua-Kona HI 96740 United States
+包裹被退回了，订单中包含FBY产品5175040091
+客户可以自行下单但是我们补发却操作不了",RMA补发,查看central-rma补发日志,目前补发会判断FBY商家是否支持配送AK/HI，这个商家不支持AK/HI，所以不能补发。这个逻辑我们后续会优化。,Renee,Eloise Zhao,2025-11-13,0.5,已处理,,,
+215,"wtc_wesley@hotmail.com 客人是被邀请 不过系统显示only one invite code can be used 这个账户还没被邀请过，请核实有什么原因显示无法被邀请
+后续提供用户 邀请码",邀请好友,"1. 查找邀请人的user_id 
+2.查找风控日志https://kibana.yamibuy.net/app/discover#/?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-24h%2Fh,to:now))&_a=(columns:!(),filters:!(('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'k8s-ec-customer-service-log-*',key:message,negate:!f,params:(query:%E9%A3%8E%E6%8E%A7%E6%83%85%E5%86%B5),type:phrase),query:(match_phrase:(message:%E9%A3%8E%E6%8E%A7%E6%83%85%E5%86%B5))),('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'k8s-ec-customer-service-log-*',key:message,negate:!f,params:(query:'2673247'),type:phrase),query:(match_phrase:(message:'2673247')))),index:'k8s-ec-customer-service-log-*',interval:auto,query:(language:kuery,query:''),sort:!(!('@timestamp',desc)))",日志中报错：设备相同被风控,phoebe,Greta Lee,2025-11-25,1,已处理,,,
+216,"招商银行给我们发邮件告知客人向他们反馈有一笔欺诈交易，要求我们停止交易
+详细交易信息如下：
+PAN 卡号：451461****7462
+交易日期：2025-11-25
+金额：178.52
+币种：840
+授权码：325805
+交易ID：355329279798355
+商户：YAMI.COM +18004079710 CA US
+商户ID：XXGTOMGTW8D7KKZ
+麻烦看下通过以上信息是否可以找到客人账户和对应订单，",支付,"1. yamibuy_payment.payment_charge 表中查找 相同金额的订单，并根据时间查找订单
+2.再通过订单 order_info 表中查找user_id 
+3.central 中 客户列表通过user_id 查找email",,phoebe,Christina Jiao,2025-11-26,0.5,已处理,,,
+217,2025101547685 提交了34.63 的退款，因为是不同FBY 订单，所以提交的是10 和24.63 两笔，其中10 退回了，24.63 系统中没有显示， 顾客也没有收到 麻烦稍后上班了帮忙查看下24.63这笔是否有退成功吗？,补偿退款,"1. 查找finance 表中只有一笔10退款
+2.查找 yamibuy_so.order_cancel_queue 表中3条数据，一条退款，两条失败消息
+3.finance 组查找问题，发现网络问题，导致服务重启，漏掉了消息",开发调查了，看起来像是当时网络有问题，导致链接redis，阻塞住了，然后服务被重启了，处理到了一半给重启了，就漏掉了两个消息，导致退款没退成功,phoebe,Rita Shan,2025-11-26,2,已处理,"220980510
+220802730
+220345411
+220434858
+220421189
+219818463
+220330850
+220222608
+220047685
+220047685
+220312003
+219975492",,
+218,ruyanx@yahoo.com        麻烦帮忙查看一下这个支付账户关联的其他账户，我们看看是否和之前一个盗刷账户相关，,支付,"1.用邮箱central 查询用户最近的订单，查找到订单号
+2.  yamibuy_payment.payment_attempts_log 查找到 pay_by_id
+3. 查找 这个 pay_by_id 相关的订单
+4. 查找用户email 
+SELECT user_id,email from yamibuy_master.xysc_users where user_id in (SELECT customer_id FROM yamibuy_payment.payment_attempts_log where pay_by_id = 'ABJR9XYJ3VJTY');
+","私发结果给客服
+2811892        ruyanx@yahoo.com
+2847417        beilazhang@yahoo.com
+2844223        qinqizheng@yahoo.com
+2877489        huiyunzhang88@yahoo.com
+2701241        zhengdandan220@gmail.com
+2646167        zhangxiaolin33@yahoo.com
+3007236        duoduozheng88@yahoo.com
+2701251        xiuli.zhang27@gmail.com
+2662372        zheng_xinyue@yahoo.com
+2709710        zhengdandan27@gmail.com
+2590211        xintonzhang@yahoo.com
+2571938        leozhang912@yahoo.com
+2654947        wutina80@yahoo.com",phoebe,Lydia Guo,2025-11-27,0.5,已处理,,,
+219,"2025112626071
+账户：j8x72gnscb@privaterelay.appleid.com
+收货邮箱： Alison.pilla@gmail.com
+但是我们的订单确认邮件是发给了alisonpilla@gmail.com
+
+这2个邮箱的区别是alison pilla一个是名字之间没点，一个是有点，不带点的这个邮箱每次收到邮件后都会说有人盗刷她信息；
+麻烦查看下次客人下单后是否可以发到正确的带点的邮箱呢（Alison.pilla@gmail.com）？",邮件,1. yamibuy_mail.hms_mail_send_status 表中查询 该订单邮件发送情况,"1. 通过日志和记录查询，订单确认邮件 是发给了  Alison.pilla@gmail.com 邮箱
+2. 经过验证，登录 带点的邮箱stupid1t.qmail@gmail.com，用我的亚米邮箱给不带点的邮箱发送信息 stupid1tqmail@gmail.com ，带点的邮箱收到了不带点的邮件，所以可能 gmail 针对 带点和不带点的邮箱有自己的机制，导致邮件被不带点的邮箱收到",phoebe,Christina Jiao,2025-11-27,1,已处理,,,
+220,"8392011736 
+可以麻烦看看这个手机号码绑定的账户么",,"1.找moc、wheat执行查询SQL（SELECT * FROM `yamibuy_crm`.`crm_bind_phone_log` where mobile_phone = '+1-xxxxxx'）
+2.找到用户id后，在central中根据用户id查询用户信息（https://central.yamibuy.net/crm/index.html?v=v1.3.7#/crm/customerList）
+3.将需要的用户信息私发给咨询人
+查询用户表手机绑定信息（SELECT * FROM `yamibuy_master`.`xysc_users`  where mobile_phone = '+1-xxxx'）",,phoebe,Eloise Zhao,2025-11-29,0.2,已处理,,,
+221,"acccountwg07@gmail.com
+客人说账户地址和银行卡都绑定了，之前下单都正常，但是今天下单提示要输入CVV密码，输入后就一直转圈，麻烦看下， ",,"1.开发查找了交易日志，没内容
+2. 安装和用户一样版本的包，下单可以正常支付             
+可能是用户网络问题导致的，可以让用户重新下单","1.查询了用户的交易日志，没有查到交易信息，
+2.用和用户手机一样的版本 支付订单，是正常可以成功支付的，
+你可以让用户重新打开app 下单，看是否能成功",phoebe,Christina Jiao,2025-11-29,1.3,已处理,,,
+222,2025112493584这个客户取消退款了对的上，但是新订单2025112517552实付$636.54，却显示的金额不一样，可以核实一下吗,,"1.查询了支付相关表，扣款金额没问题
+2.查询了stripe 网关 扣款也正常",查询了用户支付记录信息，用户 636.54 的订单已经扣款成功，支付没有问题，用户给的截图是自己的 applepay 的支付记录，截图可能不全,phoebe,Eloise Zhao,2025-11-29,1,已处理,,,
+223,账户helencwyl@gmail.com，可以帮忙看看这个账号关联了哪个第三方账户吗？客人提供的截图看不出来，谢谢。,解绑第三方账户,查询账户信息：发现微信绑定；,"微信绑定的；
+需要切换语言为中文或者英文后才会显示微信、微博；
+跟产品反馈相关问题；","Todd, Renee",Lydia Guo,2025-12-09,0.5,已处理,,,
+224," 订单号： 2025112939125 订单应付： $57.3
+已退款(RMA类)： $23.97
+已退款(补偿类)： $33.33
+麻烦帮忙看看这个补偿退款退不了",补偿退款失败,在central订单详情查询页面中，切换到退款查询tab中，查询2025112939125的退款信息，发现有两条￥33的退款，其中一条已经退款成功了,有两个$33.33的申请，一个退款完成了,"Todd, Lucky",Lydia Guo,2025-12-09,0.5,已处理,,,
+225,"账户是：yxu136@syr.edu
+客人说微信支付，显示已扣款但是没订单，我用邮箱也没查到最近有交易记录，麻烦看下下面这个交易图，是否可以查询到支付的注册邮箱是否是这个？我们是否扣款了，谢谢",已支付，无订单信息,"参考141条
+kibana搜索交易id (transaction_id) 1000480849397655687173;查询出purchase_id和用户email",查询到这个订单是另外一个邮箱账户提单支付的，已经在发货状态，具体信息私发你了,Todd,Christina Jiao,2025-12-11,0.5,已处理,,,
+226,"2025121253342
+2025121253341
+这个客户希望用B2B的折扣码，yami400，但是结算的时候没办法使用。
+我们先让客户提交订单了，结果核查了一下发现是被拆单了，一个是NJ的一个是LA发货的，所以导致折扣码无法正常使用，其实是符合条件的，可否修复？谢谢",B2B折扣码优惠券无法使用,"在自己账号下使用折扣码兑换优惠券，兑换成功；
+购物车加购商品满$5000以后，结算页面查看是否有可用优惠券；
+查看优惠券接口，找寻pre-purchase服务人员一起看下为什么这个优惠券不可用；","1022352361这个商品被优惠券排除了，不计入，需要其他商品凑足5000金额
+日本POLA宝丽 黑BA碧艾 赋颜晨光温和洁面膏黑BA洁面乳  抗糖保湿深层清洁洗面奶 100g*2抗糖1+1囤货装 【限量发售】","Todd, Damon, Barry",Eloise Zhao,2025-12-12,1,已处理,需要跟产品反馈，商品很多的时候，看着金额满足了优惠券要求，但是优惠券排除掉了一部分商品，导致购物车有效总金额不足；可能需要一个模块来显示不可用优惠券的排除商品,,
+227,账户 sblack1204@yahoo.com.tw，手机号码6262446361，客人在阿拉斯加，通讯商GCI，收不到手机验证码。发送start 到 9093142643 也收不到回复。麻烦帮忙看一下是什么问题，谢谢。,手机验证码,参考序号78,这个用户绑定的手机号是虚拟号码，无法发送验证码，让客户联系运营商,Todd,Lydia Guo,2025-12-23,0.5,已处理,,,
+228,您好，请帮忙查看一下FBY 商品5030250241  日本SS PHARMACEUTICAL 白兔制药 EVE止痛药头疼头痛牙痛经姨妈痛DX速效20粒，中文和英文都是20粒，但是繁体字页面变成了40粒，麻烦看一下是不是我们系统自动翻译有误导致呢？,商品,@Garen Dong(董文强) 帮忙看下这个,"@Garen Dong(董文强) 帮忙看下这个
+
+Garen: 这个是商家改过其他语言的标题
+然后又改了中英文标题，因为改过多语言标题，自动翻译就会停掉了",Alan,Lisa Li,2025-12-25,0.5,已处理,,,
+229,订单2025121814912 客人反馈页面有两个物流单号，但是我们系统查看是只有一个，请查看是否我们的页面系统有误，谢谢 ,物流,"1. 查询到订单id和用户token（在kibana ec-customer项目下根据用户id可以查到）
+2. postman调用{{host}}/ec-so/orders/shipping/221614912接口，发现返回了两个相同物流单号的包裹信息","@Logan Yang(杨博申) Support群里这个问题，得让服务查下是不是我们接口的问题，物流信息返回了两个一样的物流单号，所以前端展示了两个包裹。
+
+Miles: 这个是接口的问题 通过aftership查完 第三方的物流单号 又触发了的兜底返回 需要服务修改代码 @Logan Yang(杨博申) ","Alan, Miles",Greta Lee,2025-12-25,3,已处理,,,
+230,"礼卡订单号：2025122436224
+收礼卡邮箱：4guntlfamily@gmail.com
+客户检查了垃圾邮件和收件箱都没看到卡号和礼卡密码，辛苦看一下能不能重发一遍",礼卡派发邮件未收到,参考序号145,私发兑换码,Alan,CS,2025-12-26,0.5,已处理,,,
+231,2025123109345  支付了 $103.41 缺货退款了  $17.98，但是顾客的银行记录显示还有一笔 $17.98 的扣款,支付退款,"1.查询了支付，退款相关表，扣款金额没问题
+2.查询了stripe 网关 扣款也正常","跟用户确认是否是confirm的交易，如果是confirm的交易，需要用户联系银行咨询，Acquirer Reference Number (ARN):
+82117556004500013598457 这是相关的交易号（stripe里的退款编号），银行可以跟踪。Stripe这边已经确认没有extra charge",Renee,Rita Shan,2026-01-06,0.5,已处理,,,
+232,账户 wenbo2013@hotmail.com，这个客人的包裹1/5显示return，但是客人没有收到邮件通知，麻烦看一下我们异常通知邮件里面是不是没有包括配送失败退回的通知,物流异常通知邮件,"1.查看用户最近一单的包裹物流信息，数据库中看到物流确实异常，最近一条物流节点""info"":""LOST CONSIGNMENT""
+2.查看CMS配置shipping_exception_desc_list，上面的话术不在配置里，所以未发送物流异常邮件",查看用户包裹最新一条物流节点显示”LOST CONSIGNMENT“，这个异常不在发送物流异常邮件的话术列表里，所以没有给客人发送邮件。,Renee,Lydia Guo,2026-01-07,0.5,已处理,,,
+233,"2025122672001 & 2025122672002，客户取消了这两笔订单
+但这两笔订单只退款成功了一笔订单2025122672002，金额是$27.81；但是订单2025122672001的$26.37并没有被退款成功；客户表示目前仍未收到$26.37的退款
+请技术同事帮助查看一下是什么情况导致的",退款,"查看支付表，退款表，取消订单表，订单表
+发现用户在发货前先取消了订单2025122672001，这笔钱并未结算，所以不会退款",订单2025122672001是在发货前取消的，并未真正结算这笔$26.37。用户只结算了$27.81，退款$27.81是正确的。,Renee,Peter Dong,2026-01-09,0.3,已处理,,,
+234,"客人账户：wu_yingzhe@yahoo.com
+好友账户：xiaobo.maine@gmail.com
+好友第二单已发货，为何客人没收到第二张-10的券呢，麻烦查询",邀请好友,按照第3条查询完，未发现问题。发现yamibuy_crm.crm_invite表中refer_id未更新为coupon_code，查看对应的优惠券ps_id，发现优惠券过期了（还有存量用户存的优惠券无法发发放，需要修数据）,创建的邀请好友优惠券过期了，我们已经修复了数据，给用户发放优惠券了，请用户再去查询。,Renee,Christina Jiao,2026-01-10,1.5,已处理,,,
+235,账户：linchen781@gmail.com 客人反馈，自己距离上一次的订单还不足180天，但是就无法砍单30次，只能砍单2次每天了，请问咱们的跟买规则是否有变动了呢？麻烦请帮忙解答一下客人的疑惑，谢谢。,砍单,"我们的砍单次数计算规则是180天内有订单且是已发货状态 才会把次数放开到30次
+linchen781@gmail.com 是最近只下了一单 下单后订单未发货所以次数还是2次","我们的计算规则是180天内有订单且是已发货状态 才会把次数放开到30次。这个客户是最近下单 但是订单没有发货所以只能砍两次,现在已经发货了 是可以砍30次了",miles,Amy Li,2026-01-13,2,已处理,,,
+236,cuifenzhuang910307@gmail.com邀请了ellenna.rivendell@gmail.com但是并未发放优惠券麻烦核实一下,邀请好友,按照第3条查询完，未发现问题。发现yamibuy_crm.crm_invite表中refer_id未更新为coupon_code，查看对应的优惠券ps_id，发现优惠券过期了（还有存量用户存的优惠券无法发发放，需要修数据）,创建的邀请好友优惠券过期了，我们已经修复了数据，给用户发放优惠券了，请用户再去查询。,miles,Benny Wang,2026-01-13,2,已处理,,,
+237,客人反馈包裹没有送达，但是APP端这个位置显示“已送达”，麻烦帮忙看看是什么问题，订单号： 2026010818393,个人中心我的订单,"在订单查询中发现用户这个2026010818393订单就没买这个已送达商品.
+是过去订单2025120476433买的商品已送达.
+个人中心我的订单展示的是订单商品是否送达 因为没有展示具体的订单信息 
+用户解读有误解",这个订单2026010818393 没有包含这个商品,miles,Lydia Guo,2026-01-14,2,已处理,,,
+238,"单号： 2026011624066 
+客户反馈在这个订单明明购物车里面36件商品，结账时自动移除3件变成33件了？明明是有货的。
+剩下的3件结账后被加入新的购物车。
+这3件商品是：/5148109881，1148057471
+，1021085851麻烦查一下。谢谢~",购物车,"在kibana上查询订单提交接口 订单结算接口日志发现用户没有5148109881，1148057471
+，1021085851三个商品一起作为接口入参 
+查询了用户的购物车缓存 发现没有商品状态为未勾选","5148109881，1148057471
+，1021085851 这个三个商品是结账时没勾选到",miles,Eloise Zhao,2026-01-17,,,,,
+239,订单号： 2025121268176，这个订单之前一笔退款客人chargeback了，目前客人说已经联系银行解除case，麻烦帮忙再处理下退款，感谢，金额是$42.48 ,退款,"1.查找payment_refund 表查看退款失败原因，是银行有争议拒绝退款
+2. 调退款接口退款，还是失败，查找stripe ，通过 transaction_id 查到争议金额，上面有具体什么时候银行能处理完争议",我刚重试了一次退款，还是无法退款，stripe 那边给的消息是 2月9号才会处理完成争议，你让用户再等等,phoebe,Jenny Li,2026-01-21,0.5,已处理,,,
+240,2026010407056 这单补发的时候 盒马 一次性浴巾 独立包装 旅行便携 加大加厚 1包2条装 【超值3包装】 是有货的，3包入的，补发的时候按说应该补发3个单个的， 但是显示补发了一个 并且完成补发后 商品又退款了， 可以帮忙看下是什么情况吗?,RMA 补发,"1.用订单号在central 查rma 详情页，看商品最后是否做了退款处理
+2.再用item_number 查商品变更表，看下什么原因什么时候做的下架处理 im_item_change_log",这个商品在你补发的时候被下架了，所以无法补发，给用户自动做了退款处理,phoebe,Rita Shan,2026-01-21,0.5,已处理,,,
+241,订单号： 2025113080942  订单号： 2025120105838 售后风险：HIGH （本单支付账户id有5个邮箱账户使用过） critic.network.63@icloud.com可以查看一下关联的账户么？ ,payment,"1. 在 yamibuy_payment.payment_attempts_log 表中查到 pay_by_id 
+2. 用sql 查询用户账号
+SELECT user_id ,email from yamibuy_master.xysc_users where user_id in (SELECT customer_id from yamibuy_payment.payment_attempts_log where pay_by_id = '4Vi5UJvMGfggJsqm' GROUP BY customer_id );"," 查到下面5个账号
+4212891        ericw1060@gmail.com
+431189        chriswaters812@gmail.com
+4371600        verse.11.spaces@icloud.com
+4389281        critic.network.63@icloud.com
+3786038        mandy.wong.9920@gmail.com",phoebe,tina,2026-1-23,0.5,已处理,,,
+242,2026012739212 可以查看未到账的原因么？ 跟买,跟买,1.查看原单和砍单状态是不是512, 我刚查询了下：用户在 2026-01-29 07:40 时间发起了补偿退款，导致原单订单状态更新为484，job 在扫描订单是按照订单状态 512 发放积分的，所以在这个时间点之后的跟单，砍单积分都没有发放,phoebe,tina,2026-1-31,1.5,已处理,,,
+243,您好，有商家想要入住亚米，但是打开以下链接https://www.yami.com/en/seller-located点get start显示空白，我试了一下页面一直跳转，没有办法进行下一步，辛苦查看一下，谢谢 ,商家入驻,"商家入驻页面，vpn未链接时，点击按钮无法正常跳转；
+商家反馈连接了vpn，点击按钮后显示空白页面；
+客服反馈，点击广告页按钮没有反应；
+
+连接vpn，访问广告页，点击按钮，正常跳转，商家入住页正常显示；","反馈给gavin、logan，调查；并联系客服获取录屏信息；
+
+后面没有发现商家入驻页面无妨访问的问题；",Todd,Berry Wu,2026-2-3,1,已处理,,,
+244,"客人账户：emichellelam@gmail.com
+好友账户：michellelamrph@gmail.com [图片]显示两张券已发，客人好友第二单是最近下的，但是我们用客人账户查优惠券没发现他账户最近第二张券：[图片]麻烦看下邀请人账户为何没有第二张优惠券呢？",邀请好友,按照第3条查询完，未发现问题。发现yamibuy_crm.crm_invite表中refer_id未更新为coupon_code，查看对应的优惠券ps_id，发现优惠券过期了（还有存量用户存的优惠券无法发发放，需要修数据）,创建的邀请好友优惠券过期了，我们已经修复了数据，给用户发放优惠券了，请用户再去查询。,"Todd,Miles",Christina Jiao,2026-2-3,1,已处理,,,
+245,"nokia34fanrr@protonmail.com
+此客户反馈收不到restock alerts ，好几次产品补货了都没给他发邮件，可以麻烦看下么。谢谢~",到货通知,"补货邮件发送由eric组负责；
+联系eric组：帮看下这个用户的补货邮件发送是否有问题呢？谢谢",反馈给eric,Todd,Eloise Zhao,2026-2-3,0.5,处理中,,,
+246,kid5371@hotmail.com 顾客反馈无法在账户修改姓名 麻烦查看下 谢谢,修改姓名,"页面上测试修改姓名，保存成功；
+查看日志，判断用户保存姓名时的参数，发现姓为空字符，使用相同参数保存，保存失败；
+联系服务端人员检查接口，发现接口判断姓氏的逻辑错误；",目前发现是保存时没有填写姓氏，服务端检验不通过，请用户先补充姓氏，我跟组内反馈下这里的问题看如何修复,"Todd,Miles",Rita Shan,2026-2-3,0.5,已处理,,,
+247,2025110785523 顾客反馈他的礼品卡详情显示这单被收取了两次43.18 的金额 麻烦可以帮忙查看下吗？ 谢谢,礼卡使用记录,"查询页面接口日志，发现确实有两条一样的；
+查询数据库，没有筛选出对应数据；查询central，发现该订单抵扣礼卡只有一次；
+联系服务端调查接口分页逻辑；",你好，central中查出来这单礼卡只扣了一次43.18，用户页面上这个重复应该是查询服务返回异常了，我们这调查修复下,"Todd,Logan",Rita Shan,2026-2-3,1,已处理,,,
+248,"qa1: 2026012450498 这单是standard shipping  但是补发后新单物流方式换成了Local Express 可以帮忙查看下原因吗？
+
+qa2: 所以补发物流方式是地址来决定的是吗 ",补发订单,"寻找服务端人员协助支持；
+需要原单的下单日志，调查原因；","lucky: 你好，这个是因为第一单是用户是手动改成standard shipping的，我们补单逻辑是按照默认方式这个默认是走Local Express
+lucky: 先根据商家选择可用物流方式，再使用地址中的zipcode和仓库查看是否满足物流方式的条件，最后对所有满足条件的物流方式有一个优先级的处理","Todd, Lucky",Lydia Guo,2026-2-4,1,已处理,,,
+249,"订单 2026013131996
+item#5030417861
+ 这个商品是个礼包，应该是两盒，但是系统好像只设置了一盒。可以帮忙看看吗？谢谢。",礼包商品,"查看商品描述、central商品信息，描述的确实是两件；
+寻找Garen帮助，查看是否central配置问题；",识别到这个可能是商家设置错误导致的,Todd,Lydia Guo,2026-2-4,0.5,已处理,,,
+250,"账户 a0065905@gmail.com
+没有订单号码，但是被扣款了，麻烦帮忙看看，谢谢",支付后无订单,参考第8条；查看stripe中相关邮箱的支付记录，这条支付已取消，退款到账需要几天；,这单是支付超时临时订单取消了，目前是已取消，退款中，退款到达账户可能需要几天时间,"Todd, Lucky",Lydia Guo,2026-2-5,0.5,已处理,,,
+251,954512这个活动13:30才开始，但是13:31 so-job就集中通知mkt秒杀完了,秒杀,查询 seckillItemSaleOutHandler日志，查询redis key   so:activty:seckill:queue:item_number_仓库号:item_number，这个redis中会保存秒杀库存，如果没有就是库存售罄，查询后发现确实没有库存，运营创建的商品是2仓秒杀，系统会去两个仓查，如果1仓没有，那么也会发送售罄的mq消息。,正常，发送的是商品1仓秒杀结束，不影响业务,Logan,Jermery,2026-2-6,0.5,已处理,,,
+252,"客人账户：qjncptbtptp@163.com
+没查到这个账户最近下单，但是客人说银行卡尾号6923
+一直扣他钱，扣了4笔，麻烦查看，谢谢",信用卡扣款,"stripe上查询该邮箱的账单；
+没有发现对应的扣款支付记录；
+在stripe上该账户支付记录页面，最下方看到有其他账户绑定了相同的卡，查看这个新账户下的支付记录，匹配上了",找到了，是有另外一个用户下单支付用了这个卡，用户邮箱是: wangyuchu0129@gmail.com,Todd,Christina Jiao,2026-2-7,1,已处理,,,
+253,"2026020593939
+513939609@qq.com
+我们地址修改费链接：http://www.yami.com/cn/goods.php?id=2107
+客人下单后改地址，接受支付修改费，我们就给发了这个链接，客人没登录账户，就没进APP,就是直接点击我们的链接支付的，在网页里把钱付了,扣款如上图，现在是我用客人账户在系统搜不到修改费的这个订单号，不知道客人是否成功支付了$17的地址修改费，麻烦看下，谢谢",地址修改费用,"central中查询这个邮箱513939609@qq.com确实没有$17的修改费商品订单；
+stripe中查询这个邮箱513939609@qq.com也灭有$17的支付记录；
+stripe中查询相关尾号的卡支付记录,搜索关键词:last4:7257，查询到一个苹果匿名邮箱账户有一单$17的支付记录；
+发送新账号的订单信息给客服；",应该是用户换平台以后使用苹果登录后支付了，但是苹果账号原本没有关联513939609@qq.com，所以创建了新账号；,Todd,Christina Jiao,2026-2-7,1,已处理,,,
+254,2026020906177 麻烦帮忙查看下这单为什么不能发起免单呢？ 谢谢,跟买、免单,参考：https://docs.google.com/document/d/1dtjds2NpM9gRLvDBFSJ-1xX_LUM8Z_F1McjwFtRYd3o/edit?tab=t.0,"Alan: 因为订单有部分退款，导致不能发起跟买
+Rita: 可是这单的部分退款是因为缺货 并不是顾客的原因导致的 之前有说这种情况是不影响跟买的 
+Alan: 嗯但是目前代码的逻辑确实如此，我们会核实下是Bug还是其他原因，再看是否调整
+Rita: 好吧 那麻烦看下原因 这单我们先单独补偿顾客了 辛苦~","Alan, Renee, Lucky",Rita Shan,2026-2-10,2,已处理,需要跟进：缺货原因影响的部分退款影响跟买,,
+255,"x.liou@yahoo.com这个客户1/28从silver升级到了gold
+但是没收到礼卡，麻烦看下什么情况，谢谢~",会员升级、礼卡,"背景：该礼卡是需要用户手动领取，如果没有展示领取按钮，可能是因为过了权益规则的时间区间
+
+1. 核实是否已领取
+https://central.yamibuy.net/crm/index.html?v=v1.3.7#/crm/giftCardDetail
+或者查表 select * from yamibuy_master.xysc_egift_card where activity_id = 400 AND redeem_user = 27919 ORDER BY redeem_time DESC
+
+2. 确实没有领取，查看运营是否已创建最新的权益规则，发现2.1之后的权益没有配置，所以前端没有展示领取按钮
+https://central.yamibuy.net/crm/index.html?v=v1.3.7#/crm/customerVIP","回复1:
+该会员1.29升级的，在1.1-2.1周期内他没有领取，而2.1之后的权益规则还没有创建，我们联系下负责的同事
+
+回复2:
+运营同事已创建规则
+用户可以看到领取按钮了","Alan, Phoebe",Eloise Zhao,2026-2-10,1.5,已处理,联系Joanna：最新的权益规则未创建,,
+256,通过电脑网页下单，点击提交订单按钮后提示是请检查商品信息，发货地址以及包裹信息，然后客人再次点击提交就一直没反应，试了几次都是这样，地址和银行卡信息在下单前就一直保存了，麻烦看下，谢谢,PC 下单没反应,"线上测试正常
+查看该用户下单记录",我刚线上测试正常，另外看该用户刚才已经下单成功了,Alan,Christina Jiao,2026-2-12,0.5,已处理,,,
+257,客户jingyangyys@gmail.com反馈作为新用户输入好友邀请码91015015显示不符合参与条件，请问是什么情况？是使用了同一设备吗谢谢~,邀请好友 风控,同上方第 96 条,是的 同一设备,Alan,Eloise Zhao,2026-2-12,0.5,已处理,,,
+258,2026012156564  2026012156566 顾客说没有收到退款 我们解释是结算取消 没有收钱 但是顾客表示扣款了 麻烦查看写 谢谢,FP 取消订单 退款,"1. central查询到用户邮箱
+2. 登录stripe平台根据邮箱查看交易日志","Alan: 退款中，到账可能需要几天
+Rita:  24 号显示需要几天 现在都2 月12 日了 还得需要一些时间是吗 
+Alan: 嗯让用户再确认下自己的账单，或者联系银行确认",Alan,Rita Shan,2026-2-12,0.5,已处理,,,
+259,aileenaries5@hotmail.com这个客户的账户也不再黑名单里面 但是客户反馈说参与活动的时候显示账号异常,转盘 抽奖,@Gavin Wang(王龙武) 帮忙看下这个问题,@Gavin Wang(王龙武) 帮忙看下这个问题,Alan,Benny Wang,2026-2-13,0.5,已处理,,,
+260,carolcheung8710@gmail.com这个客户反馈自己过去六个月消费的金额满足350美金，我们也算了的确是够的，但是升级的时候系统显示之消费了$304.72.，可以麻烦核实一下吗，谢谢~,会员 升级 金额,"central查询该用户本周期内订单累计金额，发现差的那50美金那笔订单的发货时间在扫描之后
+
+备注(by logan)：订单金额是否累计，按照发货时间算，而且会包含礼卡订单支付的那部分钱 ",是按照订单发货时间算的，2月1的那笔发货时间刚好在扫描时间之后了,Alan,Eloise Zhao,2026-2-13,0.5,已处理,,,
+261,wshuang948@gmail.com 看到他应该发放了邀请好友优惠券 但是他账户里面又查不到 可以帮忙看下吗？,邀请好友 奖励未到账,"同上方236条
+
+发现yamibuy_crm.crm_invite表中refer_id未更新为coupon_code，查看对应的优惠券ps_id(就是central 优惠券管理的编号)，发现优惠券过期了（还有存量用户存的优惠券无法发发放，需要修数据）",数据已修复,Alan,Rita Shan,2026-2-14,0.5,已处理,,,
+262,客服发现RMA退款全选的时候只能选择同一商家下的商品,RMA,排查之后发现当时做的就这样，客服提出改造,后续排期改造,Lucky,Lydia Guo,2026-2-25,0.5,已处理,,,
+263,growth询问购物车`库存紧张`的逻辑,购物车 so,排查代码,"每个商品可以配置一个 stock_warning 阈值（在商品侧维护），购物车加载时会检查该商品的实际库存是否 ≤ 这个阈值。如果是，就给前端返回 stock_warning_msg（""库存紧张"" / ""Low Stock""）。如果商品没有配置这个阈值（null），则不会展示库存紧张提示。具体存储的表在`Yamibuy_IM.im_category_extend`的`stock_warning`",Lucky,Bobo Ni,2026-2-25,0.5,已处理,,,
+264,pre-purchase pre环境礼品卡不能支付,结算,定位接口属于前端，找todd查看报错原因,pre环境结算放行域名配置的有问题，已经更改,Lucky、Todd,Kara,2026-2-26,0.5,已处理,,,
+265,tiktok 订单创建失败报 商品区域限购,第三方创建订单,在 central-so 根据提供的第三方订单去查询创建日志，分析代码,该商品调IM的http://im:8080/item/batchQuerySoItemInfo 接口返回区域限购,Logan,chad,2026-2-27,0.5,已处理,,,
+266,"订单号： 2026022663096
+客户希望将补发单的地址修改为95 Audubon Rd, Wakefield, MA 01880，并指定使用FedEx发货。 
+订单指定FedEx后 要更改地址 但是更改不了 显示",修改地址,查询central代码,"1. 订单原始配送方式是 SPX
+2. 用户在详情页把配送商改成了 FedEx（记录写入 Redis ShippingCarrier:{orderId}，同时 MQ 通知了 WMS）
+3. 用户接着修改地址 → 触发 shippingCarrierLimitCheck
+4. 该方法检测到 Redis 有配送商变更记录，调用 wmsService.getShippingCarrier(queryCarrierBody) 查询新地址支持哪些配送商
+5. WMS 根据 order_id 查到订单原始配送方式仍是 SPX（可能 MQ 消息还没消费，或者 WMS 侧没有更新订单的配送方式），返回 41100 ""SPX 不支持更换物流""
+6. 异常直接抛出，修改地址失败
+接下来需要WMS那边排查",Lucky,Joy Sun,2026-2-27,1,处理中,,,
+267,"https://www.yami.com/zht/p/wearable-vibrator-remote-control-lake-blue-1piece/5031156211
+上面这个商品有赠品，且赠品还有库存，但是在下单页不显示赠品",结算页,查询日志，查询ec-so代码,mkt gift接口报错,Lucky,Jeremy Zhang,2026-2-27,0.5,已处理,,,
+268,"2026031078301, 礼包商品item#5030417761应该是两盒入。客人买了两份，应该是四盒，但是只收到两盒",rma,"1 查询日志，查询central-so central-rma代码
+2 查询礼包商品的库存转换单",这个是库存转换单建的礼包商品名字虽然带的*2 但是只有一个原品 所以会给客户发两盒,miles,Lydia Guo,2026-3-11,3,处理中,,,
+269, 2026030963154请问这个为什么不符合售后条件呢？,rma,查询日志，查询ec-rma代码,  这个商品没有售后规则,miles,Eloise Zhao,2026-3-11,1,已处理,,,
+270,lydia反馈 订单 2026030963154 中商品 1025088431无法发起售后,rma,"查询 yamibuy_rma.category_reason数据发现没有找到1025088431对应的分类
+后期会把这个分类加进去",原因是 商品1025088431 的一级分类350(个护)在RMA系统中没有配置售后规则,Logan,Lydia Guo,2026-3-11,1,已处理,,,
+271,订单2026030555234 显示因结算失败被取消，从strip上看不出是否已经退款？ 但是有支付成功记录,退款,"查询yamibuy_payment.payment_charge 、 yamibuy_payment.payment_charge_order 、yamibuy_payment.payment_charge_order_log表发现结算失败，日志报An unknown error occurred
+查询网关是结算成功，查询代码分析应该是用户结算成功但是网关返回状态码异常导致结算失败，用户取消授信时网关此时是结算成功的状态所以无法取消授信。","已处理，帮用户手动退款。
+原因：用户结算成功但是网关返回状态码异常导致结算失败，用户取消授信时网关此时是结算成功的状态所以无法取消授信。
+处理：手动更新用户支付表的结算状态后手动退款。
+后续：会优化结算失败的重试机制，重试时会再去判断当前真实结算状态。",Logan,Joy Sun,2026-3-12,1,已处理,,,

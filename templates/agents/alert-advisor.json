@@ -1,0 +1,35 @@
+{
+  "name": "alert-advisor",
+  "description": "告警分析 agent，分析 Grafana 监控异常并给出处理建议",
+  "tools": ["execute_bash", "fs_read", "fs_write", "grep", "@kiro-bridge"],
+  "allowedTools": ["execute_bash", "fs_read", "fs_write", "grep", "@kiro-bridge"],
+  "resources": [
+    "file://.kiro/agents/alert-advisor/prompt.md",
+    "file://.kiro/agents/alert-advisor/config.yaml",
+    "file://.kiro/agents/alert-advisor/knowledge/grafana-alerts.md",
+    "file://.kiro/agents/alert-advisor/knowledge/payment-schema.md",
+    "file://.kiro/agents/alert-advisor/knowledge/service-monitor.md",
+    "file://.kiro/agents/alert-advisor/knowledge/troubleshooting.md"
+  ],
+  "mcpServers": {
+    "kiro-bridge": {
+      "command": "/usr/bin/python3",
+      "args": ["/mnt/d/code/yami/kiro-wecom-bridge/mcp_server.py"],
+      "env": {
+        "KIRO_BRIDGE_URL": "http://localhost:8900"
+      },
+      "disabled": false,
+      "autoApprove": ["reply_user"]
+    }
+  },
+  "toolsSettings": {
+    "execute_bash": {
+      "allowedCommands": [
+        ".*mysql.*-e.*SELECT.*",
+        ".*mysql.*SHOW.*",
+        ".*mysql.*DESC.*",
+        ".*python3.*/grafana-query/scripts/grafana\\.py.*"
+      ]
+    }
+  }
+}

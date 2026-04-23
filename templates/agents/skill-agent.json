@@ -1,0 +1,9 @@
+{
+  "name": "skill-agent",
+  "description": "专门使用 skills 的 agent，可调用所有已安装的 skill 能力",
+  "tools": ["execute_bash", "fs_read", "fs_write", "glob", "grep"],
+  "allowedTools": ["execute_bash", "fs_read", "fs_write", "glob", "grep"],
+  "resources": [
+    "file://.kiro/skills/*/SKILL.md"
+  ]
+}
