@@ -37,8 +37,8 @@ DEV_HOOKS=(
 CS_SKILLS=(cs-knowledge sql-query kibana-logs business-knowledge)
 CS_AGENTS=(sql-query)
 CS_MCPS=(sql-query kibana zentao)
-CS_STEERING=()
-CS_HOOKS=()
+CS_STEERING=(cs-global-config.md cs-yami-skills.md sub-agent-guide.md skills-path-find-guide.md)
+CS_HOOKS=(check-steering-first.kiro.hook)
 
 # ── ops ──────────────────────────────────────────────────────
 OPS_SKILLS=(grafana-query cli-anything-rancher kibana-logs cli-anything)
