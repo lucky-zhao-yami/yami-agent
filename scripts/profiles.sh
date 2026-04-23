@@ -2,7 +2,25 @@
 # Profile definitions for deploy.sh
 # Each profile defines: skills, agents, mcps, steering, hooks
 
-# ── base (included in all profiles) ──────────────────────────
+# ── 代码仓库（按 profile 分）─────────────────────────────────
+# 基础仓库（所有 profile 都不拉，deploy.sh 本身就在 yami-agent 里）
+BASE_REPOS=()
+
+# 业务代码仓库
+BIZ_REPOS=(
+  central-activity-service central-crm-web central-customer-service
+  central-distributor-service central-fp-service central-fp-web
+  central-payment-service central-rma-service central-rma-web
+  central-so-service central-so-web
+  ec-activity-service ec-customer-service ec-distributor-service
+  ec-inventory-service ec-payment-service ec-rma-service
+  ec-so-service ec-tax-service
+  mail-service-job public purchase-tool
+)
+
+DEV_REPOS=("${BIZ_REPOS[@]}" kiro-wecom-bridge)
+CS_REPOS=("${BIZ_REPOS[@]}")
+OPS_REPOS=()
 BASE_SKILLS=(notify-wecom wecom-memory wecom-scheduler manage-openproject)
 BASE_AGENTS=(orchestrator-agent)
 BASE_MCPS=(memory openproject kiro-bridge)

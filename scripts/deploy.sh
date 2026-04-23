@@ -90,28 +90,22 @@ echo ""
 info "Step 2: 拉取代码仓库"
 mkdir -p "$CODE_DIR"
 
-REPOS=(
-  central-activity-service central-crm-web central-customer-service
-  central-distributor-service central-fp-service central-fp-web
-  central-payment-service central-rma-service central-rma-web
-  central-so-service central-so-web
-  ec-activity-service ec-customer-service ec-distributor-service
-  ec-inventory-service ec-payment-service ec-rma-service
-  ec-so-service ec-tax-service
-  mail-service-job public purchase-tool
-  yami-agent kiro-wecom-bridge
-)
+eval 'P_REPOS=("${'"${PROFILE_UPPER}"'_REPOS[@]}")'
 
-for repo in "${REPOS[@]}"; do
-  target="$CODE_DIR/$repo"
-  if [ -d "$target/.git" ]; then
-    echo "  ↻ $repo (pull)"
-    git -C "$target" pull --ff-only --quiet 2>/dev/null || warn "$repo pull 失败，跳过"
-  else
-    echo "  ↓ $repo (clone)"
-    git clone --quiet "git@git.yamibuy.com:yami/${repo}.git" "$target" 2>/dev/null || warn "$repo clone 失败，跳过"
-  fi
-done
+if [ ${#P_REPOS[@]} -eq 0 ]; then
+  echo "  ℹ️  $PROFILE profile 无需拉取代码仓库"
+else
+  for repo in "${P_REPOS[@]}"; do
+    target="$CODE_DIR/$repo"
+    if [ -d "$target/.git" ]; then
+      echo "  ↻ $repo (pull)"
+      git -C "$target" pull --ff-only --quiet 2>/dev/null || warn "$repo pull 失败，跳过"
+    else
+      echo "  ↓ $repo (clone)"
+      git clone --quiet "git@git.yamibuy.com:yami/${repo}.git" "$target" 2>/dev/null || warn "$repo clone 失败，跳过"
+    fi
+  done
+fi
 ok "代码仓库就绪"
 
 # ── Step 3: 初始化工作空间 ────────────────────────────────────
@@ -170,14 +164,16 @@ for h in "${P_HOOKS[@]}"; do
 done
 
 # workspace.json
-cat > "$WORK_DIR/.kiro/workspace.json" <<EOFWS
+if [ ${#P_REPOS[@]} -gt 0 ]; then
+  cat > "$WORK_DIR/.kiro/workspace.json" <<EOFWS
 {
   "repositories": [
-$(for repo in "${REPOS[@]}"; do echo "    \"$CODE_DIR/$repo\","; done | sed '$ s/,$//')
+$(for repo in "${P_REPOS[@]}"; do echo "    \"$CODE_DIR/$repo\","; done | sed '$ s/,$//')
   ]
 }
 EOFWS
-echo "  + workspace.json"
+  echo "  + workspace.json (${#P_REPOS[@]} repos)"
+fi
 
 ok "工作空间初始化完成"
 
