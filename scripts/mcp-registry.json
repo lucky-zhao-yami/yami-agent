@@ -57,6 +57,15 @@
       "TOKEN_PATH": { "prompt": "Google token 文件路径" }
     }
   },
+  "google-docs": {
+    "name": "Google Docs",
+    "command": "uvx",
+    "args": ["mcp-google-docs@latest"],
+    "env": {
+      "CREDENTIALS_PATH": { "prompt": "GCP OAuth credentials 文件路径" },
+      "TOKEN_PATH": { "prompt": "Google token 文件路径" }
+    }
+  },
   "zentao": {
     "name": "禅道",
     "install": { "type": "npm-local", "dir": "mcp-servers/zentao" },
