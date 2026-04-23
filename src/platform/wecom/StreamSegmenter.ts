@@ -26,10 +26,16 @@ export class StreamSegmenter {
     streamId: string,
     private chatId: string,
     private chatType: number,
+    prefix = '',
     private limit = SEGMENT_LIMIT,
     private flushInterval = FLUSH_INTERVAL,
   ) {
     this.streamId = streamId;
+    // Prefix (e.g. quoted question) stays at top of first segment
+    if (prefix) {
+      this.segText = prefix;
+      this.fullText = prefix;
+    }
   }
 
   async feed(delta: string): Promise<void> {
