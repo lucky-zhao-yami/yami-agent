@@ -95,35 +95,6 @@ mkdir -p "$CODE_DIR"
 
 eval 'P_REPOS=("${'"${PROFILE_UPPER}"'_REPOS[@]}")'
 
-if [ ${#P_REPOS[@]} -gt 0 ]; then
-  # 检查 SSH 连通性
-  GIT_HOST=$(echo "$GIT_BASE" | sed 's/.*@//;s/[:/].*//')
-  info "检查 SSH 连接 ($GIT_HOST)..."
-  if ssh -T -o ConnectTimeout=5 -o StrictHostKeyChecking=no "git@$GIT_HOST" 2>&1 | grep -qi "welcome\|success\|authenticated"; then
-    ok "SSH 连接正常"
-  else
-    warn "SSH 连接失败，请先配置 SSH 公钥："
-    echo ""
-    echo "  1. 生成密钥（如果没有）:"
-    echo "     ssh-keygen -t ed25519 -C \"your_email@yamibuy.com\""
-    echo ""
-    echo "  2. 复制公钥:"
-    echo "     cat ~/.ssh/id_ed25519.pub"
-    echo ""
-    echo "  3. 添加到 GitLab:"
-    echo "     打开 https://$GIT_HOST → 头像 → Preferences → SSH Keys → 粘贴公钥"
-    echo ""
-    echo "  4. 验证:"
-    echo "     ssh -T git@$GIT_HOST"
-    echo ""
-    read -rp "  配置好后按回车继续，或输入 skip 跳过代码拉取: " SSH_ACTION
-    if [ "$SSH_ACTION" = "skip" ]; then
-      warn "跳过代码拉取，后续需手动 clone"
-      P_REPOS=()
-    fi
-  fi
-fi
-
 if [ ${#P_REPOS[@]} -eq 0 ]; then
   echo "  ℹ️  $PROFILE profile 无需拉取代码仓库"
 else
