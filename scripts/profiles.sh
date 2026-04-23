@@ -27,7 +27,7 @@ DEV_DEFAULT_AGENT="orchestrator-agent"
 CS_DEFAULT_AGENT="cs-troubleshooter"
 OPS_DEFAULT_AGENT="alert-advisor"
 
-BASE_SKILLS=(notify-wecom)
+BASE_SKILLS=()
 BASE_AGENTS=()
 BASE_MCPS=()
 BASE_STEERING=(global_guide.md product.md projects.md)
@@ -35,7 +35,7 @@ BASE_HOOKS=()
 
 # ── dev ──────────────────────────────────────────────────────
 DEV_SKILLS=(
-  wecom-memory wecom-scheduler manage-openproject
+  notify-wecom wecom-memory wecom-scheduler manage-openproject
   code-module-analyzer java-spock-unit-test wirte-java-unit-test
   api-test idp-deploy release-doc-generator dev-doc-generator
   code-branch-diff yamibuy-order-flow yami-public-toolkit
