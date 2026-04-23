@@ -13,6 +13,8 @@ import { parseCommand, handleCommand } from './commands.js';
 const log = getLogger('Bridge');
 
 export class Bridge {
+  private streamLocks = new Map<string, Promise<void>>();
+
   constructor(
     private platform: IMessagePlatform,
     private sessionManager: SessionManager,
@@ -29,6 +31,14 @@ export class Bridge {
   }
 
   private async handleMessage(msg: IncomingMessage) {
+    const { chatId } = msg;
+    // Per-chatId stream lock: serialize from 🤔 to finish to prevent interleaving
+    const prev = this.streamLocks.get(chatId) ?? Promise.resolve();
+    const current = prev.then(() => this.doHandleMessage(msg)).catch(() => {});
+    this.streamLocks.set(chatId, current);
+  }
+
+  private async doHandleMessage(msg: IncomingMessage) {
     const { chatId, reqId, chatType } = msg;
     let streamId = '';
 
