@@ -20,12 +20,13 @@ export class SingleAgentRouter extends IAgentRouter {
     yield* this.proc.prompt(this.proc.sessionId!, content);
   }
 
-  async switchAgent(agentName: string): Promise<void> {
+  async switchAgent(agentName: string, spawnOpts?: AgentSpawnOptions): Promise<void> {
     log.info(`Switching agent to ${agentName}`);
     await this.proc.kill();
-    const newOpts = { ...this.spawnOptions, command: agentName };
+    const newOpts = spawnOpts ?? { ...this.spawnOptions, command: agentName };
+    this.spawnOptions = newOpts;
     this.proc = await this.provider.spawn(newOpts);
-    await this.proc.createSession(this.spawnOptions.cwd);
+    await this.proc.createSession(newOpts.cwd);
   }
 
   async setMode(_mode: string): Promise<void> {

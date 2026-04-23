@@ -28,6 +28,15 @@ export class ManagedSession {
 
   get alive() { return this.router.alive; }
   get sessionId() { return this.router.sessionId; }
+  get workDir() { return this.opts.workDir; }
+
+  async switchAgent(name: string, spawnOpts: import('../agent/types.js').AgentSpawnOptions): Promise<void> {
+    log.info(`Switching agent for ${this.chatId} to ${name}`);
+    await this.router.switchAgent(name, spawnOpts);
+    this.bytes = 0;
+    this.turns = 0;
+    this.firstMsg = false; // /agent: don't inject history on clean switch
+  }
 
   async send(content: PromptContent[], onChunk: (chunk: AgentChunk) => Promise<void>): Promise<void> {
     await this.queue.enqueue(async () => {

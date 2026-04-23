@@ -2,7 +2,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import pino from 'pino';
 import { IMemoryRecycler } from './types.js';
-import type { IAgentProvider } from '../agent/types.js';
+import type { IAgentProvider, AgentSpawnOptions } from '../agent/types.js';
 
 const log = pino({ name: 'AcpMemoryRecycler' });
 
@@ -21,29 +21,28 @@ const RECYCLE_PROMPT = (sessionFilePath: string) =>
 请直接输出总结内容，不要包含其他说明。`;
 
 export class AcpMemoryRecycler extends IMemoryRecycler {
+  private sessionBaseDir: string;
+
   constructor(
     private agentProvider: IAgentProvider,
-    private cwd: string,
+    private agentSpawnOpts: AgentSpawnOptions,
+    sessionBaseDir?: string,
   ) {
     super();
+    this.sessionBaseDir = sessionBaseDir ?? join(homedir(), '.kiro', 'sessions', 'cli');
   }
 
   async summarize(_chatId: string, sessionId: string): Promise<string> {
-    const sessionPath = join(homedir(), '.kiro', 'sessions', 'cli', `${sessionId}.jsonl`);
+    const sessionPath = join(this.sessionBaseDir, `${sessionId}.jsonl`);
     log.info(`Summarizing session ${sessionId} from ${sessionPath}`);
 
-    const proc = await this.agentProvider.spawn({
-      command: 'kiro-cli',
-      args: ['acp', '--trust-all-tools'],
-      cwd: this.cwd,
-    });
+    const proc = await this.agentProvider.spawn(this.agentSpawnOpts);
 
     try {
-      const sid = await proc.createSession(this.cwd);
-      const prompt = RECYCLE_PROMPT(sessionPath);
+      const sid = await proc.createSession(this.agentSpawnOpts.cwd);
       let result = '';
 
-      for await (const chunk of proc.prompt(sid, [{ type: 'text', text: prompt }])) {
+      for await (const chunk of proc.prompt(sid, [{ type: 'text', text: RECYCLE_PROMPT(sessionPath) }])) {
         if (chunk.type === 'text') result += chunk.text;
         if (chunk.type === 'done') break;
       }

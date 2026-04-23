@@ -49,6 +49,7 @@ export class Bridge {
             chatId,
             session,
             sessionManager: this.sessionManager,
+            config: this.config,
             reply: (t) => this.platform.sendMessage(chatId, t, chatType),
           }, parsed.cmd, parsed.args);
           return;

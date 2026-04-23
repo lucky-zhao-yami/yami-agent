@@ -62,7 +62,12 @@ async function main() {
 
   // Memory
   const layers = [new ConversationMemoryLayer(config.env)];
-  const recycler = new AcpMemoryRecycler(agentProvider, config.env.WORK_DIR);
+  const recycler = new AcpMemoryRecycler(agentProvider, {
+    command: config.bot.agent.command,
+    args: config.bot.agent.args,
+    cwd: config.env.WORK_DIR,
+    env: config.bot.agent.env,
+  });
   const memoryManager = new MemoryManager(layers, recycler);
 
   const sessionManager = new SessionManager(agentProvider, config, memoryManager);

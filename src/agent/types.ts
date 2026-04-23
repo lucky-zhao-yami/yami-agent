@@ -32,7 +32,7 @@ export abstract class IAgentProvider {
 
 export abstract class IAgentRouter {
   abstract handle(content: PromptContent[]): AsyncIterable<AgentChunk>;
-  abstract switchAgent(agentName: string): Promise<void>;
+  abstract switchAgent(agentName: string, spawnOpts?: AgentSpawnOptions): Promise<void>;
   abstract setMode(mode: string): Promise<void>;
   abstract readonly availableModes: string[];
   abstract readonly sessionId: string | null;
