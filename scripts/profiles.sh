@@ -21,6 +21,12 @@ BIZ_REPOS=(
 DEV_REPOS=("${BIZ_REPOS[@]}" kiro-wecom-bridge)
 CS_REPOS=("${BIZ_REPOS[@]}")
 OPS_REPOS=()
+
+# 默认 agent（用于 config.json 的 chats.default）
+DEV_DEFAULT_AGENT="orchestrator-agent"
+CS_DEFAULT_AGENT="cs-troubleshooter"
+OPS_DEFAULT_AGENT="alert-advisor"
+
 BASE_SKILLS=(notify-wecom wecom-memory wecom-scheduler manage-openproject)
 BASE_AGENTS=(orchestrator-agent)
 BASE_MCPS=(memory openproject kiro-bridge)

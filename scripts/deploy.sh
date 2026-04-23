@@ -228,6 +228,7 @@ echo ""
 info "Step 6: 生成配置文件"
 
 # config.json
+eval 'DEFAULT_AGENT="${'"${PROFILE_UPPER}"'_DEFAULT_AGENT:-orchestrator-agent}"'
 IFS=' ' read -ra ARGS_ARR <<< "acp --trust-all-tools"
 ARGS_JSON=$(printf '%s\n' "${ARGS_ARR[@]}" | jq -R . | jq -s .)
 
