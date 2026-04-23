@@ -34,7 +34,7 @@ DEV_HOOKS=(
 )
 
 # ── cs ───────────────────────────────────────────────────────
-CS_SKILLS=(sql-query kibana-logs business-knowledge)
+CS_SKILLS=(cs-knowledge sql-query kibana-logs business-knowledge)
 CS_AGENTS=(sql-query)
 CS_MCPS=(sql-query kibana zentao)
 CS_STEERING=()
