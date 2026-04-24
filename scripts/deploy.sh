@@ -370,10 +370,23 @@ echo "  + yami-agent.service"
 
 ok "启动脚本生成完成"
 
-# ── Step 9: 启动 yami-agent ──────────────────────────────────
+# ── Step 9: 安装并启动 yami-agent ─────────────────────────────
 echo ""
-info "Step 9: 启动 yami-agent"
-bash "$WORK_DIR/restart.sh"
+info "Step 9: 安装并启动 yami-agent"
+cp "$WORK_DIR/yami-agent.service" /etc/systemd/system/ 2>/dev/null && {
+  systemctl daemon-reload
+  systemctl enable --now yami-agent
+  sleep 5
+  if systemctl is-active --quiet yami-agent; then
+    ok "yami-agent 已通过 systemd 启动"
+  else
+    warn "systemd 启动失败，回退到 restart.sh"
+    bash "$WORK_DIR/restart.sh"
+  fi
+} || {
+  info "非 systemd 环境，使用 restart.sh 启动"
+  bash "$WORK_DIR/restart.sh"
+}
 
 # ── 完成 ─────────────────────────────────────────────────────
 echo ""
