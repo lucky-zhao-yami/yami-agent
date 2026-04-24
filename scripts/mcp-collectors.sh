@@ -104,10 +104,51 @@ collect_mcp() {
     fi
 
     if [ -z "$val" ]; then
-      warn "$key 为空，跳过此 MCP"
-      return
+      if [ -n "$default" ]; then
+        val="$default"
+      else
+        warn "$key 为空，跳过此 MCP"
+        return
+      fi
     fi
     env_json=$(echo "$env_json" | jq --arg k "$key" --arg v "$val" '. + {($k): $v}')
+  done
+
+  # 处理 credentials_files（粘贴内容并保存为文件）
+  local cred_files
+  cred_files=$(jq -r ".\"$mcp_id\".credentials_files // empty | keys[]" "$REGISTRY" 2>/dev/null)
+  for file_path_tpl in $cred_files; do
+    local file_path prompt
+    file_path=$(expand_vars "$file_path_tpl")
+    prompt=$(jq -r ".\"$mcp_id\".credentials_files.\"$file_path_tpl\".prompt" "$REGISTRY")
+
+    if [ -f "$file_path" ]; then
+      echo "  ✓ $file_path 已存在，跳过"
+      continue
+    fi
+
+    echo "  $prompt:"
+    local content=""
+    local empty_count=0
+    while IFS= read -r line; do
+      if [ -z "$line" ]; then
+        empty_count=$((empty_count + 1))
+        [ "$empty_count" -ge 1 ] && [ -n "$content" ] && break
+      else
+        empty_count=0
+      fi
+      content="${content}${line}"$'\n'
+    done
+
+    if [ -z "$content" ]; then
+      warn "内容为空，跳过"
+      return
+    fi
+
+    mkdir -p "$(dirname "$file_path")"
+    echo "$content" > "$file_path"
+    chmod 600 "$file_path"
+    echo "  ✓ 已保存到 $file_path"
   done
 
   MCP_ENABLED=1

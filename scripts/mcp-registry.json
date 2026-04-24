@@ -53,8 +53,12 @@
     "command": "uvx",
     "args": ["mcp-google-sheets@latest"],
     "env": {
-      "CREDENTIALS_PATH": { "prompt": "GCP OAuth credentials 文件路径" },
-      "TOKEN_PATH": { "prompt": "Google token 文件路径" }
+      "CREDENTIALS_PATH": { "value": "{WORK_DIR}/.kiro/gcp-oauth.keys.json" },
+      "TOKEN_PATH": { "value": "{WORK_DIR}/.kiro/gcp-token.json" }
+    },
+    "credentials_files": {
+      "{WORK_DIR}/.kiro/gcp-oauth.keys.json": { "prompt": "粘贴 GCP OAuth credentials JSON (粘贴完按两次回车)", "paste": true },
+      "{WORK_DIR}/.kiro/gcp-token.json": { "prompt": "粘贴 Google token JSON (粘贴完按两次回车)", "paste": true }
     }
   },
   "google-docs": {
@@ -62,8 +66,8 @@
     "command": "uvx",
     "args": ["mcp-google-docs@latest"],
     "env": {
-      "CREDENTIALS_PATH": { "prompt": "GCP OAuth credentials 文件路径" },
-      "TOKEN_PATH": { "prompt": "Google token 文件路径" }
+      "CREDENTIALS_PATH": { "value": "{WORK_DIR}/.kiro/gcp-oauth.keys.json" },
+      "TOKEN_PATH": { "value": "{WORK_DIR}/.kiro/gcp-token.json" }
     }
   },
   "zentao": {
@@ -85,7 +89,7 @@
     "env": {
       "DB_HOST": { "prompt": "数据库地址" },
       "DB_PORT": { "prompt": "数据库端口", "default": "3306" },
-      "DB_NAME": { "prompt": "数据库名" },
+      "DB_NAME": { "prompt": "数据库名 (可选，回车跳过)", "default": "" },
       "DB_USER": { "prompt": "数据库用户" },
       "DB_PASSWORD": { "prompt": "数据库密码", "secret": true },
       "SQL_MCP_DATA_DIR": { "value": "" }
