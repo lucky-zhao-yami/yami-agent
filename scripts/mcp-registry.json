@@ -1,7 +1,6 @@
 {
   "memory": {
     "name": "Memory",
-    "auto": true,
     "install": { "type": "npm", "package": "@modelcontextprotocol/server-memory" },
     "command": "node",
     "args": ["{WORK_DIR}/node_modules/@modelcontextprotocol/server-memory/dist/index.js"],
@@ -12,7 +11,6 @@
   },
   "kiro-bridge": {
     "name": "Kiro Bridge",
-    "auto": true,
     "command": "python3",
     "args": ["{CODE_DIR}/kiro-wecom-bridge/mcp_server.py"],
     "env": {
@@ -86,6 +84,7 @@
     "name": "SQL Query",
     "command": "uvx",
     "args": ["--index-url", "https://nexus.yamibuy.net/repository/pypi-public/simple/", "yami-sql-mcp"],
+    "env_order": ["DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD", "SQL_MCP_DATA_DIR"],
     "env": {
       "DB_HOST": { "prompt": "数据库地址" },
       "DB_PORT": { "prompt": "数据库端口", "default": "3306" },

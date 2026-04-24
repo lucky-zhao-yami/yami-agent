@@ -77,7 +77,8 @@ collect_mcp() {
 
   # 收集需要用户输入的 env 变量
   local env_keys env_json="{}"
-  env_keys=$(jq -r ".\"$mcp_id\".env | keys[]" "$REGISTRY")
+  # 优先用 env_order（保证交互顺序），fallback 到 keys（字母序）
+  env_keys=$(jq -r ".\"$mcp_id\".env_order // (.\"$mcp_id\".env | keys) | .[]" "$REGISTRY")
 
   for key in $env_keys; do
     local prompt default secret value_tpl val
