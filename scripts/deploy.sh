@@ -273,7 +273,7 @@ echo "  + .env"
 {
   echo '{ "mcpServers": {'
   for i in "${!MCP_CONFIGS[@]}"; do
-    local mcp_id="${MCP_CONFIGS[$i]}"
+    mcp_id="${MCP_CONFIGS[$i]}"
     echo "  \"$mcp_id\":"
     cat "/tmp/mcp_${mcp_id}.json"
     [ "$i" -lt $((${#MCP_CONFIGS[@]} - 1)) ] && echo ","
@@ -290,7 +290,7 @@ ok "配置文件生成完成"
 # ── Step 7: 构建 yami-agent ──────────────────────────────────
 echo ""
 info "Step 7: 构建 yami-agent"
-cd "$CODE_DIR/yami-agent"
+cd "$PROJECT_DIR"
 npm install --silent 2>&1
 npm run build --silent 2>&1
 ok "yami-agent 构建完成"
@@ -335,7 +335,7 @@ for i in $(seq 1 15); do
 done
 echo "✅ yami-agent 已启动 (PID: $(cat $PID_FILE))"
 EOFR
-sed -i "s|AGENT_DIR_PLACEHOLDER|$CODE_DIR/yami-agent|" "$WORK_DIR/restart.sh"
+sed -i "s|AGENT_DIR_PLACEHOLDER|$PROJECT_DIR|" "$WORK_DIR/restart.sh"
 chmod +x "$WORK_DIR/restart.sh"
 echo "  + restart.sh"
 
@@ -349,7 +349,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=$WORK_DIR
-ExecStart=$NODE_PATH --env-file=$WORK_DIR/.env $CODE_DIR/yami-agent/dist/watchdog/watchdog.js
+ExecStart=$NODE_PATH --env-file=$WORK_DIR/.env $PROJECT_DIR/dist/watchdog/watchdog.js
 Restart=on-failure
 RestartSec=5
 
@@ -371,7 +371,7 @@ echo "  工作空间:     $WORK_DIR"
 echo "  代码目录:     $CODE_DIR"
 echo "  Skills:      ${#P_SKILLS[@]} 个"
 echo "  Agents:      ${#P_AGENTS[@]} 个"
-echo "  MCPs:        ${#MCP_FRAGMENTS[@]} 个"
+echo "  MCPs:        ${#MCP_CONFIGS[@]} 个"
 echo ""
 echo "  启动:        $WORK_DIR/restart.sh"
 echo "  查看日志:     tail -f $WORK_DIR/yami-agent.log"
