@@ -360,6 +360,11 @@ echo "  + yami-agent.service"
 
 ok "启动脚本生成完成"
 
+# ── Step 9: 启动 yami-agent ──────────────────────────────────
+echo ""
+info "Step 9: 启动 yami-agent"
+bash "$WORK_DIR/restart.sh"
+
 # ── 完成 ─────────────────────────────────────────────────────
 echo ""
 echo "╔══════════════════════════════════════════╗"
@@ -373,7 +378,7 @@ echo "  Skills:      ${#P_SKILLS[@]} 个"
 echo "  Agents:      ${#P_AGENTS[@]} 个"
 echo "  MCPs:        ${#MCP_CONFIGS[@]} 个"
 echo ""
-echo "  启动:        $WORK_DIR/restart.sh"
+echo "  重启:        $WORK_DIR/restart.sh"
 echo "  查看日志:     tail -f $WORK_DIR/yami-agent.log"
 echo "  systemd:     sudo cp $WORK_DIR/yami-agent.service /etc/systemd/system/"
 echo "               sudo systemctl enable --now yami-agent"
