@@ -358,6 +358,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=$WORK_DIR
+Environment="PATH=/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ExecStart=$NODE_PATH --env-file=$WORK_DIR/.env $PROJECT_DIR/dist/watchdog/watchdog.js
 Restart=on-failure
 RestartSec=5
