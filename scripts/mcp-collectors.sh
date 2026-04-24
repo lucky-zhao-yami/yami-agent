@@ -84,10 +84,10 @@ collect_mcp() {
     prompt=$(jq -r ".\"$mcp_id\".env.\"$key\".prompt // empty" "$REGISTRY")
     default=$(jq -r ".\"$mcp_id\".env.\"$key\".default // empty" "$REGISTRY")
     secret=$(jq -r ".\"$mcp_id\".env.\"$key\".secret // false" "$REGISTRY")
-    value_tpl=$(jq -r ".\"$mcp_id\".env.\"$key\".value // empty" "$REGISTRY")
+    value_tpl=$(jq -r ".\"$mcp_id\".env.\"$key\".value // \"__UNSET__\"" "$REGISTRY")
 
-    # 固定值，不需要交互
-    if [ -n "$value_tpl" ]; then
+    # 固定值（包括空字符串），不需要交互
+    if [ "$value_tpl" != "__UNSET__" ]; then
       val=$(expand_vars "$value_tpl")
       env_json=$(echo "$env_json" | jq --arg k "$key" --arg v "$val" '. + {($k): $v}')
       continue
