@@ -64,7 +64,13 @@ DEV_HOOKS=(
 CS_SKILLS=(cs-knowledge sql-query kibana-logs zentao manage-openproject central-login api-fetch)
 CS_AGENTS=(cs-troubleshooter sql-query)
 CS_MCPS=(sql-query google-sheets google-docs)
-CS_STEERING=(cs-global-config.md cs-yami-skills.md sub-agent-guide.md skills-path-find-guide.md)
+CS_STEERING=(
+  cs-global-config.md cs-yami-skills.md sub-agent-guide.md skills-path-find-guide.md
+  cs-account-login.md cs-bind-phone.md cs-coupon.md cs-email-notification.md
+  cs-follow-buy.md cs-giftcard.md cs-invite-friend.md cs-language.md
+  cs-logistics.md cs-member-rights.md cs-order.md cs-payment-refund.md
+  cs-profile-edit.md cs-query-rules.md cs-rma.md cs-tax.md
+)
 CS_HOOKS=(check-steering-first.kiro.hook)
 
 # ── ops ──────────────────────────────────────────────────────
