@@ -77,16 +77,14 @@ yami-origin: central-web
 - `body.data[].order_amount` → 订单金额
 - `body.recordsFiltered` → 匹配记录数
 
-**PowerShell 调用示例：**
-```powershell
-$headers = @{
-  "Content-Type" = "application/json"
-  "token" = "{TOKEN}"
-  "yami-origin" = "central-web"
-}
-$body = '{"keyword":"","tag":"","tag_key":"","points_from":"","points_to":"","status":"","order":{"orderColumn":"customer_id","orderRule":"desc"},"pageSize":15,"startColumn":0,"draw":1,"user_id":"","allowTimeOut":1,"token":"{TOKEN}","email":"{EMAIL}","tagUserCount":""}'
-$resp = Invoke-RestMethod -Uri "https://centralapi.yamibuy.net/customer/customers/search" -Method POST -Headers $headers -Body $body
-$resp | ConvertTo-Json -Depth 10
+**调用示例：**
+```bash
+curl -s -X POST https://centralapi.yamibuy.net/customer/customers/search \
+  -H "Content-Type: application/json" \
+  -H "token: ${TOKEN}" \
+  -H "yami-origin: central-web" \
+  -d '{"keyword":"","tag":"","tag_key":"","points_from":"","points_to":"","status":"","order":{"orderColumn":"customer_id","orderRule":"desc"},"pageSize":15,"startColumn":0,"draw":1,"user_id":"","allowTimeOut":1,"token":"'"${TOKEN}"'","email":"要查询的邮箱","tagUserCount":""}' \
+  | python3 -m json.tool
 ```
 
 ### 2. 通过 user_id 查询用户邮箱
