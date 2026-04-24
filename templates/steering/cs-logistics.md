@@ -1,5 +1,5 @@
 ﻿---
-inclusion: manual
+inclusion: auto
 ---
 
 # 物流与配送问题 - 客服排查规则

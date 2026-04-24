@@ -1,5 +1,5 @@
 ﻿---
-inclusion: manual
+inclusion: auto
 ---
 
 # 支付与退款问�?- 客服排查规则

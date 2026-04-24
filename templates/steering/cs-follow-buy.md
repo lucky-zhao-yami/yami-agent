@@ -1,5 +1,5 @@
 ﻿---
-inclusion: manual
+inclusion: auto
 ---
 
 # 跟买与砍单问�?- 客服排查规则

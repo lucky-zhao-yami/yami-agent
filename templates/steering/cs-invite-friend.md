@@ -1,5 +1,5 @@
 ﻿---
-inclusion: manual
+inclusion: auto
 ---
 
 # 邀请好友活�?- 客服排查规则

@@ -1,5 +1,5 @@
 ﻿---
-inclusion: manual
+inclusion: auto
 ---
 
 # RMA 售后问题 - 客服排查规则
