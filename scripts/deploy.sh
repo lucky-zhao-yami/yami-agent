@@ -53,11 +53,15 @@ echo ""
 # ── Step 0: 检查前置依赖 ─────────────────────────────────────
 info "检查前置依赖..."
 MISSING=()
-for cmd in git node npm python3 jq; do
+for cmd in git node npm python3 jq unzip; do
   command -v "$cmd" &>/dev/null || MISSING+=("$cmd")
 done
 if ! command -v kiro-cli &>/dev/null; then
-  fail "kiro-cli 未安装。请先安装: https://kiro.dev/docs/install"
+  info "kiro-cli 未安装，正在安装..."
+  curl -fsSL https://cli.kiro.dev/install | bash
+  export PATH="$HOME/.local/bin:$PATH"
+  command -v kiro-cli &>/dev/null || fail "kiro-cli 安装失败"
+  ok "kiro-cli $(kiro-cli --version) 已安装"
 fi
 if [ ${#MISSING[@]} -gt 0 ]; then
   fail "缺少依赖: ${MISSING[*]}"
