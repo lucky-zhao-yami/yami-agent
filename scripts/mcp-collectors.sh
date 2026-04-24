@@ -94,6 +94,9 @@ collect_mcp() {
     fi
 
     # 交互式收集
+    local optional
+    optional=$(jq -r ".\"$mcp_id\".env.\"$key\".optional // false" "$REGISTRY")
+
     if [ "$secret" = "true" ]; then
       read -rsp "  $prompt: " val; echo
     elif [ -n "$default" ]; then
@@ -104,8 +107,9 @@ collect_mcp() {
     fi
 
     if [ -z "$val" ]; then
-      if [ -n "$default" ]; then
-        val="$default"
+      if [ "$optional" = "true" ]; then
+        env_json=$(echo "$env_json" | jq --arg k "$key" --arg v "" '. + {($k): $v}')
+        continue
       else
         warn "$key 为空，跳过此 MCP"
         return

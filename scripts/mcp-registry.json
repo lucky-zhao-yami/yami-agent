@@ -89,7 +89,7 @@
     "env": {
       "DB_HOST": { "prompt": "数据库地址" },
       "DB_PORT": { "prompt": "数据库端口", "default": "3306" },
-      "DB_NAME": { "prompt": "数据库名 (可选，回车跳过)", "default": "" },
+      "DB_NAME": { "prompt": "数据库名 (可选，回车跳过)", "optional": true },
       "DB_USER": { "prompt": "数据库用户" },
       "DB_PASSWORD": { "prompt": "数据库密码", "secret": true },
       "SQL_MCP_DATA_DIR": { "value": "" }
