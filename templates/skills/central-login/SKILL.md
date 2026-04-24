@@ -22,8 +22,8 @@ Content-Type: application/json
 ### 请求体
 ```json
 {
-  "email": "admin.fp",
-  "password": "yami@123"
+  "email": "${CENTRAL_EMAIL}",
+  "password": "${CENTRAL_PASSWORD}"
 }
 ```
 
@@ -47,7 +47,7 @@ Token 在 `body.token` 字段中。
 3. 如果 token 过期或不存在，执行登录获取新 token：
 
 ```powershell
-$body = '{"email":"admin.fp","password":"yami@123"}'
+$body = '{"email":"' + $env:CENTRAL_EMAIL + '","password":"' + $env:CENTRAL_PASSWORD + '"}'
 $resp = Invoke-RestMethod -Uri "https://centralapi.yamibuy.net/hub/admin/login" -Method POST -Headers @{"Content-Type"="application/json"} -Body $body
 $resp.body.token
 ```
@@ -81,9 +81,9 @@ $resp.body.token
 # 登录获取 token
 TOKEN=$(curl -s -X POST https://centralapi.yamibuy.net/hub/admin/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin.fp","password":"yami@123"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['body']['token'])")
+  -d '{"email":"'"${CENTRAL_EMAIL}"'","password":"'"${CENTRAL_PASSWORD}"'"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['body']['token'])")
 echo "Token: $TOKEN"
 
 # 写入缓存
-python3 -c "import json,datetime; json.dump({'token':'$TOKEN','obtained_at':datetime.datetime.now().isoformat(),'email':'admin.fp'}, open('.kiro/token-cache.json','w'))"
+python3 -c "import json,datetime; json.dump({'token':'$TOKEN','obtained_at':datetime.datetime.now().isoformat(),'email':'${CENTRAL_EMAIL}'}, open('.kiro/token-cache.json','w'))"
 ```

@@ -156,7 +156,7 @@ curl -s -X POST https://centralapi.yamibuy.net/customer/customers/search \
 ```bash
 TOKEN=$(curl -s -X POST https://centralapi.yamibuy.net/hub/admin/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin.fp","password":"yami@123"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['body']['token'])")
+  -d '{"email":"'"${CENTRAL_EMAIL}"'","password":"'"${CENTRAL_PASSWORD}"'"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['body']['token'])")
 ```
 
 ### 通过邮箱查询 user_id

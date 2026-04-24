@@ -92,6 +92,13 @@ WELCOME_MSG="${WELCOME_MSG:-👋 你好！我是 AI 助手}"
 read -rp "  HTTP 端口 [8900]: " PORT
 PORT="${PORT:-8900}"
 
+echo ""
+info "Step 1.6: Central API 凭证 (用于自动登录查询用户信息)"
+read -rp "  Central 账号 [admin.fp]: " CENTRAL_EMAIL
+CENTRAL_EMAIL="${CENTRAL_EMAIL:-admin.fp}"
+read -rsp "  Central 密码: " CENTRAL_PASSWORD; echo
+[ -z "$CENTRAL_PASSWORD" ] && warn "Central 密码为空，central-login skill 将无法自动登录"
+
 # ── Step 2: 拉取代码仓库 ─────────────────────────────────────
 echo ""
 info "Step 2: 拉取代码仓库"
@@ -266,6 +273,8 @@ PROMPT_TIMEOUT=300
 SESSION_SIZE_LIMIT=2097152
 MEMORY_SUMMARY_INTERVAL=30
 MEMORY_RECALL_DAYS=7
+CENTRAL_EMAIL=$CENTRAL_EMAIL
+CENTRAL_PASSWORD=$CENTRAL_PASSWORD
 EOFE
 echo "  + .env"
 
