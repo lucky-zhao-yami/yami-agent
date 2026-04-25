@@ -1,5 +1,6 @@
 ---
 name: kibana-logs
+inclusion: auto
 description: Elasticsearch/Kibana 日志查询工具，用于搜索 Yamibuy 微服务日志。支持按服务、关键词、订单号、错误级别等条件查询。
 ---
 
