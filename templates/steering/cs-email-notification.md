@@ -1,5 +1,5 @@
 ﻿---
-inclusion: auto
+inclusion: manual
 ---
 
 # 邮件与通知问题 - 客服排查规则

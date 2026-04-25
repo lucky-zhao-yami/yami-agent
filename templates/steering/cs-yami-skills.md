@@ -1,5 +1,5 @@
 ---
-inclusion: auto
+inclusion: manual
 ---
 
 # 可用 Skills（客服排查相关）

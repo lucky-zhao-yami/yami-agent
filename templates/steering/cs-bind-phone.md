@@ -1,5 +1,5 @@
 ---
-inclusion: auto
+inclusion: manual
 ---
 
 # 客服问题排查规则

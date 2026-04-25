@@ -1,5 +1,5 @@
 ﻿---
-inclusion: auto
+inclusion: manual
 ---
 
 # 优惠?折扣码问?- 客服排查规则

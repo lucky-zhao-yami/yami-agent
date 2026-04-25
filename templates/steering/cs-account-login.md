@@ -1,5 +1,5 @@
 ﻿---
-inclusion: auto
+inclusion: manual
 ---
 
 # 账户与登录问�?- 客服排查规则

@@ -1,5 +1,5 @@
 ﻿---
-inclusion: auto
+inclusion: manual
 ---
 
 # 税费问题 - 客服排查规则

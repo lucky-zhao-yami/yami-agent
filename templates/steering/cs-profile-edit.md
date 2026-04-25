@@ -1,5 +1,5 @@
 ---
-inclusion: auto
+inclusion: manual
 ---
 
 # 个人信息修改问题 - 客服排查规则

@@ -1,5 +1,5 @@
 ---
-inclusion: auto
+inclusion: manual
 ---
 
 # 语言规则 - 全局设置
