@@ -1,87 +1,71 @@
 ---
-name: "sql-query"
-description: "当需要查询数据库、查看表结构、确认字段类型和枚举值、验证数据时使用。触发词：sql, 数据库, 查询, mysql, 枚举, 表结构, 字段"
+inclusion: auto
 ---
 
-# 数据库查询
+# SQL 查询 Skill
 
-支持多环境的只读数据库查询能力。
+## 用途
+通过 mysql 命令行查询 Yamibuy 数据库，用于客服问题排查。只允许 SELECT 查询。
 
-## 环境配置
+## 数据库连接信息
+数据库凭证通过环境变量配置：
+- `DB_HOST`: 数据库地址
+- `DB_PORT`: 数据库端口（默认 3306）
+- `DB_USER`: 数据库用户
+- `DB_PASSWORD`: 数据库密码
 
-| 环境 | Host | .my.cnf 段 | 用途 |
-|------|------|-----------|------|
-| **生产从库**（默认） | rds.g3-slave.yamibuy.net | `[client]` | 查现有表结构、确认字段、验证数据 |
-| **UAT** | eks-uat-8-cluster...rds.amazonaws.com | `[client_uat]` | UAT 环境测试数据 |
-| **DEV** | eks-dev-8-cluster...rds.amazonaws.com | `[client_dev]` | 开发环境测试数据 |
-| **GQC** | eks-gqc-8-cluster...rds.amazonaws.com | `[client_gqc]` | GQC 测试环境数据 |
+## 查询方式
 
-凭据统一存储在 `~/.my.cnf`，不要在命令或对话中暴露密码。
-
-## 方式一：MCP 工具（推荐，默认连生产从库）
-
-### 可用工具
-
-| 工具 | 用途 |
-|------|------|
-| `execute_sql_query` | 执行 SELECT 查询（分页） |
-| `export_query_result` | 导出查询结果为 CSV |
-| `get_table_schema` | 获取表结构 |
-| `list_tables` | 列出所有表 |
-| `search_graph` | 搜索数据库知识图谱 |
-| `get_related` | 获取表的关联信息（字段、枚举值） |
-
-### 关键规则
-
-- **表名格式**：必须使用 `database.table` 格式（如 `yamibuy_so.ec_order`）
-- **时间戳**：数据库时间字段单位是秒（UNIX timestamp）
-- **只读**：仅支持 SELECT/SHOW/DESCRIBE
-- **分页**：不要自行添加 LIMIT，由工具自动处理
-
-### 标准查询流程
-
-```
-1. search_graph("关键词")     → 找到相关表
-2. get_related("表名", depth=2) → 获取字段、枚举值
-3. get_table_schema("表名")    → 确认字段类型和索引
-4. execute_sql_query("SQL")    → 执行查询
-```
-
-## 方式二：mysql 命令行（查测试环境时使用）
-
-当需要查询非生产环境时，通过 execute_bash 执行 mysql 命令：
-
+### 执行 SQL 查询
 ```bash
-# 生产从库（默认，~/.my.cnf [client] 段）
-mysql -e "SELECT ..." yamibuy_so
-
-# UAT 环境
-mysql --defaults-group-suffix=_uat -e "SELECT ..." yamibuy_so
-
-# DEV 环境
-mysql --defaults-group-suffix=_dev -e "SELECT ..." yamibuy_so
-
-# GQC 环境
-mysql --defaults-group-suffix=_gqc -e "SELECT ..." yamibuy_so
+mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" -p"${DB_PASSWORD}" -e "SQL语句" 数据库名
 ```
 
-凭据存储在 `~/.my.cnf` 中，不要在命令中包含明文密码。
+### 查询并格式化输出（推荐）
+```bash
+mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" -p"${DB_PASSWORD}" -t -e "SQL语句" 数据库名
+```
+`-t` 参数以表格形式输出，便于阅读。
+
+### 查看表结构
+```bash
+mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" -p"${DB_PASSWORD}" -e "SHOW CREATE TABLE 表名\G" 数据库名
+```
+
+### 查看表字段注释
+```bash
+mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" -p"${DB_PASSWORD}" -e "SELECT COLUMN_NAME, COLUMN_TYPE, COLUMN_COMMENT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='数据库名' AND TABLE_NAME='表名'" information_schema
+```
 
 ## 常用数据库
 
-| 数据库 | 内容 |
+| 数据库 | 用途 |
 |--------|------|
-| yamibuy_master | 主库（商品、供应商等） |
-| yamibuy_so | 订单相关 |
-| yamibuy_payment | 支付相关 |
-| yamibuy_customer | 客户相关 |
-| yamibuy_rma | 退货相关 |
+| `yamibuy` | 主库（订单、用户、商品等） |
+| `yamibuy_mkt` | 营销库（优惠券、活动等） |
+| `yamibuy_rma` | 退货库 |
+| `yamibuy_pay` | 支付库 |
+| `yamibuy_fp` | FP 库 |
 
-## SOP 中的使用场景
+## 安全规则
+- **只允许 SELECT 查询**，禁止 INSERT、UPDATE、DELETE、ALTER、DROP 等修改操作
+- 查询必须带 WHERE 条件或 LIMIT，禁止全表扫描
+- 大表查询必须加 LIMIT（默认 LIMIT 100）
+- 禁止查询密码、密钥等敏感字段的明文值
 
-| Phase | Agent | 用途 | 环境 |
-|-------|-------|------|------|
-| Phase 2 | Architect | 查现有表结构，设计 DDL | 生产从库 |
-| Phase 3 | Coder | 确认字段类型、枚举值，写 Mapper XML | 生产从库 |
-| Phase 3 | Reviewer | 验证 SQL 性能，检查索引 | 生产从库 |
-| Phase 3.5 | QA | 验证测试数据，确认集成测试结果 | 测试环境 |
+## 示例
+
+### 通过订单号查订单信息
+```bash
+mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" -p"${DB_PASSWORD}" -t -e "SELECT order_id, user_id, order_status, pay_status, shipping_status, add_time FROM so_order WHERE order_sn='2026040112345' LIMIT 1" yamibuy
+```
+
+### 通过 user_id 查用户信息
+```bash
+mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" -p"${DB_PASSWORD}" -t -e "SELECT user_id, user_name, email, mobile_phone, reg_time FROM xysc_users WHERE user_id=123456 LIMIT 1" yamibuy
+```
+
+### 查询邀请记录
+```bash
+mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" -p"${DB_PASSWORD}" -t -e "SELECT * FROM crm_invite WHERE user_id=123456 ORDER BY id DESC LIMIT 10" yamibuy
+```

@@ -99,6 +99,15 @@ CENTRAL_EMAIL="${CENTRAL_EMAIL:-admin.fp}"
 read -rsp "  Central 密码: " CENTRAL_PASSWORD; echo
 [ -z "$CENTRAL_PASSWORD" ] && warn "Central 密码为空，central-login skill 将无法自动登录"
 
+echo ""
+info "Step 1.7: 数据库凭证 (用于 SQL 查询排查问题)"
+read -rp "  数据库地址: " DB_HOST
+[ -z "$DB_HOST" ] && warn "DB_HOST 为空，sql-query skill 将无法使用"
+read -rp "  数据库端口 [3306]: " DB_PORT
+DB_PORT="${DB_PORT:-3306}"
+read -rp "  数据库用户: " DB_USER
+read -rsp "  数据库密码: " DB_PASSWORD; echo
+
 # ── Step 2: 拉取代码仓库 ─────────────────────────────────────
 echo ""
 info "Step 2: 拉取代码仓库"
@@ -275,6 +284,10 @@ MEMORY_SUMMARY_INTERVAL=30
 MEMORY_RECALL_DAYS=7
 CENTRAL_EMAIL=$CENTRAL_EMAIL
 CENTRAL_PASSWORD=$CENTRAL_PASSWORD
+DB_HOST=$DB_HOST
+DB_PORT=$DB_PORT
+DB_USER=$DB_USER
+DB_PASSWORD=$DB_PASSWORD
 EOFE
 echo "  + .env"
 
