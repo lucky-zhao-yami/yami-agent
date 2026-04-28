@@ -4,8 +4,8 @@ import { IAgentRouter, type IAgentProcess, type IAgentProvider, type AgentChunk,
 const log = getLogger('SingleAgentRouter');
 
 /**
- * Single-agent router — wraps one IAgentProcess, forwarding prompts directly.
- * switchAgent kills the current process and spawns a replacement.
+ * 单 Agent 路由 — 包装一个 IAgentProcess，直接转发 prompt。
+ * switchAgent 杀掉当前进程并启动替代进程。
  */
 export class SingleAgentRouter extends IAgentRouter {
   private _availableModes: string[] = [];

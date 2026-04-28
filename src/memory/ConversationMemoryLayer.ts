@@ -10,11 +10,11 @@ import type { EnvConfig } from '../config.js';
 const log = getLogger('ConversationMemoryLayer');
 
 /**
- * File-based memory layer — stores daily conversation summaries as markdown.
- * - recall(): reads memory/YYYY-MM-DD.md files within MEMORY_RECALL_DAYS
- * - onSummary(): appends summary to memory/{date}.md
- * - cleanup(): gzip-compresses files older than 30 days
- * - save(): no-op (raw conversation stored by ACP session itself)
+ * 基于文件的记忆层 — 按天存储对话摘要为 markdown。
+ * - recall(): 读取 MEMORY_RECALL_DAYS 内的 memory/YYYY-MM-DD.md
+ * - onSummary(): 追加摘要到 memory/{date}.md
+ * - cleanup(): gzip 压缩超过 30 天的文件
+ * - save(): 空实现（原始对话由 ACP session 自行存储）
  */
 export class ConversationMemoryLayer extends IMemoryLayer {
   readonly name = 'conversation';

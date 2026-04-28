@@ -1,32 +1,32 @@
-/** A component of a mixed message (text + image + voice + file). */
+/** 混合消息的子项（文本/图片/语音/文件）。 */
 export interface MixedItem {
   type: 'text' | 'image' | 'voice' | 'file';
-  /** Text or voice transcription content. */
+  /** 文本内容或语音转写文字。 */
   content?: string;
-  /** Media ID for image/file downloads. */
+  /** 图片/文件的媒体 ID，用于下载。 */
   mediaId?: string;
 }
 
-/** Parsed incoming message from the messaging platform. */
+/** 从消息平台解析出的用户消息。 */
 export interface IncomingMessage {
-  /** Chat identifier. DM: `dm_{userId}`, Group: platform chatId. */
+  /** 聊天标识。单聊: `dm_{userId}`，群聊: 平台 chatId。 */
   chatId: string;
-  /** Sender's user ID. */
+  /** 发送者用户 ID。 */
   userId: string;
   msgType: 'text' | 'image' | 'voice' | 'file' | 'mixed';
-  /** Extracted text content (for text/voice messages). */
+  /** 提取的文本内容（文本/语音消息）。 */
   text?: string;
-  /** Sub-items for mixed/image/file messages. */
+  /** 混合/图片/文件消息的子项列表。 */
   items?: MixedItem[];
-  /** Quoted/replied message text, if any. */
+  /** 引用/回复的消息文本。 */
   quote?: string;
-  /** Platform request ID, used for stream replies. */
+  /** 平台请求 ID，用于流式回复。 */
   reqId: string;
-  /** 1 = DM, 2 = group chat. */
+  /** 1 = 单聊, 2 = 群聊。 */
   chatType: number;
 }
 
-/** Platform-level event (user entering chat, disconnection, etc.). */
+/** 平台级事件（用户入群、断线等）。 */
 export interface PlatformEvent {
   type: 'enter_chat' | 'disconnected';
   chatId?: string;
@@ -34,38 +34,37 @@ export interface PlatformEvent {
 }
 
 /**
- * Abstract messaging platform interface.
- * Implementations handle connection, message dispatch, and media retrieval
- * for a specific platform (e.g. WeCom, Slack, Feishu).
+ * 消息平台抽象接口。
+ * 实现类负责特定平台（企微/飞书/Slack）的连接、消息收发和媒体下载。
  */
 export abstract class IMessagePlatform {
-  /** Establish connection to the platform. */
+  /** 建立平台连接。 */
   abstract connect(): Promise<void>;
-  /** Gracefully disconnect. */
+  /** 优雅断开连接。 */
   abstract disconnect(): Promise<void>;
-  /** Register handler for incoming user messages. */
+  /** 注册用户消息处理器。 */
   abstract onMessage(handler: (msg: IncomingMessage) => Promise<void>): void;
-  /** Register handler for platform events (enter_chat, etc.). */
+  /** 注册平台事件处理器（入群等）。 */
   abstract onEvent(handler: (evt: PlatformEvent) => Promise<void>): void;
-  /** Send a streaming reply segment. Set `finish=true` for the last segment. */
+  /** 发送流式回复片段。最后一段设 `finish=true`。 */
   abstract sendStream(reqId: string, streamId: string, content: string, finish: boolean): Promise<void>;
-  /** Send a standalone markdown message to a chat. */
+  /** 发送独立 markdown 消息到聊天。 */
   abstract sendMessage(chatId: string, content: string, chatType?: number): Promise<void>;
-  /** Send a welcome message in response to an enter_chat event. */
+  /** 响应入群事件发送欢迎语。 */
   abstract sendWelcome(reqId: string, text: string): Promise<void>;
-  /** Download media by ID. Returns raw bytes or null on failure. */
+  /** 按 ID 下载媒体文件，返回原始字节或 null。 */
   abstract getMedia(mediaId: string): Promise<Buffer | null>;
-  /** Request IDs that received 6000 errcode (stream conflict). */
+  /** 收到 6000 errcode（流冲突）的请求 ID 集合。 */
   abstract readonly failedReqIds: Set<string>;
 }
 
 /**
- * Abstract stream writer for sending chunked output to the platform.
- * @see StreamSegmenter for the WeCom implementation.
+ * 流式输出抽象接口。
+ * @see StreamSegmenter 企微实现。
  */
 export abstract class IStreamWriter {
-  /** Append a text chunk to the current stream. */
+  /** 追加文本块到当前流。 */
   abstract write(chunk: string): Promise<void>;
-  /** Finalize the stream, sending any buffered content. */
+  /** 结束流，发送缓冲区中的剩余内容。 */
   abstract finish(): Promise<void>;
 }

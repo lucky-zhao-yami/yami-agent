@@ -13,9 +13,9 @@ import { parseCommand, handleCommand } from './commands.js';
 const log = getLogger('Bridge');
 
 /**
- * Central message router — connects the messaging platform to agent sessions.
- * Handles: message extraction, injection detection, command parsing,
- * cold-start placeholder (🤔), streaming via StreamSegmenter, and per-chatId locking.
+ * 消息路由中枢 — 连接消息平台和 Agent 会话。
+ * 负责: 消息提取、注入检测、命令解析、冷启动占位（🤔）、
+ * 通过 StreamSegmenter 流式回复、per-chatId 串行锁。
  */
 export class Bridge {
   private streamLocks = new Map<string, Promise<void>>();

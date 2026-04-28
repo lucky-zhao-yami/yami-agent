@@ -11,9 +11,9 @@ import { getPreamble } from '../bridge/guard.js';
 const log = getLogger('ManagedSession');
 
 /**
- * Manages a single chat's agent session — message queuing, byte/turn tracking,
- * context injection, session rotation, and memory summarization.
- * One ManagedSession per chatId, owned by SessionManager.
+ * 单个聊天的 Agent 会话管理 — 消息排队、字节/轮数追踪、
+ * 上下文注入、会话轮换和记忆总结。
+ * 每个 chatId 一个实例，由 SessionManager 管理。
  */
 export class ManagedSession {
   private queue: MessageQueue;
@@ -45,7 +45,7 @@ export class ManagedSession {
     this.firstMsg = false; // /agent: don't inject history on clean switch
   }
 
-  /** Send a message through the agent, queued serially. Injects preamble + memory on first message. */
+  /** 发送消息给 Agent，串行排队。首条消息注入 preamble + 记忆上下文。 */
   async send(content: PromptContent[], onChunk: (chunk: AgentChunk) => Promise<void>): Promise<void> {
     try {
       await this.queue.enqueue(async () => {
@@ -91,7 +91,7 @@ export class ManagedSession {
     }
   }
 
-  /** Trigger memory summarization → create fresh session → reset counters. */
+  /** 触发记忆总结 → 创建新会话 → 重置计数器。 */
   async rotate(): Promise<void> {
     log.info(`Rotating session for ${this.chatId}, bytes=${this.bytes}, turns=${this.turns}`);
     await this.triggerSummarize();
@@ -101,7 +101,7 @@ export class ManagedSession {
     this.firstMsg = true;
   }
 
-  /** Save sessionId to disk for later loadSession recovery, then kill the process. */
+  /** 保存 sessionId 到磁盘（供下次 loadSession 恢复），然后杀掉进程。 */
   async recycle(): Promise<void> {
     log.info(`Recycling session for ${this.chatId}`);
     if (this.router.sessionId) {

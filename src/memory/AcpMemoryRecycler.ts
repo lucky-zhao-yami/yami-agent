@@ -21,9 +21,9 @@ const RECYCLE_PROMPT = (sessionFilePath: string) =>
 请直接输出总结内容，不要包含其他说明。`;
 
 /**
- * Spawns a temporary ACP agent process to summarize a session file.
- * The agent reads the session .jsonl file using its file-reading tools,
- * then produces a markdown summary. The temp process is killed after use.
+ * 启动临时 ACP Agent 进程来总结 session 文件。
+ * Agent 用文件读取工具读取 session .jsonl，生成 markdown 摘要。
+ * 临时进程用完即杀。
  */
 export class AcpMemoryRecycler extends IMemoryRecycler {
   private sessionBaseDir: string;

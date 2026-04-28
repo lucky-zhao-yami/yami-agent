@@ -1,80 +1,80 @@
-/** Options for spawning an ACP agent subprocess. */
+/** ACP Agent 子进程启动参数。 */
 export interface AgentSpawnOptions {
-  /** Executable command (e.g. "kiro-cli", "npx"). */
+  /** 可执行命令（如 "kiro-cli"、"npx"）。 */
   command: string;
-  /** Command arguments (e.g. ["acp", "--trust-all-tools"]). */
+  /** 命令参数（如 ["acp", "--trust-all-tools"]）。 */
   args: string[];
-  /** Working directory — agent discovers .kiro/ config here. */
+  /** 工作目录 — Agent 在此发现 .kiro/ 配置。 */
   cwd: string;
-  /** Extra environment variables inherited by the subprocess. */
+  /** 额外环境变量，继承给子进程。 */
   env?: Record<string, string>;
 }
 
-/** Content block sent to an agent prompt. */
+/** 发送给 Agent 的 prompt 内容块。 */
 export type PromptContent =
   | { type: 'text'; text: string }
   | { type: 'image'; data: string; mediaType: string };
 
-/** Streamed chunk from an agent response. */
+/** Agent 流式响应的数据块。 */
 export type AgentChunk =
   | { type: 'text'; text: string }
   | { type: 'tool_call'; title: string; status: string }
   | { type: 'done'; stopReason: string };
 
 /**
- * Abstract ACP agent process — manages a single agent subprocess.
- * Handles session lifecycle (create/load/prompt/cancel) over JSON-RPC.
+ * ACP Agent 进程抽象 — 管理单个 Agent 子进程。
+ * 通过 JSON-RPC 处理会话生命周期（创建/恢复/prompt/取消）。
  */
 export abstract class IAgentProcess {
-  /** Current ACP session ID, or null if no session is active. */
+  /** 当前 ACP session ID，无活跃会话时为 null。 */
   abstract readonly sessionId: string | null;
-  /** Whether the subprocess is still running. */
+  /** 子进程是否仍在运行。 */
   abstract readonly alive: boolean;
 
-  /** Initialize the ACP connection (handshake). */
+  /** 初始化 ACP 连接（握手）。 */
   abstract initialize(): Promise<void>;
-  /** Create a new session with the given working directory. */
+  /** 在指定工作目录创建新会话。 */
   abstract createSession(cwd: string): Promise<string>;
-  /** Restore a previously saved session by ID. */
+  /** 按 ID 恢复之前保存的会话。 */
   abstract loadSession(sessionId: string): Promise<void>;
-  /** Send a prompt and yield streamed response chunks. */
+  /** 发送 prompt 并 yield 流式响应块。 */
   abstract prompt(sessionId: string, content: PromptContent[]): AsyncIterable<AgentChunk>;
-  /** Cancel an in-progress prompt. */
+  /** 取消正在进行的 prompt。 */
   abstract cancel(sessionId: string): Promise<void>;
-  /** Kill the subprocess (SIGTERM → SIGKILL after 5s). */
+  /** 杀掉子进程（SIGTERM → 5s 后 SIGKILL）。 */
   abstract kill(): Promise<void>;
 }
 
-/** Factory for spawning agent processes. */
+/** Agent 进程工厂。 */
 export abstract class IAgentProvider {
-  /** Spawn and initialize a new agent process. */
+  /** 创建并初始化一个新的 Agent 进程。 */
   abstract spawn(options: AgentSpawnOptions): Promise<IAgentProcess>;
 }
 
 /**
- * Abstract agent router — indirection layer between ManagedSession and IAgentProcess.
- * Current implementation: SingleAgentRouter (1:1 wrapper).
- * Future: WorkflowAgentRouter (multi-agent orchestration).
+ * Agent 路由抽象 — ManagedSession 和 IAgentProcess 之间的间接层。
+ * 当前实现: SingleAgentRouter（1:1 包装）。
+ * 未来扩展: WorkflowAgentRouter（多 Agent 编排）。
  */
 export abstract class IAgentRouter {
-  /** Route a prompt to the active agent, yielding response chunks. */
+  /** 将 prompt 路由到活跃 Agent，yield 响应块。 */
   abstract handle(content: PromptContent[]): AsyncIterable<AgentChunk>;
-  /** Kill current agent, spawn a new one with the given name/options. */
+  /** 杀掉当前 Agent，用指定名称/参数启动新的。 */
   abstract switchAgent(agentName: string, spawnOpts?: AgentSpawnOptions): Promise<void>;
-  /** Switch the agent's operation mode (e.g. ask/code/architect). */
+  /** 切换 Agent 操作模式（如 ask/code/architect）。 */
   abstract setMode(mode: string): Promise<void>;
-  /** Available operation modes from the current agent. */
+  /** 当前 Agent 支持的操作模式列表。 */
   abstract readonly availableModes: string[];
-  /** Current ACP session ID. */
+  /** 当前 ACP session ID。 */
   abstract readonly sessionId: string | null;
-  /** Whether the underlying agent process is alive. */
+  /** 底层 Agent 进程是否存活。 */
   abstract readonly alive: boolean;
-  /** Cancel an in-progress prompt. */
+  /** 取消正在进行的 prompt。 */
   abstract cancel(sessionId: string): Promise<void>;
-  /** Create a fresh session on the current agent process. */
+  /** 在当前 Agent 进程上创建新会话。 */
   abstract createSession(): Promise<string>;
-  /** Restore a saved session on the current agent process. */
+  /** 在当前 Agent 进程上恢复已保存的会话。 */
   abstract loadSession(sessionId: string): Promise<void>;
-  /** Kill the underlying agent process. */
+  /** 杀掉底层 Agent 进程。 */
   abstract kill(): Promise<void>;
 }
