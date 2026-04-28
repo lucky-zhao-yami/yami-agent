@@ -10,6 +10,11 @@ import { getPreamble } from '../bridge/guard.js';
 
 const log = getLogger('ManagedSession');
 
+/**
+ * Manages a single chat's agent session — message queuing, byte/turn tracking,
+ * context injection, session rotation, and memory summarization.
+ * One ManagedSession per chatId, owned by SessionManager.
+ */
 export class ManagedSession {
   private queue: MessageQueue;
   private bytes = 0;
@@ -40,6 +45,7 @@ export class ManagedSession {
     this.firstMsg = false; // /agent: don't inject history on clean switch
   }
 
+  /** Send a message through the agent, queued serially. Injects preamble + memory on first message. */
   async send(content: PromptContent[], onChunk: (chunk: AgentChunk) => Promise<void>): Promise<void> {
     try {
       await this.queue.enqueue(async () => {
@@ -85,6 +91,7 @@ export class ManagedSession {
     }
   }
 
+  /** Trigger memory summarization → create fresh session → reset counters. */
   async rotate(): Promise<void> {
     log.info(`Rotating session for ${this.chatId}, bytes=${this.bytes}, turns=${this.turns}`);
     await this.triggerSummarize();
@@ -94,6 +101,7 @@ export class ManagedSession {
     this.firstMsg = true;
   }
 
+  /** Save sessionId to disk for later loadSession recovery, then kill the process. */
   async recycle(): Promise<void> {
     log.info(`Recycling session for ${this.chatId}`);
     if (this.router.sessionId) {

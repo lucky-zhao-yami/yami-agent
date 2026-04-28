@@ -11,6 +11,11 @@ import { ManagedSession } from './ManagedSession.js';
 const log = getLogger('SessionManager');
 const CLEANUP_INTERVAL = 60_000;
 
+/**
+ * Agent process pool — manages ManagedSession instances per chatId.
+ * Handles LRU eviction (MAX_PROCS), idle cleanup (IDLE_TIMEOUT),
+ * warm pool pre-spawning, and session restoration via loadSession.
+ */
 export class SessionManager {
   private sessions = new Map<string, ManagedSession>();
   private pending = new Map<string, Promise<ManagedSession>>();
@@ -25,7 +30,7 @@ export class SessionManager {
     this.cleanupTimer = setInterval(() => this.cleanupIdle(), CLEANUP_INTERVAL);
   }
 
-  /** Pre-warm N idle agent processes for faster cold start */
+  /** Pre-warm N idle agent processes for faster cold start. */
   async warmUp(count: number): Promise<void> {
     if (count <= 0) return;
     log.info(`Pre-warming ${count} agent processes`);
@@ -46,6 +51,7 @@ export class SessionManager {
     log.info(`Warm pool: ${this.warmPool.length} processes ready`);
   }
 
+  /** Get existing session or create a new one. Handles LRU eviction and session restoration. */
   async getOrCreate(chatId: string): Promise<ManagedSession> {
     if (/[\/\\]|\.\./.test(chatId)) throw new Error(`Invalid chatId: ${chatId}`);
 

@@ -3,6 +3,10 @@ import { IAgentRouter, type IAgentProcess, type IAgentProvider, type AgentChunk,
 
 const log = getLogger('SingleAgentRouter');
 
+/**
+ * Single-agent router — wraps one IAgentProcess, forwarding prompts directly.
+ * switchAgent kills the current process and spawns a replacement.
+ */
 export class SingleAgentRouter extends IAgentRouter {
   private _availableModes: string[] = [];
 

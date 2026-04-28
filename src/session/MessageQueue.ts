@@ -10,6 +10,11 @@ interface QueueItem<T = unknown> {
   reject: (reason: unknown) => void;
 }
 
+/**
+ * Per-session async task queue — ensures messages are processed serially.
+ * Each task runs with a configurable timeout; timeout rejects the promise
+ * but does NOT cancel the agent (caller is responsible for cancellation).
+ */
 export class MessageQueue {
   private queue: QueueItem[] = [];
   private running = false;

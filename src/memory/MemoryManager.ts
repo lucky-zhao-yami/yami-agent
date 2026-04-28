@@ -3,6 +3,13 @@ import type { IMemoryLayer, IMemoryRecycler, HistoryEntry } from './types.js';
 
 const log = getLogger('MemoryManager');
 
+/**
+ * Orchestrates multiple IMemoryLayer instances and the IMemoryRecycler.
+ * - recall(): merges context from all layers for prompt injection
+ * - save(): broadcasts conversation turns to all layers
+ * - summarize(): triggers recycler → broadcasts summary to all layers (per-chatId locked)
+ * - cleanup(): delegates old data cleanup to all layers
+ */
 export class MemoryManager {
   private summarizeLocks = new Map<string, Promise<void>>();
 

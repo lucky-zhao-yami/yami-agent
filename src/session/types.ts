@@ -1,5 +1,6 @@
 import type { AgentConfig } from '../config.js';
 
+/** Configuration for a ManagedSession instance. */
 export interface ManagedSessionOptions {
   chatId: string;
   agentConfig: AgentConfig;

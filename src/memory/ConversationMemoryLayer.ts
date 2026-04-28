@@ -9,6 +9,13 @@ import type { EnvConfig } from '../config.js';
 
 const log = getLogger('ConversationMemoryLayer');
 
+/**
+ * File-based memory layer — stores daily conversation summaries as markdown.
+ * - recall(): reads memory/YYYY-MM-DD.md files within MEMORY_RECALL_DAYS
+ * - onSummary(): appends summary to memory/{date}.md
+ * - cleanup(): gzip-compresses files older than 30 days
+ * - save(): no-op (raw conversation stored by ACP session itself)
+ */
 export class ConversationMemoryLayer extends IMemoryLayer {
   readonly name = 'conversation';
   private recallDays: number;

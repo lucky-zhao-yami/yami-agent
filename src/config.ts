@@ -53,6 +53,7 @@ export interface AppConfig {
   env: EnvConfig;
 }
 
+/** Load and validate app config from {WORK_DIR}/config.json + .env */
 export function loadConfig(): AppConfig {
   const workDir = process.env['WORK_DIR'] || '/mnt/d/workspace/all';
   const configPath = resolve(workDir, 'config.json');
@@ -62,6 +63,7 @@ export function loadConfig(): AppConfig {
   return { bot, env };
 }
 
+/** Resolve chat-specific config by chatId, falling back to 'default'. */
 export function getChatConfig(config: AppConfig, chatId: string): ChatConfig & { agent: AgentConfig } {
   const chat = config.bot.chats[chatId] ?? config.bot.chats['default'] ?? { mode: 'full' as const };
   return { ...chat, agent: chat.agent ?? config.bot.agent };

@@ -9,6 +9,11 @@ import { AsyncQueue } from '../../utils.js';
 
 const log = getLogger('AcpAgentProcess');
 
+/**
+ * ACP agent subprocess — communicates via stdin/stdout JSON-RPC (ndjson).
+ * Uses @agentclientprotocol/sdk ClientSideConnection for protocol handling.
+ * Implements trust-all permission model and filesystem access delegation.
+ */
 export class AcpAgentProcess extends IAgentProcess {
   private proc: ChildProcess | null = null;
   private conn: acp.ClientSideConnection | null = null;
