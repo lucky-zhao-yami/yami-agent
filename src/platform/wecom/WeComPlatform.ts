@@ -232,7 +232,7 @@ export class WeComPlatform extends IMessagePlatform {
     let msg: Record<string, unknown>;
     try {
       if (Buffer.isBuffer(raw)) {
-        try { msg = JSON.parse(raw.toString()); } catch {
+        try { msg = JSON.parse(raw.toString()); } catch { /* binary data, not JSON */
           // Binary media data — dispatch to first waiting media waiter
           for (const [rid, waiter] of this.mediaWaiters) {
             clearTimeout(waiter.timer);
@@ -245,7 +245,7 @@ export class WeComPlatform extends IMessagePlatform {
       } else {
         msg = JSON.parse(raw);
       }
-    } catch { return; }
+    } catch { /* non-JSON message, ignore */ return; }
 
     const cmd = (msg['cmd'] as string) || '';
     const headers = (msg['headers'] as Record<string, string>) || {};

@@ -34,6 +34,10 @@ export class SingleAgentRouter extends IAgentRouter {
     log.info(`setMode(${_mode}) - not yet supported by ACP SDK`);
   }
 
+  async cancel(sessionId: string): Promise<void> {
+    await this.proc.cancel(sessionId);
+  }
+
   async createSession(): Promise<string> {
     return this.proc.createSession(this.spawnOptions.cwd);
   }

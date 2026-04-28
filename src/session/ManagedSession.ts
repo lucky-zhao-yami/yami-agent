@@ -41,26 +41,48 @@ export class ManagedSession {
   }
 
   async send(content: PromptContent[], onChunk: (chunk: AgentChunk) => Promise<void>): Promise<void> {
-    await this.queue.enqueue(async () => {
-      this.lastActive = Date.now();
-      this.turns++;
-      this.bytes += this.measureBytes(content);
+    try {
+      await this.queue.enqueue(async () => {
+        this.lastActive = Date.now();
+        this.turns++;
+        this.bytes += this.measureBytes(content);
 
-      // Task 3.5: inject memory context on first message
-      const finalContent = this.firstMsg ? await this.injectContext(content) : content;
-      this.firstMsg = false;
+        // Task 3.5: inject memory context on first message
+        const finalContent = this.firstMsg ? await this.injectContext(content) : content;
+        this.firstMsg = false;
 
-      for await (const chunk of this.router.handle(finalContent)) {
-        if (chunk.type === 'text') this.bytes += Buffer.byteLength(chunk.text, 'utf-8');
-        await onChunk(chunk);
-        if (chunk.type === 'done') break;
+        let assistantText = '';
+        for await (const chunk of this.router.handle(finalContent)) {
+          if (chunk.type === 'text') {
+            this.bytes += Buffer.byteLength(chunk.text, 'utf-8');
+            assistantText += chunk.text;
+          }
+          await onChunk(chunk);
+          if (chunk.type === 'done') break;
+        }
+
+        // Save conversation entry for future memory layers (e.g. VectorLayer)
+        if (this.memoryManager && assistantText) {
+          const userText = finalContent.filter(c => c.type === 'text').map(c => (c as { text: string }).text).join('\n');
+          await this.memoryManager.save(this.chatId, {
+            user: userText, assistant: assistantText,
+            timestamp: Date.now(), bytes: Buffer.byteLength(userText + assistantText, 'utf-8'),
+          }).catch(e => log.error(e, 'Memory save failed'));
+        }
+
+        // Task 3.4: turn-based summarize
+        if (this.shouldSummarize()) await this.triggerSummarize();
+        // Size-based rotation
+        if (this.bytes >= this.opts.sessionSizeLimit) await this.rotate();
+      });
+    } catch (err) {
+      // FR-4: cancel agent on prompt timeout to free resources
+      if (err instanceof Error && err.message === 'Prompt timeout' && this.router.sessionId) {
+        log.info(`Cancelling agent for ${this.chatId} after timeout`);
+        await this.router.cancel(this.router.sessionId).catch(e => log.error(e, 'Cancel after timeout failed'));
       }
-
-      // Task 3.4: turn-based summarize
-      if (this.shouldSummarize()) await this.triggerSummarize();
-      // Size-based rotation
-      if (this.bytes >= this.opts.sessionSizeLimit) await this.rotate();
-    });
+      throw err;
+    }
   }
 
   async rotate(): Promise<void> {

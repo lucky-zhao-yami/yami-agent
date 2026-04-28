@@ -24,24 +24,40 @@ function msUntilMidnight(): number {
 
 async function dailySummarizeAndCleanup(memoryManager: MemoryManager, sessionsDir: string, sessionManager: SessionManager) {
   log.info('Running daily summarize & cleanup');
+  // Summarize active sessions using their live sessionId
+  for (const chatId of sessionManager.getActiveChatIds()) {
+    const sid = sessionManager.getSessionId(chatId);
+    if (sid) {
+      try {
+        await memoryManager.summarize(chatId, sid);
+        await memoryManager.cleanup(chatId);
+        log.info(`Daily summarize+cleanup done for active ${chatId}`);
+      } catch (e) {
+        log.error(e, `Daily summarize failed for active ${chatId}`);
+      }
+    }
+  }
+
+  // Summarize inactive sessions using last_session_id on disk
   const activeChatIds = new Set(sessionManager.getActiveChatIds());
   let dirs: string[];
   try {
     dirs = await readdir(sessionsDir);
-  } catch {
+  } catch { /* sessions dir not created yet */
     return;
   }
 
   for (const chatId of dirs) {
-    if (activeChatIds.has(chatId)) continue; // skip active sessions
+    if (activeChatIds.has(chatId)) continue;
     try {
       const sid = (await readFile(join(sessionsDir, chatId, 'last_session_id'), 'utf-8')).trim();
       if (!sid) continue;
       await memoryManager.summarize(chatId, sid);
       await memoryManager.cleanup(chatId);
       log.info(`Daily summarize+cleanup done for ${chatId}`);
-    } catch {
-      // no last_session_id or other error — skip
+    } catch (e) {
+      // no last_session_id or summarize failed — skip this chat
+      log.info(`Skipped daily summarize for ${chatId}: ${(e as Error).message}`);
     }
 
     // FR-12: clean archive files older than 30 days
@@ -57,9 +73,7 @@ async function dailySummarizeAndCleanup(memoryManager: MemoryManager, sessionsDi
           log.info(`Deleted old archive: ${chatId}/${f}`);
         }
       }
-    } catch {
-      // no archive dir — skip
-    }
+    } catch { /* no archive dir for this chat — expected */ }
   }
 }
 

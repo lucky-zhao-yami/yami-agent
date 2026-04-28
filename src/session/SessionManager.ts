@@ -142,7 +142,7 @@ export class SessionManager {
     try {
       const p = join(this.config.env.WORK_DIR, 'sessions', chatId, 'last_session_id');
       return (await readFile(p, 'utf-8')).trim();
-    } catch {
+    } catch { /* file not found — first time for this chat */
       return null;
     }
   }
@@ -156,6 +156,10 @@ export class SessionManager {
 
   getActiveChatIds(): string[] {
     return [...this.sessions.keys()];
+  }
+
+  getSessionId(chatId: string): string | null {
+    return this.sessions.get(chatId)?.sessionId ?? null;
   }
 
   async shutdown(): Promise<void> {

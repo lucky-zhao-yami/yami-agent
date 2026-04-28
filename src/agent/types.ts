@@ -37,6 +37,7 @@ export abstract class IAgentRouter {
   abstract readonly availableModes: string[];
   abstract readonly sessionId: string | null;
   abstract readonly alive: boolean;
+  abstract cancel(sessionId: string): Promise<void>;
   abstract createSession(): Promise<string>;
   abstract loadSession(sessionId: string): Promise<void>;
   abstract kill(): Promise<void>;

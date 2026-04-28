@@ -107,5 +107,11 @@ function parseQuote(body: Record<string, unknown>): string | undefined {
   if (qt === 'markdown') {
     return ((quoteObj['markdown'] as Record<string, unknown>)?.['content'] as string) || undefined;
   }
+  if (qt === 'template_card') {
+    const card = quoteObj['template_card'] as Record<string, unknown> | undefined;
+    const title = ((card?.['main_title'] as Record<string, unknown>)?.['title'] as string) || '';
+    const desc = ((card?.['main_title'] as Record<string, unknown>)?.['desc'] as string) || '';
+    return [title, desc].filter(Boolean).join(': ') || undefined;
+  }
   return undefined;
 }

@@ -29,7 +29,7 @@ export class ConversationMemoryLayer extends IMemoryLayer {
     let files: string[];
     try {
       files = await readdir(memDir);
-    } catch {
+    } catch { /* memory dir not created yet */
       return '';
     }
 
@@ -65,7 +65,7 @@ export class ConversationMemoryLayer extends IMemoryLayer {
     let files: string[];
     try {
       files = await readdir(memDir);
-    } catch {
+    } catch { /* memory dir not created yet */
       return;
     }
 
