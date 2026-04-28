@@ -5,6 +5,8 @@ import type { AppConfig } from '../config.js';
 import { getChatConfig } from '../config.js';
 import type { IAgentProvider } from '../agent/types.js';
 import type { MemoryManager } from '../memory/MemoryManager.js';
+import { MemoryEventBus } from '../memory/events.js';
+import { createStrategies } from '../memory/strategyFactory.js';
 import { SingleAgentRouter } from '../agent/SingleAgentRouter.js';
 import { ManagedSession } from './ManagedSession.js';
 
@@ -105,14 +107,15 @@ export class SessionManager {
       throw e;
     }
 
+    const eventBus = new MemoryEventBus(createStrategies(this.config.bot.memory.summarize));
     const session = new ManagedSession(chatId, router, {
       chatId,
       agentConfig: chatConfig.agent,
       mode: chatConfig.mode,
       workDir: this.config.env.WORK_DIR,
-      sessionSizeLimit: this.config.env.SESSION_SIZE_LIMIT,
       promptTimeout: this.config.env.PROMPT_TIMEOUT,
-      memorySummaryInterval: this.config.env.MEMORY_SUMMARY_INTERVAL,
+      injectionMaxChars: this.config.bot.memory.injectionMaxChars,
+      eventBus,
     }, this.memoryManager);
 
     this.sessions.set(chatId, session);
@@ -166,6 +169,10 @@ export class SessionManager {
 
   getSessionId(chatId: string): string | null {
     return this.sessions.get(chatId)?.sessionId ?? null;
+  }
+
+  getSession(chatId: string): ManagedSession | undefined {
+    return this.sessions.get(chatId);
   }
 
   async shutdown(): Promise<void> {

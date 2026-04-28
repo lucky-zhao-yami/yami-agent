@@ -31,7 +31,7 @@ export class ConversationMemoryLayer extends IMemoryLayer {
     // ACP session stores raw conversation; no-op here
   }
 
-  async recall(chatId: string): Promise<string> {
+  async recall(chatId: string, _query?: string, maxChars?: number): Promise<string> {
     const memDir = this.memoryDir(chatId);
     let files: string[];
     try {
@@ -51,10 +51,17 @@ export class ConversationMemoryLayer extends IMemoryLayer {
 
     if (mdFiles.length === 0) return '';
 
+    // 从最新往前填，超过 maxChars 停止
     const parts: string[] = [];
-    for (const f of mdFiles) {
+    let total = 0;
+    for (const f of [...mdFiles].reverse()) {
       const content = await readFile(join(memDir, f), 'utf-8');
-      if (content.trim()) parts.push(`## ${f.replace('.md', '')}\n${content.trim()}`);
+      const trimmed = content.trim();
+      if (!trimmed) continue;
+      const entry = `## ${f.replace('.md', '')}\n${trimmed}`;
+      if (maxChars && total + entry.length > maxChars) break;
+      parts.unshift(entry);
+      total += entry.length;
     }
     return parts.length ? `# 历史对话摘要\n\n${parts.join('\n\n')}` : '';
   }

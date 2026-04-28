@@ -5,6 +5,7 @@ import type { IAgentRouter, AgentChunk, PromptContent } from '../agent/types.js'
 import type { AgentSpawnOptions } from '../agent/types.js';
 import type { ManagedSessionOptions } from './types.js';
 import type { MemoryManager } from '../memory/MemoryManager.js';
+import type { SessionMemoryState } from '../memory/events.js';
 import { MessageQueue } from './MessageQueue.js';
 import { getPreamble } from '../bridge/guard.js';
 
@@ -21,6 +22,8 @@ export class ManagedSession {
   private turns = 0;
   private firstMsg = true;
   private sessionDir: string;
+  private lastSummarizeTime = Date.now();
+  private sessionStartTime = Date.now();
   lastActive = Date.now();
 
   constructor(
@@ -37,15 +40,28 @@ export class ManagedSession {
   get sessionId() { return this.router.sessionId; }
   get workDir() { return this.opts.workDir; }
 
+  /** 获取当前记忆状态（供事件总线和外部定时器使用）。 */
+  getMemoryState(): SessionMemoryState {
+    return {
+      turns: this.turns,
+      bytes: this.bytes,
+      lastSummarizeTime: this.lastSummarizeTime,
+      sessionStartTime: this.sessionStartTime,
+    };
+  }
+
+  /** 获取事件总线（供外部定时器发 timer_tick）。 */
+  get eventBus() { return this.opts.eventBus; }
+
   async switchAgent(name: string, spawnOpts: AgentSpawnOptions): Promise<void> {
     log.info(`Switching agent for ${this.chatId} to ${name}`);
     await this.router.switchAgent(name, spawnOpts);
     this.bytes = 0;
     this.turns = 0;
-    this.firstMsg = false; // /agent: don't inject history on clean switch
+    this.firstMsg = false;
   }
 
-  /** 发送消息给 Agent，串行排队。首条消息注入 preamble + 记忆上下文。 */
+  /** 发送消息给 Agent，串行排队。首条消息注入 preamble + 记忆摘要概要。 */
   async send(content: PromptContent[], onChunk: (chunk: AgentChunk) => Promise<void>): Promise<void> {
     try {
       await this.queue.enqueue(async () => {
@@ -53,7 +69,7 @@ export class ManagedSession {
         this.turns++;
         this.bytes += this.measureBytes(content);
 
-        // Task 3.5: inject memory context on first message
+        // 首条消息：强制注入 preamble + 摘要概要 + skill 提示
         const finalContent = this.firstMsg ? await this.injectContext(content) : content;
         this.firstMsg = false;
 
@@ -67,7 +83,7 @@ export class ManagedSession {
           if (chunk.type === 'done') break;
         }
 
-        // Save conversation entry for future memory layers (e.g. VectorLayer)
+        // 保存对话记录给所有 Layer
         if (this.memoryManager && assistantText) {
           const userText = finalContent.filter(c => c.type === 'text').map(c => (c as { text: string }).text).join('\n');
           await this.memoryManager.save(this.chatId, {
@@ -76,13 +92,15 @@ export class ManagedSession {
           }).catch(e => log.error(e, 'Memory save failed'));
         }
 
-        // Task 3.4: turn-based summarize
-        if (this.shouldSummarize()) await this.triggerSummarize();
-        // Size-based rotation
-        if (this.bytes >= this.opts.sessionSizeLimit) await this.rotate();
+        // 事件驱动：检查总结策略
+        const action = this.opts.eventBus.check(
+          { type: 'message_processed', turns: this.turns, bytes: this.bytes },
+          this.getMemoryState(),
+        );
+        if (action === 'rotate') await this.rotate();
+        else if (action === 'summarize') await this.triggerSummarize();
       });
     } catch (err) {
-      // FR-4: cancel agent on prompt timeout to free resources
       if (err instanceof Error && err.message === 'Prompt timeout' && this.router.sessionId) {
         log.info(`Cancelling agent for ${this.chatId} after timeout`);
         await this.router.cancel(this.router.sessionId).catch(e => log.error(e, 'Cancel after timeout failed'));
@@ -99,6 +117,17 @@ export class ManagedSession {
     this.bytes = 0;
     this.turns = 0;
     this.firstMsg = true;
+    this.sessionStartTime = Date.now();
+  }
+
+  /** 触发记忆总结（不轮换）。 */
+  async triggerSummarize(): Promise<void> {
+    if (!this.memoryManager || !this.router.sessionId) return;
+    await this.memoryManager.summarize(this.chatId, this.router.sessionId).catch(
+      (e) => log.error(e, 'Summarize failed'),
+    );
+    this.lastSummarizeTime = Date.now();
+    this.opts.eventBus.notifySummarized();
   }
 
   /** 保存 sessionId 到磁盘（供下次 loadSession 恢复），然后杀掉进程。 */
@@ -115,36 +144,26 @@ export class ManagedSession {
     await this.router.kill();
   }
 
-  private shouldSummarize(): boolean {
-    return this.opts.memorySummaryInterval > 0 &&
-      this.turns > 0 &&
-      this.turns % this.opts.memorySummaryInterval === 0;
-  }
-
-  private async triggerSummarize(): Promise<void> {
-    if (!this.memoryManager || !this.router.sessionId) return;
-    await this.memoryManager.summarize(this.chatId, this.router.sessionId).catch(
-      (e) => log.error(e, 'Summarize failed'),
-    );
-  }
-
   private async injectContext(content: PromptContent[]): Promise<PromptContent[]> {
     const parts: PromptContent[] = [];
 
-    // FR-9: inject safety preamble on first message
+    // 安全规则
     parts.push({ type: 'text', text: getPreamble(this.opts.mode) });
 
-    // Inject memory context
+    // 摘要概要（字数截断）
     if (this.memoryManager) {
       try {
-        const context = await this.memoryManager.recall(this.chatId);
+        const context = await this.memoryManager.recall(this.chatId, undefined, this.opts.injectionMaxChars);
         if (context) {
-          parts.push({ type: 'text', text: `<context>\n${context}\n</context>\n\n以上是之前对话的历史摘要，请参考。\n\n` });
+          parts.push({ type: 'text', text: `<context>\n${context}\n</context>\n\n` });
         }
       } catch (e) {
         log.error(e, 'Failed to recall memory context');
       }
     }
+
+    // Skill 提示
+    parts.push({ type: 'text', text: '如需查看更多历史对话，读取 sessions/ 目录下对应 chatId 的 memory/*.md 文件。\n\n' });
 
     return [...parts, ...content];
   }
