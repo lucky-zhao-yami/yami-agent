@@ -9,6 +9,13 @@ import type { EnvConfig } from '../config.js';
 
 const log = getLogger('ConversationMemoryLayer');
 
+/**
+ * 基于文件的记忆层 — 按天存储对话摘要为 markdown。
+ * - recall(): 读取 MEMORY_RECALL_DAYS 内的 memory/YYYY-MM-DD.md
+ * - onSummary(): 追加摘要到 memory/{date}.md
+ * - cleanup(): gzip 压缩超过 30 天的文件
+ * - save(): 空实现（原始对话由 ACP session 自行存储）
+ */
 export class ConversationMemoryLayer extends IMemoryLayer {
   readonly name = 'conversation';
   private recallDays: number;
@@ -29,7 +36,7 @@ export class ConversationMemoryLayer extends IMemoryLayer {
     let files: string[];
     try {
       files = await readdir(memDir);
-    } catch {
+    } catch { /* memory dir not created yet */
       return '';
     }
 
@@ -65,7 +72,7 @@ export class ConversationMemoryLayer extends IMemoryLayer {
     let files: string[];
     try {
       files = await readdir(memDir);
-    } catch {
+    } catch { /* memory dir not created yet */
       return;
     }
 

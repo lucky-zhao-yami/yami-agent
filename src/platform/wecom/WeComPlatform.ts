@@ -6,6 +6,7 @@ import WebSocket from 'ws';
 import { randomUUID } from 'node:crypto';
 import { IMessagePlatform, type IncomingMessage, type PlatformEvent } from '../types.js';
 import type { BotConfig } from '../../config.js';
+import type { WsMessage, EventCallbackBody } from './protocol.js';
 import { parseMsgCallback } from './MessageParser.js';
 import { getLogger } from '../../logger.js';
 
@@ -188,11 +189,11 @@ export class WeComPlatform extends IMessagePlatform {
         reject(new Error('subscribe timeout'));
       }, 10_000);
       this._pendingAuthReqId = authReqId;
-      this._authCallback = (resp: Record<string, unknown>) => {
+      this._authCallback = (resp: WsMessage) => {
         clearTimeout(timer);
         this._pendingAuthReqId = null;
         this._authCallback = null;
-        if (resp['errcode'] !== 0) reject(new Error(`认证失败: ${JSON.stringify(resp)}`));
+        if (resp.errcode !== 0) reject(new Error(`认证失败: ${JSON.stringify(resp)}`));
         else resolve();
       };
     });
@@ -207,7 +208,7 @@ export class WeComPlatform extends IMessagePlatform {
   }
 
   private _pendingAuthReqId: string | null = null;
-  private _authCallback: ((resp: Record<string, unknown>) => void) | null = null;
+  private _authCallback: ((resp: WsMessage) => void) | null = null;
 
   // ---- Heartbeat ----
 
@@ -229,10 +230,10 @@ export class WeComPlatform extends IMessagePlatform {
   // ---- Message dispatch ----
 
   private onRawMessage(raw: Buffer | string) {
-    let msg: Record<string, unknown>;
+    let msg: WsMessage;
     try {
       if (Buffer.isBuffer(raw)) {
-        try { msg = JSON.parse(raw.toString()); } catch {
+        try { msg = JSON.parse(raw.toString()) as WsMessage; } catch { /* binary data, not JSON */
           // Binary media data — dispatch to first waiting media waiter
           for (const [rid, waiter] of this.mediaWaiters) {
             clearTimeout(waiter.timer);
@@ -243,24 +244,24 @@ export class WeComPlatform extends IMessagePlatform {
           return;
         }
       } else {
-        msg = JSON.parse(raw);
+        msg = JSON.parse(raw) as WsMessage;
       }
-    } catch { return; }
+    } catch { /* non-JSON message, ignore */ return; }
 
-    const cmd = (msg['cmd'] as string) || '';
-    const headers = (msg['headers'] as Record<string, string>) || {};
-    const rid = headers['req_id'] || '';
-    const body = (msg['body'] as Record<string, unknown>) || {};
+    const cmd = msg.cmd || '';
+    const headers = msg.headers || {};
+    const rid = (headers.req_id as string) || '';
+    const body = msg.body || {};
 
     // Check if this is a media response
     if (rid && this.mediaWaiters.has(rid)) {
       const waiter = this.mediaWaiters.get(rid)!;
       clearTimeout(waiter.timer);
       this.mediaWaiters.delete(rid);
-      if ((msg['errcode'] as number) !== 0) {
+      if (msg.errcode !== 0) {
         waiter.resolve(null);
       } else {
-        const data = body['data'] as string;
+        const data = body['data'] as string | undefined;
         waiter.resolve(data ? Buffer.from(data, 'base64') : null);
       }
       return;
@@ -270,19 +271,17 @@ export class WeComPlatform extends IMessagePlatform {
       this.handleMsgCallback(rid, body);
     } else if (cmd === 'aibot_event_callback') {
       this.handleEventCallback(rid, body);
-    } else if (cmd === 'pong' || (!cmd && (msg['errcode'] as number) === 0)) {
+    } else if (cmd === 'pong' || (!cmd && msg.errcode === 0)) {
       this.lastPong = Date.now();
-      // Match auth response by req_id
       if (rid && rid === this._pendingAuthReqId && this._authCallback) {
-        this._authCallback(msg as Record<string, unknown>);
+        this._authCallback(msg);
       }
-    } else if (!cmd && (msg['errcode'] as number) === 6000) {
-      const failedRid = headers['req_id'] || '';
+    } else if (!cmd && msg.errcode === 6000) {
+      const failedRid = (headers.req_id as string) || '';
       if (failedRid) this.failedReqIds.add(failedRid);
       log.info('6000 conflict req=%s, will degrade to send_msg', failedRid);
     } else if (!cmd && this._pendingAuthReqId && this._authCallback) {
-      // Non-zero errcode auth response
-      this._authCallback(msg as Record<string, unknown>);
+      this._authCallback(msg);
     }
   }
 
@@ -295,9 +294,9 @@ export class WeComPlatform extends IMessagePlatform {
 
   private handleEventCallback(rid: string, body: Record<string, unknown>) {
     if (!this.evtHandler) return;
-    const event = (body['event'] as Record<string, unknown>) || {};
-    const eventType = (event['eventtype'] as string) || '';
-    const chatId = (body['chatid'] as string) || '';
+    const b = body as unknown as EventCallbackBody;
+    const eventType = b.event?.eventtype || '';
+    const chatId = b.chatid || '';
     const evt: PlatformEvent = {
       type: eventType === 'enter_chat' ? 'enter_chat' : 'disconnected',
       chatId: chatId || undefined,

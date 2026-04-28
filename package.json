@@ -5,19 +5,22 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "^0.19.1",
-    "ws": "^8.18.0",
-    "fastify": "^5.3.3",
     "dotenv": "^16.5.0",
+    "fastify": "^5.3.3",
     "pino": "^9.6.0",
+    "ws": "^8.18.0",
     "zod": "^3.24.4"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
     "@types/ws": "^8.18.1",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.5"
   }
 }

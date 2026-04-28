@@ -3,6 +3,10 @@ import { IAgentRouter, type IAgentProcess, type IAgentProvider, type AgentChunk,
 
 const log = getLogger('SingleAgentRouter');
 
+/**
+ * 单 Agent 路由 — 包装一个 IAgentProcess，直接转发 prompt。
+ * switchAgent 杀掉当前进程并启动替代进程。
+ */
 export class SingleAgentRouter extends IAgentRouter {
   private _availableModes: string[] = [];
 
@@ -32,6 +36,10 @@ export class SingleAgentRouter extends IAgentRouter {
   async setMode(_mode: string): Promise<void> {
     // ACP setSessionMode - placeholder until ACP SDK exposes it
     log.info(`setMode(${_mode}) - not yet supported by ACP SDK`);
+  }
+
+  async cancel(sessionId: string): Promise<void> {
+    await this.proc.cancel(sessionId);
   }
 
   async createSession(): Promise<string> {

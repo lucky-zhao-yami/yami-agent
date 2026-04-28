@@ -11,6 +11,11 @@ import { ManagedSession } from './ManagedSession.js';
 const log = getLogger('SessionManager');
 const CLEANUP_INTERVAL = 60_000;
 
+/**
+ * Agent 进程池 — 按 chatId 管理 ManagedSession 实例。
+ * 负责 LRU 淘汰（MAX_PROCS）、空闲清理（IDLE_TIMEOUT）、
+ * 预热池和通过 loadSession 恢复会话。
+ */
 export class SessionManager {
   private sessions = new Map<string, ManagedSession>();
   private pending = new Map<string, Promise<ManagedSession>>();
@@ -25,7 +30,7 @@ export class SessionManager {
     this.cleanupTimer = setInterval(() => this.cleanupIdle(), CLEANUP_INTERVAL);
   }
 
-  /** Pre-warm N idle agent processes for faster cold start */
+  /** 预热 N 个空闲 Agent 进程，加速冷启动。 */
   async warmUp(count: number): Promise<void> {
     if (count <= 0) return;
     log.info(`Pre-warming ${count} agent processes`);
@@ -46,6 +51,7 @@ export class SessionManager {
     log.info(`Warm pool: ${this.warmPool.length} processes ready`);
   }
 
+  /** 获取已有会话或创建新的。处理 LRU 淘汰和会话恢复。 */
   async getOrCreate(chatId: string): Promise<ManagedSession> {
     if (/[\/\\]|\.\./.test(chatId)) throw new Error(`Invalid chatId: ${chatId}`);
 
@@ -142,7 +148,7 @@ export class SessionManager {
     try {
       const p = join(this.config.env.WORK_DIR, 'sessions', chatId, 'last_session_id');
       return (await readFile(p, 'utf-8')).trim();
-    } catch {
+    } catch { /* file not found — first time for this chat */
       return null;
     }
   }
@@ -156,6 +162,10 @@ export class SessionManager {
 
   getActiveChatIds(): string[] {
     return [...this.sessions.keys()];
+  }
+
+  getSessionId(chatId: string): string | null {
+    return this.sessions.get(chatId)?.sessionId ?? null;
   }
 
   async shutdown(): Promise<void> {

@@ -53,6 +53,7 @@ export interface AppConfig {
   env: EnvConfig;
 }
 
+/** 从 {WORK_DIR}/config.json + .env 加载并校验应用配置。 */
 export function loadConfig(): AppConfig {
   const workDir = process.env['WORK_DIR'] || '/mnt/d/workspace/all';
   const configPath = resolve(workDir, 'config.json');
@@ -62,6 +63,7 @@ export function loadConfig(): AppConfig {
   return { bot, env };
 }
 
+/** 按 chatId 解析聊天配置，未匹配时回退到 'default'。 */
 export function getChatConfig(config: AppConfig, chatId: string): ChatConfig & { agent: AgentConfig } {
   const chat = config.bot.chats[chatId] ?? config.bot.chats['default'] ?? { mode: 'full' as const };
   return { ...chat, agent: chat.agent ?? config.bot.agent };

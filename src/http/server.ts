@@ -43,6 +43,7 @@ export async function startHttpServer(
     ok: true,
     uptime: process.uptime(),
     memory: process.memoryUsage().rss,
+    activeSessions: sessionManager.getActiveChatIds().length,
   }));
 
   app.post('/shutdown', async (_req, reply) => {

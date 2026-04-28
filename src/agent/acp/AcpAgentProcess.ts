@@ -9,6 +9,11 @@ import { AsyncQueue } from '../../utils.js';
 
 const log = getLogger('AcpAgentProcess');
 
+/**
+ * ACP Agent 子进程 — 通过 stdin/stdout JSON-RPC (ndjson) 通信。
+ * 使用 @agentclientprotocol/sdk 的 ClientSideConnection 处理协议。
+ * 实现 trust-all 权限模型和文件系统访问代理。
+ */
 export class AcpAgentProcess extends IAgentProcess {
   private proc: ChildProcess | null = null;
   private conn: acp.ClientSideConnection | null = null;

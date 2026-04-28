@@ -12,6 +12,11 @@ import { parseCommand, handleCommand } from './commands.js';
 
 const log = getLogger('Bridge');
 
+/**
+ * 消息路由中枢 — 连接消息平台和 Agent 会话。
+ * 负责: 消息提取、注入检测、命令解析、冷启动占位（🤔）、
+ * 通过 StreamSegmenter 流式回复、per-chatId 串行锁。
+ */
 export class Bridge {
   private streamLocks = new Map<string, Promise<void>>();
 

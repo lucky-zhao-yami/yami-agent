@@ -10,6 +10,11 @@ interface QueueItem<T = unknown> {
   reject: (reason: unknown) => void;
 }
 
+/**
+ * 单会话异步任务队列 — 确保消息串行处理。
+ * 每个任务有可配置的超时时间；超时只 reject promise，
+ * 不会自动 cancel Agent（由调用方负责取消）。
+ */
 export class MessageQueue {
   private queue: QueueItem[] = [];
   private running = false;

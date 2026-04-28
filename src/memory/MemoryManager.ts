@@ -3,6 +3,13 @@ import type { IMemoryLayer, IMemoryRecycler, HistoryEntry } from './types.js';
 
 const log = getLogger('MemoryManager');
 
+/**
+ * 记忆管理器 — 编排多个 IMemoryLayer 和 IMemoryRecycler。
+ * - recall(): 合并所有 layer 的上下文用于 prompt 注入
+ * - save(): 广播对话记录给所有 layer
+ * - summarize(): 触发回收器 → 广播摘要给所有 layer（按 chatId 加锁）
+ * - cleanup(): 委托所有 layer 清理过期数据
+ */
 export class MemoryManager {
   private summarizeLocks = new Map<string, Promise<void>>();
 
