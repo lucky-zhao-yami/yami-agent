@@ -2,22 +2,23 @@
  * 企微消息解析 — 从 WS body 解析为 IncomingMessage
  */
 import type { IncomingMessage, MixedItem } from '../types.js';
+import type { MsgCallbackBody, MsgItem, QuoteMessage } from './protocol.js';
 
 export function parseMsgCallback(botId: string, rid: string, body: Record<string, unknown>): IncomingMessage | null {
-  const from = (body['from'] as Record<string, unknown>) || {};
-  const userId = (from['userid'] as string) || '';
-  const botUserId = (from['bot_userid'] as string) || '';
+  const b = body as unknown as MsgCallbackBody;
+  const userId = b.from?.userid || '';
+  const botUserId = b.from?.bot_userid || '';
 
   // Ignore bot's own messages to prevent infinite loop
   if (botUserId || userId === botId) return null;
 
-  let chatId = (body['chatid'] as string) || '';
+  let chatId = b.chatid || '';
   if (!chatId) chatId = `dm_${userId}`;
-  const chatType = (body['chat_type'] as number) || (chatId.startsWith('dm_') ? 1 : 2);
-  const msgType = (body['msgtype'] as string) || 'text';
+  const chatType = b.chat_type ?? (chatId.startsWith('dm_') ? 1 : 2);
+  const msgType = b.msgtype || 'text';
 
-  const { text, items } = parseContent(msgType, body);
-  const quote = parseQuote(body);
+  const { text, items } = parseContent(msgType, b);
+  const quote = parseQuote(b.quote);
 
   return {
     chatId,
@@ -31,11 +32,10 @@ export function parseMsgCallback(botId: string, rid: string, body: Record<string
   };
 }
 
-function parseContent(msgType: string, body: Record<string, unknown>): { text: string; items?: MixedItem[] } {
+function parseContent(msgType: string, b: MsgCallbackBody): { text: string; items?: MixedItem[] } {
   switch (msgType) {
     case 'text': {
-      const obj = body['text'] as Record<string, unknown> | undefined;
-      let text = (obj?.['content'] as string) || '';
+      let text = b.text?.content || '';
       // Strip @bot prefix in group messages
       if (text.startsWith('@')) {
         const spaceIdx = text.indexOf(' ');
@@ -44,74 +44,68 @@ function parseContent(msgType: string, body: Record<string, unknown>): { text: s
       return { text };
     }
     case 'mixed':
-      return parseMixed(body);
-    case 'image': {
-      const img = body['image'] as Record<string, unknown> | undefined;
-      return { text: '', items: [{ type: 'image', mediaId: (img?.['media_id'] as string) || '' }] };
-    }
-    case 'voice': {
-      const voice = body['voice'] as Record<string, unknown> | undefined;
-      return { text: (voice?.['content'] as string) || '' };
-    }
-    case 'file': {
-      const file = body['file'] as Record<string, unknown> | undefined;
-      return { text: '', items: [{ type: 'file', mediaId: (file?.['media_id'] as string) || '' }] };
-    }
+      return parseMixed(b.mixed?.msg_item || []);
+    case 'image':
+      return { text: '', items: [{ type: 'image', mediaId: b.image?.media_id || '' }] };
+    case 'voice':
+      return { text: b.voice?.content || '' };
+    case 'file':
+      return { text: '', items: [{ type: 'file', mediaId: b.file?.media_id || '' }] };
     default:
       return { text: '' };
   }
 }
 
-function parseMixed(body: Record<string, unknown>): { text: string; items: MixedItem[] } {
-  const mixed = body['mixed'] as Record<string, unknown> | undefined;
-  const msgItems = (mixed?.['msg_item'] as Record<string, unknown>[]) || [];
+function parseMixed(msgItems: MsgItem[]): { text: string; items: MixedItem[] } {
   const items: MixedItem[] = [];
   let text = '';
 
   for (const m of msgItems) {
-    const t = (m['msgtype'] as string) || 'text';
-    if (t === 'text') {
-      const c = ((m['text'] as Record<string, unknown>)?.['content'] as string) || '';
-      items.push({ type: 'text', content: c });
-      text += c;
-    } else if (t === 'image') {
-      items.push({ type: 'image', mediaId: ((m['image'] as Record<string, unknown>)?.['media_id'] as string) || '' });
-    } else if (t === 'voice') {
-      const c = ((m['voice'] as Record<string, unknown>)?.['content'] as string) || '';
-      items.push({ type: 'voice', content: c });
-      text += c;
-    } else if (t === 'file') {
-      items.push({ type: 'file', mediaId: ((m['file'] as Record<string, unknown>)?.['media_id'] as string) || '' });
+    switch (m.msgtype) {
+      case 'text': {
+        const c = m.text?.content || '';
+        items.push({ type: 'text', content: c });
+        text += c;
+        break;
+      }
+      case 'image':
+        items.push({ type: 'image', mediaId: m.image?.media_id || '' });
+        break;
+      case 'voice': {
+        const c = m.voice?.content || '';
+        items.push({ type: 'voice', content: c });
+        text += c;
+        break;
+      }
+      case 'file':
+        items.push({ type: 'file', mediaId: m.file?.media_id || '' });
+        break;
     }
   }
   return { text, items };
 }
 
-function parseQuote(body: Record<string, unknown>): string | undefined {
-  const quoteObj = body['quote'] as Record<string, unknown> | undefined;
-  if (!quoteObj) return undefined;
+function parseQuote(q: QuoteMessage | undefined): string | undefined {
+  if (!q) return undefined;
 
-  const qt = (quoteObj['msgtype'] as string) || '';
-  if (qt === 'text') {
-    return ((quoteObj['text'] as Record<string, unknown>)?.['content'] as string) || undefined;
+  switch (q.msgtype) {
+    case 'text':
+      return q.text?.content || undefined;
+    case 'mixed': {
+      const text = (q.mixed?.msg_item || [])
+        .filter(i => i.msgtype === 'text')
+        .map(i => i.text?.content || '')
+        .filter(Boolean).join(' ');
+      return text || undefined;
+    }
+    case 'markdown':
+      return q.markdown?.content || undefined;
+    case 'template_card': {
+      const title = q.template_card?.main_title?.title || '';
+      const desc = q.template_card?.main_title?.desc || '';
+      return [title, desc].filter(Boolean).join(': ') || undefined;
+    }
+    default:
+      return undefined;
   }
-  if (qt === 'mixed') {
-    const qMixed = quoteObj['mixed'] as Record<string, unknown> | undefined;
-    const qItems = (qMixed?.['msg_item'] as Record<string, unknown>[]) || [];
-    const text = qItems
-      .filter(i => (i['msgtype'] as string) === 'text')
-      .map(i => ((i['text'] as Record<string, unknown>)?.['content'] as string) || '')
-      .filter(Boolean).join(' ');
-    return text || undefined;
-  }
-  if (qt === 'markdown') {
-    return ((quoteObj['markdown'] as Record<string, unknown>)?.['content'] as string) || undefined;
-  }
-  if (qt === 'template_card') {
-    const card = quoteObj['template_card'] as Record<string, unknown> | undefined;
-    const title = ((card?.['main_title'] as Record<string, unknown>)?.['title'] as string) || '';
-    const desc = ((card?.['main_title'] as Record<string, unknown>)?.['desc'] as string) || '';
-    return [title, desc].filter(Boolean).join(': ') || undefined;
-  }
-  return undefined;
 }
