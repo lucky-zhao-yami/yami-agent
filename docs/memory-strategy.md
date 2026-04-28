@@ -1,252 +1,220 @@
 # 记忆策略分离设计
 
-> 状态: 设计阶段，未实现  
-> 创建: 2026-04-28
+> 状态: 设计阶段  
+> 创建: 2026-04-28  
+> 修订: v2 — 事件驱动架构
 
 ## 问题
 
-当前记忆系统的三个职责耦合在一起：
+当前记忆系统的三个职责耦合在 ManagedSession 中：
 
 | 职责 | 当前位置 | 问题 |
 |------|---------|------|
-| **存储**（存什么、怎么存） | IMemoryLayer | ✅ 已抽象，可插拔 |
-| **总结触发**（什么时候总结） | ManagedSession.send() 硬编码 | ❌ 加新策略要改 ManagedSession |
-| **注入决策**（什么时候注入、注入什么） | ManagedSession.injectContext() 硬编码 firstMsg | ❌ 只支持首条消息注入 |
+| **存储** | IMemoryLayer | ✅ 已抽象，可插拔 |
+| **总结触发** | ManagedSession.send() 硬编码 + index.ts cron | ❌ 只有两个入口，加新触发方式要改多处代码 |
+| **注入决策** | ManagedSession.injectContext() 硬编码 firstMsg | ❌ 只支持首条消息注入 |
 
-## 目标
+## 设计：事件驱动
 
-**Layer 只管存储，Strategy 只管决策，ManagedSession 只管执行。**
-
-三者通过配置组合，互不依赖：
+**核心思想：事件源和策略双向独立扩展。**
 
 ```
-config.json
-  └── memory
-        ├── layers: [...]           ← 存储后端（不变）
-        ├── summarize: [...]        ← 总结触发策略（新增）
-        └── injection: { ... }      ← 注入决策策略（新增）
+事件源（谁触发）              策略（怎么决策）            执行（做什么）
+┌──────────────────┐
+│ ManagedSession    │─ message_processed ─▶┐
+│ (消息处理完成)    │                      │
+├──────────────────┤                      │  ┌─────────────────────┐
+│ Timer             │─ timer_tick ────────▶├─▶│ ISummarizeStrategy[] │──▶ MemoryManager.summarize()
+│ (定时器)          │                      │  └─────────────────────┘
+├──────────────────┤                      │
+│ Commands          │─ command ───────────▶│  ┌─────────────────────┐
+│ (/new /reset)     │                      ├─▶│ IInjectionStrategy   │──▶ prepend to prompt
+├──────────────────┤                      │  └─────────────────────┘
+│ SessionManager    │─ session_recycle ───▶│
+│ (空闲回收/LRU)    │                      │
+└──────────────────┘                      │
+  (未来随便加)                              │
+  │ Agent 主动请求   │─ agent_request ────▶┘
 ```
 
-## 架构
+**加新事件源**：不改任何 Strategy。  
+**加新策略**：不改任何事件源。  
+**加新存储后端**：不改 Strategy 也不改事件源。
 
-```
-ManagedSession
-  │
-  │  每条消息 → 问 ISummarizeStrategy[]: 要不要总结？
-  │  每条消息 → 问 IInjectionStrategy: 要不要注入上下文？
-  │
-  ├── ISummarizeStrategy[]        ← 什么时候触发总结
-  │     ├── TurnBasedStrategy          每 N 轮
-  │     ├── SizeBasedStrategy          字节超限（触发轮换）
-  │     ├── TimeBasedStrategy          距上次总结超过 N 分钟
-  │     └── (未来) TopicChangeStrategy  检测话题切换
-  │
-  ├── IInjectionStrategy          ← 什么时候注入、注入什么
-  │     ├── FirstMessageStrategy       仅首条消息（当前行为）
-  │     ├── PeriodicStrategy           每 N 轮重新注入最新摘要
-  │     └── (未来) OnDemandStrategy     Agent 主动请求时注入
-  │
-  ├── MemoryManager               ← 编排 Layer（不变）
-  │     └── IMemoryLayer[]        ← 纯存储（不变）
-  │
-  └── IMemoryRecycler             ← 执行总结（不变）
+## 事件定义
+
+```typescript
+/** 记忆系统事件 — 任何组件都可以发出。 */
+type MemoryEvent =
+  | { type: 'message_processed'; turns: number; bytes: number; elapsedMs: number }
+  | { type: 'timer_tick'; now: number }
+  | { type: 'command'; command: 'new' | 'reset' }
+  | { type: 'session_idle_recycle' }
+  | { type: 'before_message'; turns: number; isFirstMessage: boolean };
 ```
 
-## 接口定义
+前四种驱动总结决策，最后一种驱动注入决策。未来加 `agent_request`、`topic_change` 等只需扩展联合类型。
+
+## 策略接口
 
 ### ISummarizeStrategy
 
 ```typescript
-/** 总结触发策略 — 决定什么时候该触发记忆总结。 */
+/** 总结触发策略 — 纯决策，无状态依赖，不持有定时器。 */
 interface ISummarizeStrategy {
   readonly name: string;
 
   /**
-   * 每条消息处理完后调用。
-   * 返回 true 表示应该触发总结。
+   * 收到事件后决策。
+   * 返回值：
+   *   'summarize' — 触发总结
+   *   'rotate'    — 触发总结 + 创建新 session
+   *   null        — 不触发
    */
-  shouldSummarize(context: SummarizeContext): boolean;
+  check(event: MemoryEvent, state: SessionMemoryState): 'summarize' | 'rotate' | null;
 
-  /** 总结完成后调用，重置内部状态。 */
+  /** 总结完成后调用，可重置内部计数。 */
   onSummarized(): void;
 }
 
-interface SummarizeContext {
-  turns: number;           // 当前 session 累计轮数
-  bytes: number;           // 当前 session 累计字节数
-  lastSummarizeTime: number; // 上次总结的时间戳
-  sessionStartTime: number;  // session 创建时间
+/** Strategy 做决策时需要的 session 状态（只读）。 */
+interface SessionMemoryState {
+  turns: number;
+  bytes: number;
+  lastSummarizeTime: number;
+  sessionStartTime: number;
 }
 ```
 
 ### IInjectionStrategy
 
 ```typescript
-/** 注入决策策略 — 决定什么时候注入上下文、注入什么。 */
+/** 注入决策策略 — 决定什么时候注入、注入什么。 */
 interface IInjectionStrategy {
   readonly name: string;
 
   /**
-   * 每条消息发送前调用。
-   * 返回需要 prepend 的内容，空数组表示不注入。
+   * 收到事件后决策。
+   * 返回需要 prepend 到 prompt 的内容，空数组表示不注入。
    */
-  getInjection(context: InjectionContext): Promise<PromptContent[]>;
+  check(event: MemoryEvent, context: InjectionContext): Promise<PromptContent[]>;
 }
 
 interface InjectionContext {
   chatId: string;
-  turns: number;            // 当前 session 累计轮数
-  isFirstMessage: boolean;  // 是否是 session 的首条消息
-  mode: 'full' | 'safe';   // 安全模式
+  mode: 'full' | 'safe';
   memoryManager: MemoryManager;
 }
 ```
 
-## 内置策略实现
+## 事件总线
 
-### 总结触发策略
-
-#### TurnBasedStrategy
+轻量实现，不引入外部依赖：
 
 ```typescript
-// 每 N 轮触发一次总结
-class TurnBasedStrategy implements ISummarizeStrategy {
-  constructor(private interval: number) {}
+/** 记忆事件总线 — 连接事件源和策略。 */
+class MemoryEventBus {
+  constructor(
+    private summarizeStrategies: ISummarizeStrategy[],
+    private injectionStrategy: IInjectionStrategy,
+    private memoryManager: MemoryManager,
+  ) {}
 
-  shouldSummarize(ctx: SummarizeContext): boolean {
-    return ctx.turns > 0 && ctx.turns % this.interval === 0;
-  }
-}
-```
-
-#### SizeBasedStrategy
-
-```typescript
-// 字节超限时触发总结 + 轮换
-class SizeBasedStrategy implements ISummarizeStrategy {
-  constructor(private limit: number) {}
-
-  shouldSummarize(ctx: SummarizeContext): boolean {
-    return ctx.bytes >= this.limit;
-  }
-  // 注意：这个策略触发后，ManagedSession 还需要执行 rotate()
-  // 通过 shouldRotate 标记区分
-  get shouldRotate(): boolean { return true; }
-}
-```
-
-#### TimeBasedStrategy
-
-```typescript
-// 距上次总结超过 N 分钟时触发
-class TimeBasedStrategy implements ISummarizeStrategy {
-  constructor(private intervalMs: number) {}
-
-  shouldSummarize(ctx: SummarizeContext): boolean {
-    return Date.now() - ctx.lastSummarizeTime >= this.intervalMs;
-  }
-}
-```
-
-### 注入决策策略
-
-#### FirstMessageStrategy（当前行为）
-
-```typescript
-// 仅 session 首条消息注入 preamble + 记忆
-class FirstMessageStrategy implements IInjectionStrategy {
-  async getInjection(ctx: InjectionContext): Promise<PromptContent[]> {
-    if (!ctx.isFirstMessage) return [];
-
-    const parts: PromptContent[] = [];
-    parts.push({ type: 'text', text: getPreamble(ctx.mode) });
-
-    const memory = await ctx.memoryManager.recall(ctx.chatId);
-    if (memory) {
-      parts.push({ type: 'text', text: `<context>\n${memory}\n</context>\n\n以上是之前对话的历史摘要，请参考。\n\n` });
+  /** 发出事件，检查所有总结策略。返回需要执行的动作。 */
+  checkSummarize(event: MemoryEvent, state: SessionMemoryState): 'summarize' | 'rotate' | null {
+    for (const s of this.summarizeStrategies) {
+      const result = s.check(event, state);
+      if (result) return result;
     }
-    return parts;
+    return null;
+  }
+
+  /** 发出事件，检查注入策略。返回需要 prepend 的内容。 */
+  async checkInjection(event: MemoryEvent, context: InjectionContext): Promise<PromptContent[]> {
+    return this.injectionStrategy.check(event, context);
+  }
+
+  /** 通知所有策略总结已完成。 */
+  notifySummarized(): void {
+    for (const s of this.summarizeStrategies) s.onSummarized();
   }
 }
 ```
 
-#### PeriodicStrategy
+## 内置策略
+
+### 总结策略
+
+| 策略 | 响应事件 | 逻辑 |
+|------|---------|------|
+| `TurnBasedStrategy` | `message_processed` | turns % interval === 0 → summarize |
+| `SizeBasedStrategy` | `message_processed` | bytes >= limit → rotate |
+| `IntervalStrategy` | `timer_tick` | now - lastSummarizeTime >= interval → summarize |
+| `CommandStrategy` | `command` | command === 'new' → rotate; command === 'reset' → rotate |
+
+### 注入策略
+
+| 策略 | 响应事件 | 逻辑 |
+|------|---------|------|
+| `FirstMessageStrategy` | `before_message` | isFirstMessage → preamble + recall |
+| `PeriodicStrategy` | `before_message` | isFirstMessage → 全量; 每 N 轮 → 增量 recall |
+
+## 事件源
+
+### 消息处理（ManagedSession）
 
 ```typescript
-// 首条消息注入全量，之后每 N 轮注入增量摘要
-class PeriodicStrategy implements IInjectionStrategy {
-  constructor(private interval: number) {}
+// send() 中
+// 发送前
+const injection = await this.eventBus.checkInjection(
+  { type: 'before_message', turns: this.turns, isFirstMessage: this.firstMsg },
+  { chatId: this.chatId, mode: this.opts.mode, memoryManager: this.memoryManager }
+);
 
-  async getInjection(ctx: InjectionContext): Promise<PromptContent[]> {
-    if (ctx.isFirstMessage) {
-      // 首条：preamble + 全量记忆
-      const parts: PromptContent[] = [];
-      parts.push({ type: 'text', text: getPreamble(ctx.mode) });
-      const memory = await ctx.memoryManager.recall(ctx.chatId);
-      if (memory) {
-        parts.push({ type: 'text', text: `<context>\n${memory}\n</context>\n\n` });
-      }
-      return parts;
-    }
-
-    if (ctx.turns > 0 && ctx.turns % this.interval === 0) {
-      // 每 N 轮：只注入最新摘要（今天的）
-      const memory = await ctx.memoryManager.recall(ctx.chatId);
-      if (memory) {
-        return [{ type: 'text', text: `<context_update>\n${memory}\n</context_update>\n\n以上是最新的对话摘要更新。\n\n` }];
-      }
-    }
-
-    return [];
-  }
-}
+// 发送后
+const action = this.eventBus.checkSummarize(
+  { type: 'message_processed', turns: this.turns, bytes: this.bytes, elapsedMs: ... },
+  this.getMemoryState()
+);
+if (action === 'rotate') await this.rotate();
+else if (action === 'summarize') await this.triggerSummarize();
 ```
 
-## ManagedSession 改造
-
-改造前：
+### 定时器（index.ts）
 
 ```typescript
-// 硬编码在 send() 中
-async send(content, onChunk) {
-  const finalContent = this.firstMsg ? await this.injectContext(content) : content;
-  this.firstMsg = false;
-  // ... 执行 prompt ...
-  if (this.shouldSummarize()) await this.triggerSummarize();
-  if (this.bytes >= this.opts.sessionSizeLimit) await this.rotate();
-}
+// 替代原来的 scheduleDailyCron
+// 每 60s 对所有 session 发 timer_tick
+setInterval(() => {
+  for (const [chatId, session] of sessions) {
+    const action = session.eventBus.checkSummarize(
+      { type: 'timer_tick', now: Date.now() },
+      session.getMemoryState()
+    );
+    if (action) session.triggerSummarize();
+  }
+}, 60_000);
 ```
 
-改造后：
+### 命令（commands.ts）
 
 ```typescript
-async send(content, onChunk) {
-  // 注入决策：问 strategy 要不要注入
-  const injection = await this.injectionStrategy.getInjection({
-    chatId: this.chatId,
-    turns: this.turns,
-    isFirstMessage: this.firstMsg,
-    mode: this.opts.mode,
-    memoryManager: this.memoryManager,
-  });
-  const finalContent = [...injection, ...content];
-  this.firstMsg = false;
+// /new 命令
+const action = session.eventBus.checkSummarize(
+  { type: 'command', command: 'new' },
+  session.getMemoryState()
+);
+// action 一定是 'rotate'（CommandStrategy 保证）
+```
 
-  // ... 执行 prompt ...
+### 空闲回收（SessionManager）
 
-  // 总结决策：问每个 strategy 要不要总结
-  const ctx = { turns: this.turns, bytes: this.bytes, ... };
-  for (const strategy of this.summarizeStrategies) {
-    if (strategy.shouldSummarize(ctx)) {
-      await this.triggerSummarize();
-      strategy.onSummarized();
-      if ('shouldRotate' in strategy && strategy.shouldRotate) {
-        await this.rotate();
-      }
-      break; // 一次只触发一个
-    }
-  }
-}
+```typescript
+// cleanupIdle() 中
+session.eventBus.checkSummarize(
+  { type: 'session_idle_recycle' },
+  session.getMemoryState()
+);
 ```
 
 ## 配置
@@ -260,7 +228,8 @@ async send(content, onChunk) {
     "summarize": [
       { "type": "turn", "interval": 30 },
       { "type": "size", "limit": 2097152 },
-      { "type": "time", "intervalMinutes": 60 }
+      { "type": "interval", "minutes": 60 },
+      { "type": "command" }
     ],
     "injection": {
       "type": "periodic",
@@ -270,7 +239,7 @@ async send(content, onChunk) {
 }
 ```
 
-不配置时使用默认值（当前行为）：
+不配置时默认值（复刻当前行为）：
 
 ```jsonc
 {
@@ -282,17 +251,48 @@ async send(content, onChunk) {
 }
 ```
 
+## 新增文件
+
+```
+src/memory/
+├── types.ts                    # 现有，不变
+├── MemoryManager.ts            # 现有，不变
+├── ConversationMemoryLayer.ts  # 现有，不变
+├── AcpMemoryRecycler.ts        # 现有，不变
+├── events.ts                   # 新增：MemoryEvent 类型 + MemoryEventBus
+├── strategies/
+│   ├── types.ts                # 新增：ISummarizeStrategy + IInjectionStrategy
+│   ├── TurnBasedStrategy.ts    # 新增
+│   ├── SizeBasedStrategy.ts    # 新增
+│   ├── IntervalStrategy.ts     # 新增
+│   ├── CommandStrategy.ts      # 新增
+│   ├── FirstMessageStrategy.ts # 新增
+│   └── PeriodicStrategy.ts     # 新增
+└── strategyFactory.ts          # 新增：从配置创建策略实例
+```
+
+## 改动文件
+
+| 文件 | 改动 |
+|------|------|
+| `ManagedSession.ts` | 删除硬编码的 shouldSummarize/injectContext，改为通过 eventBus 决策 |
+| `session/types.ts` | ManagedSessionOptions 增加 eventBus |
+| `index.ts` | 删除 scheduleDailyCron，改为通用定时器发 timer_tick |
+| `commands.ts` | /new /reset 通过 eventBus 发 command 事件 |
+| `config.ts` | 增加 summarize/injection 配置解析 |
+
 ## 向后兼容
 
-- 不配置 `summarize` 和 `injection` 时，行为和当前完全一致
-- Layer 接口不变，现有 ConversationMemoryLayer 不需要改
+- 不配置 `summarize` 和 `injection` 时，使用默认策略，行为和当前完全一致
+- Layer 接口不变
 - MemoryManager 接口不变
-- 只有 ManagedSession 的内部实现需要重构
+- 对外 API（/send /health）不变
 
 ## 实现路线
 
-1. **Phase 1**: 定义 ISummarizeStrategy / IInjectionStrategy 接口
-2. **Phase 2**: 实现 TurnBased / SizeBased / FirstMessage（复刻当前行为）
-3. **Phase 3**: 重构 ManagedSession，从硬编码改为策略驱动
-4. **Phase 4**: 实现 TimeBased / Periodic 新策略
-5. **Phase 5**: config.json 解析 + 策略工厂
+1. 定义 MemoryEvent + ISummarizeStrategy + IInjectionStrategy + MemoryEventBus
+2. 实现 4 个总结策略 + 2 个注入策略
+3. 实现 strategyFactory（从配置创建策略）
+4. 重构 ManagedSession 使用 eventBus
+5. 重构 index.ts 定时器 + commands.ts
+6. 补测试
