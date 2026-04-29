@@ -17,6 +17,7 @@ function makeConfig(overrides: Record<string, unknown> = {}): AppConfig {
     env: {
       WORK_DIR: '/tmp', MAX_PROCS: 10, WARM_POOL_SIZE: 1,
       IDLE_TIMEOUT: 1800, PROMPT_TIMEOUT: 300,
+      SESSION_SIZE_LIMIT: 2097152, MEMORY_SUMMARY_INTERVAL: 30,
       MEMORY_RECALL_DAYS: 7, PORT: 8900,
     },
   } as AppConfig;
