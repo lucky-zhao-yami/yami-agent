@@ -50,6 +50,39 @@ describe('ConversationMemoryLayer', () => {
     expect(result).not.toContain('Old summary');
   });
 
+  it('recall respects maxChars, newest first', async () => {
+    const today = new Date();
+    const d1 = new Date(today); d1.setDate(d1.getDate() - 1);
+    const d2 = new Date(today); d2.setDate(d2.getDate() - 2);
+    const date0 = today.toISOString().slice(0, 10);
+    const date1 = d1.toISOString().slice(0, 10);
+    const date2 = d2.toISOString().slice(0, 10);
+
+    await layer.onSummary('chat1', date2, 'Day 2 summary content here');
+    await layer.onSummary('chat1', date1, 'Day 1 summary content here');
+    await layer.onSummary('chat1', date0, 'Today summary content here');
+
+    // With a small maxChars, only the newest file(s) should be included
+    const result = await layer.recall('chat1', undefined, 80);
+    expect(result).toContain(date0);
+    // date2 should be excluded due to maxChars
+    expect(result).not.toContain(date2);
+  });
+
+  it('recall without maxChars returns all recent files', async () => {
+    const today = new Date();
+    const d1 = new Date(today); d1.setDate(d1.getDate() - 1);
+    const date0 = today.toISOString().slice(0, 10);
+    const date1 = d1.toISOString().slice(0, 10);
+
+    await layer.onSummary('chat1', date1, 'Yesterday');
+    await layer.onSummary('chat1', date0, 'Today');
+
+    const result = await layer.recall('chat1');
+    expect(result).toContain(date0);
+    expect(result).toContain(date1);
+  });
+
   it('cleanup compresses files older than 30 days', async () => {
     const old = new Date();
     old.setDate(old.getDate() - 31);

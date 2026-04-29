@@ -1,4 +1,4 @@
-import { readdir, readFile, unlink, stat } from 'node:fs/promises';
+import { readdir, unlink, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getLogger } from './logger.js';
 import { loadConfig } from './config.js';
@@ -13,33 +13,37 @@ import { startHttpServer } from './http/server.js';
 
 const log = getLogger('main');
 
-function msUntilMidnight(): number {
-  // Calculate ms until midnight in Asia/Shanghai
-  const now = new Date();
-  const shanghaiNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
-  const shanghaiMidnight = new Date(shanghaiNow);
-  shanghaiMidnight.setHours(24, 0, 0, 0);
-  return shanghaiMidnight.getTime() - shanghaiNow.getTime();
-}
+const TIMER_TICK_INTERVAL = 60_000;
 
-async function dailySummarizeAndCleanup(memoryManager: MemoryManager, sessionsDir: string, sessionManager: SessionManager) {
-  log.info('Running daily summarize & cleanup');
-  // Summarize active sessions using their live sessionId
-  for (const chatId of sessionManager.getActiveChatIds()) {
-    const sid = sessionManager.getSessionId(chatId);
-    if (sid) {
-      try {
-        await memoryManager.summarize(chatId, sid);
-        await memoryManager.cleanup(chatId);
-        log.info(`Daily summarize+cleanup done for active ${chatId}`);
-      } catch (e) {
-        log.error(e, `Daily summarize failed for active ${chatId}`);
+/**
+ * 定时器：每 60s 对所有活跃 session 发 timer_tick 事件。
+ * IntervalStrategy 会判断是否需要触发总结。
+ */
+function startTimerTick(sessionManager: SessionManager) {
+  setInterval(() => {
+    const now = Date.now();
+    for (const chatId of sessionManager.getActiveChatIds()) {
+      const session = sessionManager.getSession(chatId);
+      if (!session) continue;
+      const action = session.eventBus.check(
+        { type: 'timer_tick', now },
+        session.getMemoryState(),
+      );
+      if (action === 'rotate') {
+        session.rotate().catch(e => log.error(e, `Timer rotate failed for ${chatId}`));
+      } else if (action === 'summarize') {
+        session.triggerSummarize().catch(e => log.error(e, `Timer summarize failed for ${chatId}`));
       }
     }
-  }
+  }, TIMER_TICK_INTERVAL);
+}
 
-  // Summarize inactive sessions using last_session_id on disk
-  const activeChatIds = new Set(sessionManager.getActiveChatIds());
+/**
+ * 每日清理：gzip 压缩超过 30 天的摘要 + 删除超过 30 天的 archive。
+ * 总结逻辑已由 timer_tick + Strategy 接管，这里只做清理。
+ */
+async function dailyCleanup(memoryManager: MemoryManager, sessionsDir: string) {
+  log.info('Running daily cleanup');
   let dirs: string[];
   try {
     dirs = await readdir(sessionsDir);
@@ -48,19 +52,12 @@ async function dailySummarizeAndCleanup(memoryManager: MemoryManager, sessionsDi
   }
 
   for (const chatId of dirs) {
-    if (activeChatIds.has(chatId)) continue;
-    try {
-      const sid = (await readFile(join(sessionsDir, chatId, 'last_session_id'), 'utf-8')).trim();
-      if (!sid) continue;
-      await memoryManager.summarize(chatId, sid);
-      await memoryManager.cleanup(chatId);
-      log.info(`Daily summarize+cleanup done for ${chatId}`);
-    } catch (e) {
-      // no last_session_id or summarize failed — skip this chat
-      log.info(`Skipped daily summarize for ${chatId}: ${(e as Error).message}`);
-    }
+    // gzip 超过 30 天的 memory/*.md
+    await memoryManager.cleanup(chatId).catch(e =>
+      log.info(`Cleanup skipped for ${chatId}: ${(e as Error).message}`),
+    );
 
-    // FR-12: clean archive files older than 30 days
+    // 删除超过 30 天的 archive 文件
     try {
       const archiveDir = join(sessionsDir, chatId, 'memory', 'archive');
       const archiveFiles = await readdir(archiveDir);
@@ -73,16 +70,20 @@ async function dailySummarizeAndCleanup(memoryManager: MemoryManager, sessionsDi
           log.info(`Deleted old archive: ${chatId}/${f}`);
         }
       }
-    } catch { /* no archive dir for this chat — expected */ }
+    } catch { /* no archive dir — expected */ }
   }
 }
 
-function scheduleDailyCron(memoryManager: MemoryManager, sessionsDir: string, sessionManager: SessionManager) {
+function scheduleDailyCleanup(memoryManager: MemoryManager, sessionsDir: string) {
+  const msUntilMidnight = () => {
+    const now = new Date();
+    const shanghaiNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+    const shanghaiMidnight = new Date(shanghaiNow);
+    shanghaiMidnight.setHours(24, 0, 0, 0);
+    return shanghaiMidnight.getTime() - shanghaiNow.getTime();
+  };
   const run = () => {
-    dailySummarizeAndCleanup(memoryManager, sessionsDir, sessionManager).catch(
-      e => log.error(e, 'Daily cron failed'),
-    );
-    // Schedule next run at midnight
+    dailyCleanup(memoryManager, sessionsDir).catch(e => log.error(e, 'Daily cleanup failed'));
     setTimeout(run, msUntilMidnight());
   };
   setTimeout(run, msUntilMidnight());
@@ -95,7 +96,6 @@ async function main() {
   const platform = new WeComPlatform(config.bot);
   const agentProvider = new AcpAgentProvider();
 
-  // Memory
   const layers = [new ConversationMemoryLayer(config.env)];
   const recycler = new AcpMemoryRecycler(agentProvider, {
     command: config.bot.agent.command,
@@ -109,13 +109,14 @@ async function main() {
   await sessionManager.warmUp(config.env.WARM_POOL_SIZE);
   const bridge = new Bridge(platform, sessionManager, config);
 
-  // Task 3.4 + 3.6: daily cron
+  // 定时器：timer_tick 驱动 IntervalStrategy
+  startTimerTick(sessionManager);
+
+  // 每日清理：gzip + archive 过期删除
   const sessionsDir = join(config.env.WORK_DIR, 'sessions');
-  scheduleDailyCron(memoryManager, sessionsDir, sessionManager);
+  scheduleDailyCleanup(memoryManager, sessionsDir);
 
   await platform.connect();
-
-  // Task 4.4: HTTP API
   await startHttpServer(config.env.PORT, platform, sessionManager);
 
   log.info('yami-agent started');

@@ -5,8 +5,11 @@ import type { AppConfig } from '../config.js';
 import { getChatConfig } from '../config.js';
 import type { IAgentProvider } from '../agent/types.js';
 import type { MemoryManager } from '../memory/MemoryManager.js';
+import { MemoryEventBus } from '../memory/events.js';
+import { createStrategies } from '../memory/strategyFactory.js';
 import { SingleAgentRouter } from '../agent/SingleAgentRouter.js';
 import { ManagedSession } from './ManagedSession.js';
+import { sessionsActive, sessionsWarmPool, agentSpawns, agentKills } from '../observability/metrics.js';
 
 const log = getLogger('SessionManager');
 const CLEANUP_INTERVAL = 60_000;
@@ -49,11 +52,12 @@ export class SessionManager {
       }
     }
     log.info(`Warm pool: ${this.warmPool.length} processes ready`);
+    sessionsWarmPool.set(this.warmPool.length);
   }
 
   /** 获取已有会话或创建新的。处理 LRU 淘汰和会话恢复。 */
   async getOrCreate(chatId: string): Promise<ManagedSession> {
-    if (/[\/\\]|\.\./.test(chatId)) throw new Error(`Invalid chatId: ${chatId}`);
+    if (/[/\\]|\.\./.test(chatId)) throw new Error(`Invalid chatId: ${chatId}`);
 
     const existing = this.sessions.get(chatId);
     if (existing?.alive) return existing;
@@ -85,6 +89,8 @@ export class SessionManager {
     log.info(`Spawning agent for ${chatId}`);
     const warmProc = this.takeMatchingWarmProc(spawnOpts.command, spawnOpts.args);
     const proc = warmProc ?? await this.agentProvider.spawn(spawnOpts);
+    agentSpawns.inc({ reason: warmProc ? 'warm' : 'new' });
+    if (warmProc) sessionsWarmPool.dec();
     const router = new SingleAgentRouter(proc, this.agentProvider, spawnOpts);
 
     try {
@@ -105,17 +111,19 @@ export class SessionManager {
       throw e;
     }
 
+    const eventBus = new MemoryEventBus(createStrategies(this.config.bot.memory.summarize));
     const session = new ManagedSession(chatId, router, {
       chatId,
       agentConfig: chatConfig.agent,
       mode: chatConfig.mode,
       workDir: this.config.env.WORK_DIR,
-      sessionSizeLimit: this.config.env.SESSION_SIZE_LIMIT,
       promptTimeout: this.config.env.PROMPT_TIMEOUT,
-      memorySummaryInterval: this.config.env.MEMORY_SUMMARY_INTERVAL,
+      injectionMaxChars: this.config.bot.memory.injectionMaxChars,
+      eventBus,
     }, this.memoryManager);
 
     this.sessions.set(chatId, session);
+    sessionsActive.set(this.sessions.size);
     return session;
   }
 
@@ -129,6 +137,8 @@ export class SessionManager {
       const s = this.sessions.get(oldest.chatId)!;
       await s.recycle().catch((e) => log.error(e, 'Evict recycle failed'));
       this.sessions.delete(oldest.chatId);
+      sessionsActive.set(this.sessions.size);
+      agentKills.inc({ reason: 'lru' });
     }
   }
 
@@ -140,6 +150,8 @@ export class SessionManager {
         log.info(`Idle cleanup: ${chatId}`);
         await s.recycle().catch((e) => log.error(e, 'Idle recycle failed'));
         this.sessions.delete(chatId);
+        sessionsActive.set(this.sessions.size);
+        agentKills.inc({ reason: 'idle' });
       }
     }
   }
@@ -166,6 +178,10 @@ export class SessionManager {
 
   getSessionId(chatId: string): string | null {
     return this.sessions.get(chatId)?.sessionId ?? null;
+  }
+
+  getSession(chatId: string): ManagedSession | undefined {
+    return this.sessions.get(chatId);
   }
 
   async shutdown(): Promise<void> {

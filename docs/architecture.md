@@ -1,7 +1,7 @@
 # yami-agent 架构文档
 
 > 企业微信机器人 ↔ ACP Agent 桥接服务  
-> 最后更新: 2026-04-28 | 代码: 2609 行 | 测试: 463 行 / 54 用例
+> 最后更新: 2026-04-29 | 代码: ~3000 行 | 测试: 66 用例
 
 ## 一句话描述
 
@@ -25,7 +25,13 @@
 │               │ Session   │   │   Memory    │                │
 │               │ Manager   │   │   Manager   │                │
 │               │ (进程池)  │   │ (记忆编排)  │                │
-│               └──────────┘   └─────────────┘                │
+│               └──────────┘   └──────┬──────┘                │
+│                                     │                       │
+│                              ┌──────▼──────┐                │
+│                              │ EventBus +   │                │
+│                              │ Strategies   │                │
+│                              │ (总结触发)   │                │
+│                              └─────────────┘                │
 │                                                             │
 │  ┌──────────────┐    ┌──────────────┐                       │
 │  │  Watchdog     │    │  HTTP API    │                       │
@@ -40,7 +46,7 @@
 消息平台层 (platform/)
   │  WeComPlatform ── WS 连接、心跳、重连、收发消息
   │  StreamSegmenter ── 1500 字分段、表格续接、6000 降级
-  │  MessageParser ── 企微协议解析为 IncomingMessage
+  │  MessageParser ── 企微协议解析为 IncomingMessage（完整类型定义）
   │  media.ts ── 图片 AES 解密、文件下载保存
   ▼
 桥接层 (bridge/)
@@ -50,8 +56,8 @@
   ▼
 会话层 (session/)
   │  SessionManager ── 进程池、LRU 淘汰、空闲清理、预热池
-  │  ManagedSession ── 消息排队、字节/轮数追踪、上下文注入、轮换
-  │  MessageQueue ── per-session 串行队列 + 超时控制
+  │  ManagedSession ── 消息排队、事件驱动总结、首条兜底注入
+  │  MessageQueue ── per-session 串行队列 + 超时控制 + cancel
   ▼
 Agent 层 (agent/)
   │  SingleAgentRouter ── 包装 IAgentProcess，转发 prompt
@@ -59,21 +65,71 @@ Agent 层 (agent/)
   │  AcpAgentProvider ── Agent 进程工厂
   ▼
 记忆层 (memory/)
+  │  MemoryEventBus ── 连接事件源和总结策略
+  │  ISummarizeStrategy ── 总结触发决策（可配置、可扩展）
   │  MemoryManager ── 编排多个 Layer + Recycler
-  │  ConversationMemoryLayer ── memory/*.md 读写 + gzip 压缩
+  │  ConversationMemoryLayer ── memory/*.md 读写 + maxChars 截断 + gzip
   │  AcpMemoryRecycler ── 临时 ACP 进程做摘要
 ```
 
 ## 核心抽象
 
-| 抽象类 | 职责 | 当前实现 | 扩展方向 |
-|--------|------|---------|---------|
+| 抽象 | 职责 | 当前实现 | 扩展方向 |
+|------|------|---------|---------|
 | `IMessagePlatform` | 消息平台连接和收发 | `WeComPlatform` | FeishuPlatform, SlackPlatform |
 | `IAgentProcess` | 单个 Agent 子进程管理 | `AcpAgentProcess` | 非 ACP 协议的 Agent |
 | `IAgentProvider` | Agent 进程工厂 | `AcpAgentProvider` | — |
 | `IAgentRouter` | Agent 路由（单/多 Agent） | `SingleAgentRouter` | WorkflowAgentRouter (多 Agent 编排) |
 | `IMemoryLayer` | 记忆存储后端 | `ConversationMemoryLayer` | VectorMemoryLayer, KnowledgeBaseLayer |
 | `IMemoryRecycler` | 会话摘要生成 | `AcpMemoryRecycler` | 轻量 LLM API 方案 |
+| `ISummarizeStrategy` | 总结触发决策 | TurnBased / SizeBased / Interval | TopicChange, TokenCount |
+
+## 记忆系统
+
+### 设计原则
+
+**Layer 只管存储，Strategy 只管决策，ManagedSession 只管执行。**
+
+```
+总结（写）：事件驱动，策略可配置
+  事件源 ──▶ MemoryEventBus ──▶ ISummarizeStrategy[] ──▶ MemoryManager.summarize()
+
+注入（读）：两层
+  首条消息 ──▶ 代码强制注入摘要概要（兜底，字数截断）
+  后续消息 ──▶ Agent 自主通过 memory-recall Skill 按需获取
+```
+
+### 事件驱动总结
+
+```
+事件源                          策略                        执行
+┌─────────────────┐
+│ ManagedSession   │─ message_processed ─▶┐
+│ (消息处理完成)   │                      │
+├─────────────────┤                      │  ┌─────────────────────┐
+│ Timer (60s)      │─ timer_tick ────────▶├─▶│ ISummarizeStrategy[] │──▶ summarize/rotate
+│ (定时器)         │                      │  └─────────────────────┘
+├─────────────────┤                      │
+│ SessionManager   │─ session_idle ──────▶┘
+│ (空闲回收)       │
+└─────────────────┘
+  加新事件源：不改任何 Strategy
+  加新策略：不改任何事件源
+```
+
+### 内置总结策略
+
+| 策略 | 响应事件 | 行为 |
+|------|---------|------|
+| `TurnBasedStrategy(N)` | `message_processed` | 每 N 轮 → summarize |
+| `SizeBasedStrategy(limit)` | `message_processed` | 字节超限 → rotate（总结+新session） |
+| `IntervalStrategy(minutes)` | `timer_tick` | 距上次总结超 N 分钟 → summarize |
+
+### 记忆注入
+
+**首条消息（代码兜底）**：preamble + 摘要概要（从最新往前填，不超过 `injectionMaxChars`）+ Skill 提示。
+
+**后续消息（Agent 自主）**：Agent 通过 memory-recall Skill 读取 `sessions/{chatId}/memory/*.md` 文件。
 
 ## 数据流
 
@@ -82,58 +138,46 @@ Agent 层 (agent/)
 ```
 企微 WS 消息
   → WeComPlatform.onRawMessage()
-    → MessageParser.parseMsgCallback()  // 解析 + 过滤 bot 自身消息
+    → MessageParser.parseMsgCallback()
   → Bridge.handleMessage()
-    → guard.checkInjection()            // 注入检测
-    → parseCommand()                    // 命令拦截 (/new, /reset, ...)
-    → SessionManager.getOrCreate()      // 获取或创建会话
-    → platform.sendStream(🤔)           // 冷启动占位
+    → guard.checkInjection()
+    → parseCommand()
+    → SessionManager.getOrCreate()
+    → platform.sendStream(🤔)
     → ManagedSession.send()
-      → MessageQueue 排队（同一 chat 串行）
-      → injectContext()                 // 首条消息注入 preamble + 记忆
-      → SingleAgentRouter.handle()
-        → AcpAgentProcess.prompt()      // ACP JSON-RPC
-          → yield AgentChunk (text/tool_call/done)
-      → StreamSegmenter.feed()          // 1500 字分段流式回复
-      → memoryManager.save()            // 广播给所有 Layer
-      → 检查轮数总结 / 字节轮换
+      → MessageQueue 排队
+      → 首条消息: injectContext() → preamble + recall(maxChars) + skill 提示
+      → SingleAgentRouter.handle() → AcpAgentProcess.prompt()
+      → StreamSegmenter.feed() → 流式回复
+      → memoryManager.save()
+      → eventBus.check(message_processed) → 策略决策 → summarize/rotate/无
 ```
 
-### 会话轮换
+### 定时总结
 
 ```
-ManagedSession 检测到 bytes ≥ SESSION_SIZE_LIMIT (默认 2MB)
-  → memoryManager.summarize()
-    → AcpMemoryRecycler: spawn 临时进程 → 读 session .jsonl → 生成摘要
-    → ConversationMemoryLayer.onSummary() → 写入 memory/YYYY-MM-DD.md
-  → router.createSession()  // 新 ACP session
-  → 重置 bytes/turns 计数器, firstMsg=true
+index.ts 定时器 (每 60s)
+  → 遍历所有活跃 session
+  → session.eventBus.check(timer_tick)
+    → IntervalStrategy: 距上次总结超 N 分钟? → summarize
+```
+
+### 每日清理 (0:00 Asia/Shanghai)
+
+```
+dailyCleanup()
+  → memoryManager.cleanup(): gzip 超过 30 天的 memory/*.md
+  → 删除超过 30 天的 archive 文件
 ```
 
 ### 空闲回收与恢复
 
 ```
 SessionManager.cleanupIdle() (每 60s)
-  → 超过 IDLE_TIMEOUT (默认 30min) 的会话
-    → ManagedSession.recycle()
-      → 写 last_session_id 到磁盘
-      → kill 进程（不触发总结）
+  → 超过 IDLE_TIMEOUT 的会话 → recycle (写 last_session_id → kill)
 
-用户回来
-  → SessionManager.getOrCreate()
-    → spawn 新进程
-    → loadSession(lastSessionId)  // 完整恢复 ACP 上下文
-    → 失败则 fallback 到 createSession + recall 注入摘要
-```
-
-### 每日定时任务 (0:00 Asia/Shanghai)
-
-```
-dailySummarizeAndCleanup()
-  → 活跃 session: 用 live sessionId 总结
-  → 非活跃 session: 用磁盘上的 last_session_id 总结
-  → cleanup: gzip 超过 30 天的 memory/*.md
-  → 清理超过 30 天的 archive 文件
+用户回来 → getOrCreate()
+  → spawn → loadSession(lastSessionId) → 失败则 createSession
 ```
 
 ## 目录结构
@@ -141,7 +185,7 @@ dailySummarizeAndCleanup()
 ```
 yami-agent/
 ├── src/
-│   ├── index.ts                          # 入口：组装依赖、启动服务、定时任务
+│   ├── index.ts                          # 入口：组装依赖、timer_tick、每日清理
 │   ├── config.ts                         # zod 配置校验 (config.json + .env)
 │   ├── logger.ts                         # pino 日志
 │   ├── utils.ts                          # generateReqId, AsyncQueue
@@ -149,29 +193,35 @@ yami-agent/
 │   ├── platform/
 │   │   ├── types.ts                      # IMessagePlatform, IStreamWriter
 │   │   └── wecom/
-│   │       ├── protocol.ts               # 企微 WS 协议类型定义
+│   │       ├── protocol.ts               # 企微 WS 协议完整类型定义
 │   │       ├── WeComPlatform.ts           # WS 连接、心跳、重连、收发
-│   │       ├── MessageParser.ts           # 消息解析 (text/mixed/image/voice/file/quote)
+│   │       ├── MessageParser.ts           # 消息解析 (类型安全，无手动断言)
 │   │       ├── StreamSegmenter.ts         # 流式分段 (1500字/换行/表格续接)
 │   │       └── media.ts                   # 媒体下载、AES 解密、保存
 │   │
 │   ├── agent/
 │   │   ├── types.ts                      # IAgentProcess, IAgentProvider, IAgentRouter
-│   │   ├── SingleAgentRouter.ts          # 单 Agent 路由
+│   │   ├── SingleAgentRouter.ts          # 单 Agent 路由 (含 cancel)
 │   │   └── acp/
 │   │       ├── AcpAgentProcess.ts        # ACP 子进程 (stdin/stdout ndjson)
 │   │       └── AcpAgentProvider.ts       # Agent 工厂
 │   │
 │   ├── session/
-│   │   ├── types.ts                      # ManagedSessionOptions
+│   │   ├── types.ts                      # ManagedSessionOptions (含 eventBus)
 │   │   ├── SessionManager.ts             # 进程池 + LRU + 预热 + 空闲清理
-│   │   ├── ManagedSession.ts             # 消息排队 + 字节追踪 + 轮换 + 记忆
-│   │   └── MessageQueue.ts              # per-session 串行队列
+│   │   ├── ManagedSession.ts             # 消息排队 + 事件驱动总结 + 首条兜底注入
+│   │   └── MessageQueue.ts              # per-session 串行队列 + 超时 cancel
 │   │
 │   ├── memory/
 │   │   ├── types.ts                      # IMemoryLayer, IMemoryRecycler
+│   │   ├── events.ts                     # MemoryEvent, ISummarizeStrategy, MemoryEventBus
+│   │   ├── strategies/
+│   │   │   ├── TurnBasedStrategy.ts      # 每 N 轮总结
+│   │   │   ├── SizeBasedStrategy.ts      # 字节超限轮换
+│   │   │   └── IntervalStrategy.ts       # 定时总结
+│   │   ├── strategyFactory.ts            # 从配置创建策略实例
 │   │   ├── MemoryManager.ts              # Layer 编排器
-│   │   ├── ConversationMemoryLayer.ts    # 文件摘要层 (memory/*.md + gzip)
+│   │   ├── ConversationMemoryLayer.ts    # 文件摘要层 (maxChars 截断 + gzip)
 │   │   └── AcpMemoryRecycler.ts          # 临时 ACP 进程做摘要
 │   │
 │   ├── bridge/
@@ -189,19 +239,24 @@ yami-agent/
 │   ├── spec.md                           # 需求规格
 │   ├── design.md                         # 设计文档（开发前）
 │   ├── plan.md                           # 实现计划
-│   └── architecture.md                   # 架构文档（本文件，反映实际实现）
+│   ├── architecture.md                   # 架构文档（本文件）
+│   ├── memory-strategy.md                # 记忆策略分离设计
+│   ├── multi-agent-collaboration.md      # 多 Agent 协作设计
+│   └── observability.md                  # 可观测性设计
+│
+├── templates/
+│   ├── skills/memory-recall/SKILL.md     # Agent 自主查记忆的 Skill
+│   └── ...                               # 其他部署模板
 │
 ├── scripts/
 │   └── deploy.sh                         # 交互式部署脚本
-│
-├── templates/                            # 部署模板 (agents/skills/steering)
 ├── package.json
 └── tsconfig.json
 ```
 
 ## 配置
 
-### config.json (机器人配置)
+### config.json
 
 ```jsonc
 {
@@ -218,12 +273,18 @@ yami-agent/
     "dm_someone": { "mode": "safe" }
   },
   "memory": {
-    "layers": [{ "type": "conversation", "enabled": true }]
+    "layers": [{ "type": "conversation", "enabled": true }],
+    "summarize": [
+      { "type": "turn", "interval": 30 },
+      { "type": "size", "limit": 2097152 },
+      { "type": "interval", "minutes": 60 }
+    ],
+    "injectionMaxChars": 2000
   }
 }
 ```
 
-### .env (环境变量)
+### .env
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
@@ -232,11 +293,11 @@ yami-agent/
 | `WARM_POOL_SIZE` | `1` | 启动时预热的空闲进程数 |
 | `IDLE_TIMEOUT` | `1800` | 空闲超时（秒），超时后回收进程 |
 | `PROMPT_TIMEOUT` | `300` | 单次 prompt 超时（秒） |
-| `SESSION_SIZE_LIMIT` | `2097152` | 会话轮换阈值（字节，默认 2MB） |
-| `MEMORY_SUMMARY_INTERVAL` | `30` | 每 N 轮触发一次记忆总结 |
 | `MEMORY_RECALL_DAYS` | `7` | recall 时读取最近几天的摘要 |
 | `PORT` | `8900` | HTTP API 端口 |
 | `API_KEY` | (可选) | /send 接口的 Bearer token |
+
+> `SESSION_SIZE_LIMIT` 和 `MEMORY_SUMMARY_INTERVAL` 已迁移到 config.json 的 `memory.summarize` 策略配置中。
 
 ## 安全机制
 
@@ -271,46 +332,6 @@ yami-agent/
 | `zod` | ^3.24.4 | 配置校验 |
 | `vitest` | ^4.1.5 | 单元测试 (dev) |
 
-## 部署
-
-```bash
-# 1. 构建
-npm run build
-
-# 2. 通过 watchdog 启动（异常自动重启）
-node dist/watchdog/watchdog.js
-
-# 3. 或直接启动
-node dist/index.js
-
-# 4. systemd service（生产环境）
-# 见 deploy.sh 自动生成的 yami-agent.service
-```
-
-### 运行时目录结构
-
-```
-{WORK_DIR}/
-├── .kiro/                    # Agent 配置（deploy.sh 生成）
-│   ├── agents/               # Agent 定义
-│   ├── skills/               # Skill 模板
-│   ├── steering/             # Steering 规则
-│   └── settings/             # MCP 配置
-├── sessions/                 # per-chat 会话目录
-│   ├── dm_UserA/
-│   │   ├── last_session_id   # 最近的 ACP sessionId
-│   │   └── memory/
-│   │       ├── 2026-04-28.md
-│   │       ├── 2026-04-27.md
-│   │       ├── 2026-03-28.md.gz  # 超过 30 天，已压缩
-│   │       └── archive/          # /reset 归档的摘要
-│   └── group_chatid/
-│       ├── last_session_id
-│       └── memory/
-├── config.json
-└── .env
-```
-
 ## 测试
 
 ```bash
@@ -326,3 +347,12 @@ npm run test:watch    # watch 模式
 | MessageQueue.test.ts | 3 | 串行执行、超时、失败恢复 |
 | StreamSegmenter.test.ts | 6 | 分段、换行切割、表格续接、6000 降级 |
 | ConversationMemoryLayer.test.ts | 6 | recall、onSummary、cleanup、gzip |
+| strategies.test.ts | 12 | TurnBased、SizeBased、Interval、EventBus、Factory |
+
+## 相关设计文档
+
+| 文档 | 内容 | 状态 |
+|------|------|------|
+| [memory-strategy.md](./memory-strategy.md) | 记忆策略分离（事件驱动总结 + Skill 注入） | ✅ 已实现 |
+| [multi-agent-collaboration.md](./multi-agent-collaboration.md) | 两层多 Agent 协作（Bot 内部 + 跨 Bot OP Issue） | 📝 设计阶段 |
+| [observability.md](./observability.md) | 可观测性（Prometheus metrics + 企微告警） | 📝 设计阶段 |

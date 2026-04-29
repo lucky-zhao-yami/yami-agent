@@ -18,8 +18,8 @@ export abstract class IMemoryLayer {
   abstract readonly name: string;
   /** 持久化一轮对话。每次 Agent 回复后调用。 */
   abstract save(chatId: string, entry: HistoryEntry): Promise<void>;
-  /** 检索上下文，注入到下一次 prompt 中。 */
-  abstract recall(chatId: string, query?: string): Promise<string>;
+  /** 检索上下文，注入到下一次 prompt 中。maxChars 限制返回字数。 */
+  abstract recall(chatId: string, query?: string, maxChars?: number): Promise<string>;
   /** 接收回收器生成的摘要。需要持久化的 layer 覆写此方法。 */
   async onSummary(_chatId: string, _date: string, _summary: string): Promise<void> {}
   /** 清理过期数据（如 gzip 超过 30 天的文件）。 */

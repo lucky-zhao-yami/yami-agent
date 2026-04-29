@@ -20,6 +20,13 @@ const MemoryLayerSchema = z.object({
   endpoint: z.string().optional(),
 });
 
+const SummarizeStrategySchema = z.object({
+  type: z.string(),
+  interval: z.number().optional(),
+  limit: z.number().optional(),
+  minutes: z.number().optional(),
+});
+
 const BotConfigSchema = z.object({
   bot_id: z.string(),
   secret: z.string(),
@@ -28,7 +35,9 @@ const BotConfigSchema = z.object({
   chats: z.record(ChatConfigSchema).default({ default: { mode: 'full' } }),
   memory: z.object({
     layers: z.array(MemoryLayerSchema).default([{ type: 'conversation', enabled: true }]),
-  }).default({ layers: [{ type: 'conversation', enabled: true }] }),
+    summarize: z.array(SummarizeStrategySchema).optional(),
+    injectionMaxChars: z.number().default(2000),
+  }).default({ layers: [{ type: 'conversation', enabled: true }], injectionMaxChars: 2000 }),
 });
 
 const EnvConfigSchema = z.object({

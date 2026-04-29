@@ -9,6 +9,7 @@ import type { BotConfig } from '../../config.js';
 import type { WsMessage, EventCallbackBody } from './protocol.js';
 import { parseMsgCallback } from './MessageParser.js';
 import { getLogger } from '../../logger.js';
+import { wsConnected, wsReconnects, streamConflicts } from '../../observability/metrics.js';
 
 const log = getLogger('WeComPlatform');
 
@@ -54,6 +55,7 @@ export class WeComPlatform extends IMessagePlatform {
     this.lastPong = Date.now();
     this.startHeartbeat();
     log.info('WS connected and authenticated');
+    wsConnected.set(1);
     // Background: when connection drops, reconnect loop kicks in
     messagePromise.then(() => this.reconnectLoop()).catch(() => this.reconnectLoop());
   }
@@ -71,6 +73,7 @@ export class WeComPlatform extends IMessagePlatform {
     while (!this.closing) {
       this.stopHeartbeat();
       this.ws = null;
+      wsConnected.set(0);
       log.info('Reconnecting in %dms', backoff);
       await sleep(backoff);
       try {
@@ -81,6 +84,8 @@ export class WeComPlatform extends IMessagePlatform {
         this.startHeartbeat();
         this.authFailures = 0;
         backoff = 1000;
+        wsConnected.set(1);
+        wsReconnects.inc();
         log.info('WS reconnected and authenticated');
         await messagePromise;
       } catch (e: unknown) {
@@ -102,7 +107,7 @@ export class WeComPlatform extends IMessagePlatform {
     this.closing = true;
     this.stopHeartbeat();
     // Clean up pending media waiters
-    for (const [rid, waiter] of this.mediaWaiters) {
+    for (const [, waiter] of this.mediaWaiters) {
       clearTimeout(waiter.timer);
       waiter.resolve(null);
     }
@@ -279,6 +284,7 @@ export class WeComPlatform extends IMessagePlatform {
     } else if (!cmd && msg.errcode === 6000) {
       const failedRid = (headers.req_id as string) || '';
       if (failedRid) this.failedReqIds.add(failedRid);
+      streamConflicts.inc();
       log.info('6000 conflict req=%s, will degrade to send_msg', failedRid);
     } else if (!cmd && this._pendingAuthReqId && this._authCallback) {
       this._authCallback(msg);
@@ -292,7 +298,7 @@ export class WeComPlatform extends IMessagePlatform {
     this.msgHandler(incoming).catch(err => log.error(err, 'Message handler error'));
   }
 
-  private handleEventCallback(rid: string, body: Record<string, unknown>) {
+  private handleEventCallback(_rid: string, body: Record<string, unknown>) {
     if (!this.evtHandler) return;
     const b = body as unknown as EventCallbackBody;
     const eventType = b.event?.eventtype || '';
@@ -300,7 +306,7 @@ export class WeComPlatform extends IMessagePlatform {
     const evt: PlatformEvent = {
       type: eventType === 'enter_chat' ? 'enter_chat' : 'disconnected',
       chatId: chatId || undefined,
-      reqId: rid,
+      reqId: _rid,
     };
     this.evtHandler(evt).catch(err => log.error(err, 'Event handler error'));
   }

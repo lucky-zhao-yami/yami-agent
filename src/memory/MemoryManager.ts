@@ -18,11 +18,11 @@ export class MemoryManager {
     private recycler: IMemoryRecycler,
   ) {}
 
-  async recall(chatId: string, query?: string): Promise<string> {
+  async recall(chatId: string, query?: string, maxChars?: number): Promise<string> {
     const parts: string[] = [];
     for (const layer of this.layers) {
       try {
-        const ctx = await layer.recall(chatId, query);
+        const ctx = await layer.recall(chatId, query, maxChars);
         if (ctx) parts.push(ctx);
       } catch (e) {
         log.error(e, `recall failed for layer ${layer.name}`);
