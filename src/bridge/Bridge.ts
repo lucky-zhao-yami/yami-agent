@@ -3,7 +3,6 @@ import { getLogger } from '../logger.js';
 import type { AppConfig } from '../config.js';
 import type { AgentChunk, PromptContent } from '../agent/types.js';
 import type { IncomingMessage, MixedItem, PlatformEvent, IMessagePlatform } from '../platform/types.js';
-import type { WeComPlatform } from '../platform/wecom/WeComPlatform.js';
 import type { SessionManager } from '../session/SessionManager.js';
 import { StreamSegmenter } from '../platform/wecom/StreamSegmenter.js';
 import { messagesTotal, messagesProcessed, messageDuration, injectionBlocked } from '../observability/metrics.js';
@@ -88,10 +87,8 @@ export class Bridge {
 
       const segmenter = new StreamSegmenter(this.platform, reqId, streamId, chatId, chatType, prefix);
 
-      let accumulated = '';
       const onChunk = async (chunk: AgentChunk) => {
         if (chunk.type === 'text') {
-          accumulated += chunk.text;
           await segmenter.feed(chunk.text);
         }
       };

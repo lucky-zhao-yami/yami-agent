@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { loadConfig, getChatConfig, type AppConfig } from '../config.js';
+import { getChatConfig, type AppConfig } from '../config.js';
 
 // 直接构造 AppConfig 测试 getChatConfig，不依赖文件系统
 function makeConfig(overrides: Record<string, unknown> = {}): AppConfig {

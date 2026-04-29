@@ -1,4 +1,4 @@
-import { readdir, readFile, appendFile, writeFile, mkdir, unlink } from 'node:fs/promises';
+import { readdir, readFile, appendFile, mkdir, unlink } from 'node:fs/promises';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { join } from 'node:path';
 import { createGzip } from 'node:zlib';

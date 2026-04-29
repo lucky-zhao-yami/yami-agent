@@ -107,7 +107,7 @@ export class WeComPlatform extends IMessagePlatform {
     this.closing = true;
     this.stopHeartbeat();
     // Clean up pending media waiters
-    for (const [rid, waiter] of this.mediaWaiters) {
+    for (const [, waiter] of this.mediaWaiters) {
       clearTimeout(waiter.timer);
       waiter.resolve(null);
     }
@@ -298,7 +298,7 @@ export class WeComPlatform extends IMessagePlatform {
     this.msgHandler(incoming).catch(err => log.error(err, 'Message handler error'));
   }
 
-  private handleEventCallback(rid: string, body: Record<string, unknown>) {
+  private handleEventCallback(_rid: string, body: Record<string, unknown>) {
     if (!this.evtHandler) return;
     const b = body as unknown as EventCallbackBody;
     const eventType = b.event?.eventtype || '';
@@ -306,7 +306,7 @@ export class WeComPlatform extends IMessagePlatform {
     const evt: PlatformEvent = {
       type: eventType === 'enter_chat' ? 'enter_chat' : 'disconnected',
       chatId: chatId || undefined,
-      reqId: rid,
+      reqId: _rid,
     };
     this.evtHandler(evt).catch(err => log.error(err, 'Event handler error'));
   }

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { ManagedSession } from '../ManagedSession.js';
 import { MemoryEventBus } from '../../memory/events.js';
 import type { IAgentRouter, AgentChunk, PromptContent } from '../../agent/types.js';

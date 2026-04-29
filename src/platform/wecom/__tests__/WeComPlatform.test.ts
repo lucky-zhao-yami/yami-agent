@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { EventEmitter } from 'node:events';
 
-vi.mock('ws', () => {
-  const { EventEmitter: EE } = require('node:events');
+vi.mock('ws', async () => {
+  const { EventEmitter: EE } = await import('node:events');
   class MockWS extends EE {
     static OPEN = 1;
     readyState = 1;

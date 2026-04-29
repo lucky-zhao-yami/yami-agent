@@ -1,4 +1,4 @@
-import { readdir, readFile, unlink, stat } from 'node:fs/promises';
+import { readdir, unlink, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getLogger } from './logger.js';
 import { loadConfig } from './config.js';

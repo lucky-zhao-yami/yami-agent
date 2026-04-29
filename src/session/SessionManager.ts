@@ -57,7 +57,7 @@ export class SessionManager {
 
   /** 获取已有会话或创建新的。处理 LRU 淘汰和会话恢复。 */
   async getOrCreate(chatId: string): Promise<ManagedSession> {
-    if (/[\/\\]|\.\./.test(chatId)) throw new Error(`Invalid chatId: ${chatId}`);
+    if (/[/\\]|\.\./.test(chatId)) throw new Error(`Invalid chatId: ${chatId}`);
 
     const existing = this.sessions.get(chatId);
     if (existing?.alive) return existing;
