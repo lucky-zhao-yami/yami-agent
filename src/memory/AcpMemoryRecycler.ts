@@ -41,9 +41,9 @@ export class AcpMemoryRecycler extends IMemoryRecycler {
     const sessionPath = join(this.sessionBaseDir, `${sessionId}.jsonl`);
     log.info(`Summarizing session ${sessionId} from ${sessionPath}`);
 
-    const proc = await this.agentProvider.spawn(this.agentSpawnOpts);
-
+    let proc: Awaited<ReturnType<typeof this.agentProvider.spawn>> | null = null;
     try {
+      proc = await this.agentProvider.spawn(this.agentSpawnOpts);
       const sid = await proc.createSession(this.agentSpawnOpts.cwd);
       let result = '';
 
@@ -58,7 +58,7 @@ export class AcpMemoryRecycler extends IMemoryRecycler {
       log.error(e, `Failed to summarize session ${sessionId}`);
       return '(摘要生成失败)';
     } finally {
-      await proc.kill().catch(() => {});
+      await proc?.kill().catch(() => {});
     }
   }
 }
