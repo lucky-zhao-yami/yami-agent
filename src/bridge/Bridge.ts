@@ -6,6 +6,7 @@ import type { IncomingMessage, MixedItem, PlatformEvent, IMessagePlatform } from
 import type { WeComPlatform } from '../platform/wecom/WeComPlatform.js';
 import type { SessionManager } from '../session/SessionManager.js';
 import { StreamSegmenter } from '../platform/wecom/StreamSegmenter.js';
+import { messagesTotal, messagesProcessed, messageDuration, injectionBlocked } from '../observability/metrics.js';
 import { downloadMedia, saveMedia, isImage } from '../platform/wecom/media.js';
 import { checkInjection } from './guard.js';
 import { parseCommand, handleCommand } from './commands.js';
@@ -45,6 +46,8 @@ export class Bridge {
 
   private async doHandleMessage(msg: IncomingMessage) {
     const { chatId, reqId, chatType } = msg;
+    const startTime = Date.now();
+    messagesTotal.inc({ chat_type: chatType === 1 ? 'dm' : 'group' });
     let streamId = '';
 
     try {
@@ -52,6 +55,8 @@ export class Bridge {
       if (!text && content.length === 0) return;
 
       if (text && checkInjection(text)) {
+        injectionBlocked.inc();
+        messagesProcessed.inc({ status: 'injection' });
         const sid = randomUUID().replace(/-/g, '').slice(0, 16);
         await this.platform.sendStream(reqId, sid, '⚠️ 检测到异常指令，已忽略。', true);
         return;
@@ -94,11 +99,16 @@ export class Bridge {
       try {
         await session.send(content, onChunk);
         await segmenter.finish();
+        messagesProcessed.inc({ status: 'ok' });
+        messageDuration.observe((Date.now() - startTime) / 1000);
       } catch (sendErr) {
-        segmenter.dispose(); // clean up flushTimer
+        segmenter.dispose();
         throw sendErr;
       }
     } catch (err) {
+      const status = err instanceof Error && err.message === 'Prompt timeout' ? 'timeout' : 'error';
+      messagesProcessed.inc({ status });
+      messageDuration.observe((Date.now() - startTime) / 1000);
       log.error(err, `Error processing message for ${chatId}`);
       if (streamId) {
         await this.platform.sendStream(reqId, streamId, '❌ 处理消息时出错，请稍后重试', true).catch(() => {});

@@ -1,11 +1,12 @@
 /**
- * HTTP API — POST /send, GET /health
+ * HTTP API — POST /send, GET /health, GET /metrics, GET /status
  */
 import Fastify from 'fastify';
 import { timingSafeEqual } from 'node:crypto';
 import { getLogger } from '../logger.js';
 import type { IMessagePlatform } from '../platform/types.js';
 import type { SessionManager } from '../session/SessionManager.js';
+import { registry } from '../observability/metrics.js';
 
 const log = getLogger('HttpServer');
 
@@ -46,10 +47,41 @@ export async function startHttpServer(
     activeSessions: sessionManager.getActiveChatIds().length,
   }));
 
+  /** Prometheus 指标端点。 */
+  app.get('/metrics', async (_req, reply) => {
+    reply.header('Content-Type', registry.contentType);
+    return registry.metrics();
+  });
+
+  /** JSON 状态详情，供人工查看和调试。 */
+  app.get('/status', async () => {
+    const sessions = sessionManager.getActiveChatIds().map(chatId => {
+      const s = sessionManager.getSession(chatId);
+      if (!s) return { chatId, alive: false };
+      const state = s.getMemoryState();
+      return {
+        chatId,
+        alive: s.alive,
+        bytes: state.bytes,
+        turns: state.turns,
+        lastActive: new Date(s.lastActive).toISOString(),
+        sessionId: s.sessionId,
+      };
+    });
+
+    return {
+      uptime: process.uptime(),
+      memory: {
+        rss: process.memoryUsage().rss,
+        heapUsed: process.memoryUsage().heapUsed,
+      },
+      sessions,
+    };
+  });
+
   app.post('/shutdown', async (_req, reply) => {
     log.info('Shutdown requested via HTTP');
     reply.send({ ok: true, message: 'shutting down gracefully' });
-    // Let response flush, then trigger graceful shutdown
     setTimeout(() => process.kill(process.pid, 'SIGTERM'), 500);
   });
 

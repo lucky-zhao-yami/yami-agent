@@ -8,6 +8,7 @@ import type { MemoryManager } from '../memory/MemoryManager.js';
 import type { SessionMemoryState } from '../memory/events.js';
 import { MessageQueue } from './MessageQueue.js';
 import { getPreamble } from '../bridge/guard.js';
+import { sessionRotations, sessionSummarizations } from '../observability/metrics.js';
 
 const log = getLogger('ManagedSession');
 
@@ -112,6 +113,7 @@ export class ManagedSession {
   /** 触发记忆总结 → 创建新会话 → 重置计数器。 */
   async rotate(): Promise<void> {
     log.info(`Rotating session for ${this.chatId}, bytes=${this.bytes}, turns=${this.turns}`);
+    sessionRotations.inc();
     await this.triggerSummarize();
     await this.router.createSession();
     this.bytes = 0;
@@ -123,6 +125,7 @@ export class ManagedSession {
   /** 触发记忆总结（不轮换）。 */
   async triggerSummarize(): Promise<void> {
     if (!this.memoryManager || !this.router.sessionId) return;
+    sessionSummarizations.inc({ trigger: 'strategy' });
     await this.memoryManager.summarize(this.chatId, this.router.sessionId).catch(
       (e) => log.error(e, 'Summarize failed'),
     );
