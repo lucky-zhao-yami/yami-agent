@@ -22,8 +22,8 @@ Content-Type: application/json
 ### 请求体
 ```json
 {
-  "email": "${CENTRAL_EMAIL}",
-  "password": "${CENTRAL_PASSWORD}"
+  "email": "admin.fp",
+  "password": "yami@123"
 }
 ```
 
@@ -44,26 +44,22 @@ Token 在 `body.token` 字段中。
 
 1. 先检查本地缓存文件 `.kiro/token-cache.json` 是否存在且 token 未过期
 2. 如果 token 有效（获取时间不超过 12 小时），直接使用缓存的 token
-3. 如果 token 过期或不存在，执行以下命令登录获取新 token：
+3. 如果 token 过期或不存在，执行登录获取新 token：
 
-```bash
-TOKEN=$(curl -s -X POST https://centralapi.yamibuy.net/hub/admin/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"'"${CENTRAL_EMAIL}"'","password":"'"${CENTRAL_PASSWORD}"'"}' \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['body']['token'])")
+```powershell
+$body = '{"email":"admin.fp","password":"yami@123"}'
+$resp = Invoke-RestMethod -Uri "https://centralapi.yamibuy.net/hub/admin/login" -Method POST -Headers @{"Content-Type"="application/json"} -Body $body
+$resp.body.token
 ```
 
 4. 将获取到的 token 和当前时间戳写入 `.kiro/token-cache.json`：
 
-```bash
-python3 -c "
-import json, datetime
-json.dump({
-    'token': '$TOKEN',
-    'obtained_at': datetime.datetime.now().isoformat(),
-    'email': '${CENTRAL_EMAIL}'
-}, open('.kiro/token-cache.json', 'w'))
-"
+```json
+{
+  "token": "获取到的token",
+  "obtained_at": "2026-03-14T10:00:00Z",
+  "email": "admin.fp"
+}
 ```
 
 5. 使用 token 调用后续 API
@@ -75,6 +71,19 @@ json.dump({
 - 登录失败时：提示用户检查网络或账号状态
 
 ### 注意事项
+- `.kiro/token-cache.json` 已加入 `.gitignore`，不会提交到仓库
 - 如果登录接口返回非 200 或无 token，提示用户手动登录获取
 - 此账号为共用管理账号，仅用于只读查询
-- 环境变量 `CENTRAL_EMAIL` 和 `CENTRAL_PASSWORD` 在 `.env` 中配置
+
+## Bash 调用示例（Linux 环境）
+
+```bash
+# 登录获取 token
+TOKEN=$(curl -s -X POST https://centralapi.yamibuy.net/hub/admin/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin.fp","password":"yami@123"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['body']['token'])")
+echo "Token: $TOKEN"
+
+# 写入缓存
+python3 -c "import json,datetime; json.dump({'token':'$TOKEN','obtained_at':datetime.datetime.now().isoformat(),'email':'admin.fp'}, open('.kiro/token-cache.json','w'))"
+```

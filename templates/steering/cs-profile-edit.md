@@ -10,133 +10,106 @@ inclusion: manual
 - 用户名、昵称、头像、生日、性别、个人简介、位置、国家
 - 姓名、firstname、lastname、真实姓名
 - 信息完整度、个人资料
+- 修改邮箱、修改手机号
 
 ## 常用数据库表
-- `yamibuy_master`.`xysc_users` - 用户信息表（user_name、sex、birthday、description、country、avatar、location、firstname、lastname、name_source）
+- `yamibuy_master`.`xysc_users` - 用户信息表
+- `yamibuy_crm`.`crm_bind_phone_log` - 手机号变更日志
 
-## 可修改字段一览
+> 字段枚举值见 `.kiro/skills/enum-values.md`（如 `xysc_users.sex`），解释字段时先查速查表，无需重复查表结构。
 
-| 字段 | 接口路径 | 说明 |
-|------|---------|------|
-| username（昵称） | PUT /user_name | 用户昵称，需唯一 |
-| avatar（头像） | PUT /avatar | 头像 URL |
-| birthday（生日） | PUT /birthday | 格式 yyyy-MM-dd |
-| gender（性别） | PUT /account_info | 1=男，2=女，3=不想说，0=未选择 |
-| location（位置） | PUT /user_location | 用户位置 |
-| description（个人简介） | PUT /user_description | 最多 255 字符（emoji 转义后） |
-| country（国家） | PUT /account_info | 国家代码，最多 5 字符 |
-| firstname / lastname | PUT /account_info | 姓名，不能包含 emoji |
-| truename（真实姓名） | PUT /account_info | 真实姓名 |
-| phone（手机号） | PUT /account_info | 修改手机号会解绑已验证状态 |
-| 综合修改 | PUT /account_info | 支持一次性修改多个字段 |
+## 通用排查流程
 
-## 信息完整度计算
-完整度由以下 6 个字段决定，全部填写为 100%：
-1. `avatar` — 头像
-2. `user_name` — 昵称
-3. `sex` — 性别（必须 > 0，即不能是"未选择"）
-4. `birthday` — 生日（不能是 1970-01-01 或空）
-5. `country` — 国家
-6. `description` — 个人简介
+大部分个人信息修改失败的排查步骤相同：
+
+```
+1. 查日志（search.py -s ec-customer -k "email或user_id" -t 7d）
+2. 根据日志中的错误码，对照下方场景的错误码映射表定位原因
+3. 无日志 → 请求未到达后端，建议客人检查网络或重新登录
+4. 需要查数据库时 → 有邮箱先执行脚本 `python scripts/get-userid.py "邮箱"` 查 user_id，再查 xysc_users
+```
+
+```sql
+-- 查用户当前信息（根据场景选择需要的字段）
+SELECT user_id, user_name, avatar, sex, birthday, description, country,
+       firstname, lastname, name_source, mobile_phone, is_phone_validated, parent_id
+FROM yamibuy_master.xysc_users WHERE user_id = {用户ID};
+```
 
 ## 排查场景
 
-### 场景一：修改昵称失败
-触发条件：客人反馈修改昵称/用户名时提示错误
+### 场景一：修改昵称/简介/姓名/性别/国家/生日/头像/位置/真实姓名失败
 
-排查步骤：
-1. 确认用户 user_id
-2. 查询当前用户信息：
-   ```sql
-   SELECT user_id, user_name, avatar, sex, birthday, description, country, location FROM `yamibuy_master`.`xysc_users` WHERE user_id = 用户ID;
-   ```
-3. 常见失败原因：
-   - **昵称已被占用**（错误码 10039）：其他用户已使用该昵称，昵称全局唯一
-   - **昵称包含黑名单关键词**（错误码 10039）：昵称中包含 `yamibuy`、`亚米`、`YMB`（不区分位置，包含即拦截）
-   - **昵称为纯空白字符**（错误码 10028）：全部由不可见字符/空格/控制字符组成
-   - **昵称超长**（错误码 30004）：emoji 转义后超过 60 字符
-   - **昵称为空**（错误码 10028）：未填写或 trim 后为空
+按通用排查流程查日志（search.py -s ec-customer），根据错误码定位：
 
-### 场景二：修改个人简介失败
-触发条件：客人反馈修改个人简介（description）时提示错误
+| 错误码 | 原因 | 涉及字段 |
+|--------|------|---------|
+| 10039 | 昵称被占用或含保留词（yamibuy/亚米/YMB，任意位置包含即拦截） | 昵称 |
+| 10028 | 内容为空或纯空白字符 | 昵称、firstname、lastname |
+| 30004 | 内容过长（昵称 emoji 转义后 >60 字符、国家 >5 字符、简介 emoji 转义后 >255 字符） | 昵称、国家、简介 |
+| 10053 | 个人简介过长（emoji 转义后 >255 字符） | 简介 |
+| 10066 | 姓名不允许包含 emoji | firstname、lastname |
+| 50021 | gender 为负数，前端传参异常 | 性别 |
+| ParseException | 日期格式不对，必须是 yyyy-MM-dd | 生日 |
+| 请求参数不完整 | 简介不能提交空内容 | 简介 |
+| 头像 URL 为空 | 系统自动过滤 some/"/(/) 后变空，静默失败 | 头像 |
 
-排查要点：
-- **简介为空**：description 不能为空字符串
-- **简介超长**（错误码 10053/30004）：emoji 转义为别名后长度超过 255 字符。注意 emoji 转义后会变长（如 😀 → `:grinning:`），实际可输入的字符数少于 255
-- 建议客人缩短内容后重试
+> 修改姓名后 `name_source` 更新为 1（用户手动输入）。枚举值见 `enum-values.md`。
+> sex=0（未选择）不计入完整度，枚举值见 `enum-values.md`。
+> 生日没有修改次数限制，可随时修改。修改生日月份可能影响生日惊喜（VIP权益，需在生日当月领取）。
+> 位置和真实姓名无任何格式校验，正常不会失败，日志中也无记录则为网络/登录过期问题。
 
-### 场景三：修改姓名（firstname/lastname）失败
-触发条件：客人反馈修改姓名时提示错误
+### 场景二：修改手机号后出现异常
 
-排查要点：
-- **姓名包含 emoji**（错误码 10066）：firstname 和 lastname 不允许包含 emoji 表情
-- **姓名为纯空白字符**（错误码 10028）：全部由不可见字符组成
-- 修改姓名后 `name_source` 会更新为 `USER_INPUT`
+```
+1. 查日志（search.py -s ec-customer -k "email或user_id" -t 7d）
+2. 并行查数据库：用户信息 + 手机号变更日志
+3. 根据日志 + 数据库记录定位：
+   ├─ EMPTY_PHONE / INVALID_PHONE_FORMAT → 手机号格式不对，必须是 +1- 开头 + 10位数字
+   ├─ is_phone_validated = 0 → 正常行为：换号后验证状态重置，需重新验证
+   ├─ parent_id > 0 且 crm_bind_phone_log 有解绑记录 → 换号触发了邀请验证记录删除，确认是否影响实际权益
+   └─ 日志中有其他异常 → 根据错误信息定位原因
+```
 
-### 场景四：修改性别失败
-触发条件：客人反馈修改性别时提示错误
+```sql
+SELECT user_id, mobile_phone, is_phone_validated, parent_id
+FROM yamibuy_master.xysc_users WHERE user_id = {用户ID};
 
-排查要点：
-- **性别值无效**（错误码 50021）：gender 值不能为负数
-- 有效值：1=男，2=女，3=不想说
+SELECT * FROM yamibuy_crm.crm_bind_phone_log WHERE user_id = {用户ID} ORDER BY id DESC;
+```
 
-### 场景五：修改国家失败
-触发条件：客人反馈修改国家时提示错误
+### 场景三：个人信息完整度不是 100%
 
-排查要点：
-- **国家代码超长**（错误码 30004）：country 字段最多 5 字符
+```
+1. 有邮箱 → 执行脚本 `python scripts/get-userid.py "邮箱"` 查 user_id → 查 6 个关键字段
+2. 逐一检查哪个不合格，告知客服缺失项：
+   ├─ avatar 为空 → 未上传头像
+   ├─ user_name 为空 → 未填写昵称
+   ├─ sex = 0 或空 → 性别选了"未选择"，需改为男/女/其他/不想说
+   ├─ birthday 为空或 1970-01-01 → 未填写生日
+   ├─ country 为空 → 未填写国家
+   └─ description 为空 → 未填写个人简介（最常见遗漏）
+```
 
-### 场景六：修改手机号的副作用
-触发条件：客人通过 editAccountInfo 接口修改手机号后出现异常
+```sql
+SELECT user_id, user_name, avatar, sex, birthday, description, country
+FROM yamibuy_master.xysc_users WHERE user_id = {用户ID};
+```
 
-排查要点：
-- 通过 account_info 接口修改手机号时，如果新手机号与旧手机号不同：
-  - `is_phone_validated` 会被重置为 0（手机验证状态失效）
-  - 系统会在 `crm_bind_phone_log` 中记录解绑日志
-  - 如果用户有邀请关系（parent_id > 0），会触发邀请好友验证记录删除
-- 建议客人修改手机号后重新验证
+### 场景四：修改邮箱失败
 
-### 场景七：个人信息完整度不是 100%
-触发条件：客人反馈信息已全部填写但完整度不是 100%
+```
+1. 查日志（search.py -s ec-customer -k "email或user_id" -t 7d）
+   ├─ INCORRECT_PASSWORD → 旧版接口需密码验证，密码输入错误
+   ├─ REPEAT_EMAIL → 新邮箱已被其他账户注册，需换一个邮箱
+   ├─ EDIT_EMAIL_MAX_COUNT → 1小时内尝试超限（默认3次），1小时后再试
+   ├─ INVALID_EMAIL → 邮箱格式不合法（必须包含 @ 和 .，且 @ 只能出现一次）
+   ├─ VERIFYCODE_ERROR（新版接口）→ 验证码错误或已过期，重新获取后再试
+   └─ 无日志 → 请求未到达后端，建议客人检查网络或重新登录
+```
 
-排查步骤：
-1. 查询用户 6 个关键字段：
-   ```sql
-   SELECT user_id, user_name, avatar, sex, birthday, description, country FROM `yamibuy_master`.`xysc_users` WHERE user_id = 用户ID;
-   ```
-2. 逐一检查：
-   - `avatar` 是否为空
-   - `user_name` 是否为空
-   - `sex` 是否为 0 或空（必须是 1/2/3）
-   - `birthday` 是否为空或 1970-01-01（默认值视为未填写）
-   - `country` 是否为空
-   - `description` 是否为空
-3. 最常见遗漏：`description`（个人简介）字段
-
-### 场景八：修改生日
-触发条件：客人需要修改生日
-
-排查要点：
-- 生日格式必须是 `yyyy-MM-dd`
-- 生日可以随时修改，没有次数限制
-- 注意：修改生日可能影响生日惊喜领取（需在生日当月领取）
-
-## 错误码速查
-
-| 错误码 | 含义 | 常见触发场景 |
-|--------|------|-------------|
-| 10028 | 无效用户名 | 昵称为空、纯空白字符、firstname/lastname 纯空白 |
-| 10039 | 用户名已存在 | 昵称被占用或包含黑名单词 |
-| 10043 | 昵称不正确 | 昵称校验不通过 |
-| 10050 | 请求过于频繁 | 修改次数超限（当前已注释，暂不生效） |
-| 10053 | 个人简介过长 | description 超过 255 字符 |
-| 10066 | 姓名不能包含 emoji | firstname/lastname 含 emoji |
-| 30004 | 参数过长 | 昵称超 60 字符、国家超 5 字符、简介超 255 字符 |
-| 50021 | 性别无效 | gender 为负数 |
+> 修改邮箱成功后副作用：firstname 更新为新邮箱 @ 前缀（name_source=4）；有邀请关系时删除邮箱验证类型的邀请记录；地址簿旧邮箱批量更新为新邮箱。
 
 ## 注意事项
-- `xysc_users` 表的 email 和 mobile_phone 字段为脱敏数据，查询 user_id 请参考全局规则（cs-global-config.md）的 Central API 查询规则
-- 昵称黑名单为硬编码：`yamibuy`、`亚米`、`YMB`，包含即拦截（不区分大小写位置）
-- 修改次数限制逻辑（每天最大修改次数）在代码中已被注释掉，当前不生效
-- 完善信息送积分逻辑也已被注释掉，当前不生效
-- 头像 URL 中的 `some`、`"`、`(`、`)` 字符会被自动过滤
+- `xysc_users` 表的 email 和 mobile_phone 为脱敏数据，查 user_id 参考 cs-global-config.md
+- 修改次数限制和完善信息送积分逻辑均已注释，当前不生效

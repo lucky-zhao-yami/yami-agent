@@ -5,101 +5,188 @@ inclusion: manual
 # RMA 售后问题 - 客服排查规则
 
 ## 识别规则
-当用户提问涉及以下关键词时，自动识别�?RMA 排查类问题：
-- RMA、退货、退款审核、售�?
-- 补偿退款、over refund、退款超�?
-- 退款审核通过、退款审核失�?
-- 无法申请售后、无法退货、没有符合退换条件、不能申请RMA、前端无法售�?
+当用户提问涉及以下关键词时，自动识别为 RMA 排查类问题：
+- 退货、换货、RMA、退件、return、售后
+- 退款审核、补偿退款、over refund、退款超额
+- 无法申请售后、无法退货、没有符合退换条件、不能申请RMA、前端无法售后
+- 整单拒收、缺货发货、combo商品退货、bundle商品退货
+- 礼品卡退款、虚拟礼卡退款
+
+## 常用数据库表
+- `yamibuy_master`.`xysc_order_info` — 订单基本信息
+- `yamibuy_master`.`xysc_order_goods` — 订单商品信息
+- `yamibuy_so`.`so_tracking_info` — 物流追踪
+- `yamibuy_rma`.`rma_order` — RMA 单主表
+- `yamibuy_rma`.`rma_order_detail` — RMA 商品明细
+- `yamibuy_rma`.`rma_rule` — RMA 规则（售后天数）
+- `yamibuy_rma`.`category_rule` — 分类规则配置
+
+> 枚举值见 `enum-values.md`（rma_order.status / rma_type / request_type / source / seller_type / rma_rule 天数 / im_item_extend.clone_type / xysc_order_info.source_flag 等）。
+
+### rma_rule 当前配置速查
+| rule_id | 客观自营(obj_ym) | 客观第三方(obj_tp) | 主观自营(sbj_ym) | 主观第三方(sbj_tp) |
+|---------|-----------------|-------------------|-----------------|-------------------|
+| 1 | 90天 | 联系客服(-2) | 联系客服(-2) | 联系客服(-2) |
+| 2 | 不支持(0) | 7天 | 不支持(0) | 联系客服(-2) |
+| 3 | 联系客服(-2) | 联系客服(-2) | 联系客服(-2) | 联系客服(-2) |
+| 4 | 不支持(0) | 不支持(0) | 不支持(0) | 不支持(0) |
+| 5 | 7天 | 7天 | 7天 | 7天 |
+| 6 | 30天 | 30天 | 30天 | 30天 |
+| 7 | 3天 | 3天 | 3天 | 3天 |
+
+> 实际售后截止 = 送达时间 + rule天数 + offset（Apollo 配置 `rma.rule.offset.time`）
 
 ## 排查场景
 
-### 场景一：RMA 退款审核提�?订单中商品有补偿退�?
-触发条件：RMA 退款审核时弹出补偿退款提�?
+### 场景一：客人无法在前端申请售后（提示"没有符合退换条件的商品"）
 
-排查要点�?
-- 该提示说明订单之前有过补偿退款记�?
-- 审核人确认退款金额没有超额时，点击弹窗中�?审核通过"即可继续
-- RMA 退款检查逻辑：订单当前退款金�?+ 补偿退款金�?是否大于订单总金�?
-  - 大于：提示不�?over refund
-  - 小于等于：不会提�?
+```
+1. 查日志（search.py -s ec-rma -k "email或order_sn" -t 7d）
+2. 并行查数据库：订单信息 + 物流送达时间 + 商品RMA规则 + 已有RMA记录 + 取消状态
+3. 按以下顺序逐项排查（任一不满足即为原因）：
+   ├─ 订单状态不对？→ 必须是 512(已发货已支付) 或 484(部分退款)
+   ├─ order_type 被排除？→ order_type=1(抽奖)/2(代金券)/7(虚拟礼卡) 不可前端RMA
+   ├─ vendor_id > 0？→ 第三方订单前端不可RMA（FBY vendor_id=-1 可以；第三方预售 order_type=6 vendor_id>0 也不可）
+   ├─ source_flag 被排除？→ 9(补发单)/11,12(TikTok渠道) 不可RMA
+   ├─ 未送达？→ so_tracking_info 中无 delivery_status=1 的记录
+   ├─ 已取消？→ xysc_order_cancel_status 有取消记录
+   ├─ 商品是赠品(is_gift=1)？→ 赠品不支持单独RMA
+   ├─ 商品已全部退过？→ 已退数量 >= 购买数量
+   ├─ 商品是 Combo(clone_type=3) 或 Bundle(clone_type=5)？→ 前端会拆成子品展示，用子品（原品）申请RMA，正常可退
+   ├─ 售后超期？→ 送达天数 > RMA规则天数 + offset（最常见原因）
+   ├─ 分类未配置售后原因？→ category_rule 无记录，前端无法展示原因选项
+   └─ 以上都不是 → 根据日志中的具体错误定位
+```
 
-### 场景二：RMA 退款导致多退�?
-触发条件：RMA 退款时没有关联订单补偿数据
+```sql
+-- 查订单基本信息
+SELECT order_id, order_sn, order_type, vendor_id, order_status, shipping_status, pay_status,
+       source_flag, is_separate, order_amount, integral_money, gift_card_money,
+       FROM_UNIXTIME(add_time) AS order_time
+FROM yamibuy_master.xysc_order_info WHERE order_sn = '{订单号}';
 
-排查要点�?
-- RMA 退款单和订单补偿目前没有做关联，可能导致多退�?
-- 客服在审�?RMA 单时，需先在订单补偿页面根据订单搜索，确认该订单有没有补偿金�?
-- 后续会在代码层面优化关联
+-- 查物流送达时间
+SELECT order_id, delivery_status, FROM_UNIXTIME(delivery_time) AS delivery_time
+FROM yamibuy_so.so_tracking_info WHERE order_id = {子单order_id} AND delivery_status = 1;
 
-### 场景三：RMA 单查询失�?
-触发条件：RMA 单无法正常显�?
+-- 查商品RMA规则天数
+SELECT a.item_number, a.rule_id, b.obj_ym_refund, b.sbj_ym_refund, b.obj_tp_refund, b.sbj_tp_refund
+FROM yamibuy_master.xysc_order_goods a
+LEFT JOIN yamibuy_rma.rma_rule b ON a.rule_id = b.rule_id
+WHERE a.order_id = {订单ID};
 
-排查要点�?
-- 可能是商品在创建 RMA 单后变成�?combo 商品，导�?RMA 展示子品逻辑异常
-- 检�?`yamibuy_rma.rma_order_detail` 表中 target_item_number 是否有对应商�?
-- 检�?`yamibuy_im.im_item_relation` 表中商品关联时间是否晚于 RMA 创建时间
+-- 查已有RMA记录
+SELECT rd.rma_id, rd.item_number, rd.request_count, ro.status
+FROM yamibuy_rma.rma_order_detail rd
+JOIN yamibuy_rma.rma_order ro ON rd.rma_id = ro.rma_id
+WHERE rd.order_id = {订单ID};
 
-### 场景四：退款时间限�?
-排查要点�?
-- 微信支付：订单超过一年无法退�?
-- 超过半年的订单可能无法通过 RMA/Central 取消退�?
-- 退款积分逻辑：RMA 扣积分按订单维度，customer 扣积分达到下单赠送上限不再扣�?
+-- 查取消状态
+SELECT * FROM yamibuy_master.xysc_order_cancel_status WHERE order_id = {订单ID};
 
+-- 查分类售后原因配置（分类未配置时前端无法展示原因选项）
+SELECT rule_id, category_id, reason_id FROM yamibuy_rma.category_rule WHERE category_id IN
+  (SELECT DISTINCT cat_id_1 FROM yamibuy_master.xysc_order_goods WHERE order_id = {订单ID});
+```
 
-### 场景五：前端无法申请 RMA（提�?没有符合退换条件的商品"�?
-触发条件：客人反馈无法在前端申请售后，提�?当前订单中没有符合退换条件的商品"
+> vendor_id 判断逻辑：vendor_id=0 为自营；vendor_id>0 且 order_type in (1,5,7) 视为自营；其他为第三方。
+> 售后期限 = 送达时间 + RMA规则天数 + Apollo配置offset(rma.rule.offset.time)。
+> 规则天数含义：-2=联系客服 / -1=不限天数 / 0=不支持 / >0=天数，枚举值见 enum-values.md。
+> 前端不可RMA但需 Central 后台操作的情况：
+> - 虚拟礼品卡(order_type=7)：Central 可发起但必须全额退且礼卡未使用
+> - 第三方订单(vendor_id>0)：Central 可发起（条件：未取消且已支付）
+> - 第三方预售(order_type=6, vendor_id>0)：同第三方订单
+> - Combo/Bundle 子商品关系已删除时：Central 只能发起"仅退款"
+> - FBY(order_type=5) 子单不支持整单拒收
 
-排查步骤�?
-1. 查询订单基本信息，确认订单类型和物流状态：
-   ```sql
-   SELECT order_id, order_sn, order_type, vendor_id, order_status, shipping_status, pay_status, FROM_UNIXTIME(add_time) AS order_time FROM `yamibuy_master`.`xysc_order_info` WHERE `order_sn` = '订单�?;
-   ```
-2. 查询物流送达时间（按主单查询，不按子单）�?
-   ```sql
-   SELECT order_id, delivery_status, FROM_UNIXTIME(delivery_time) AS delivery_time FROM `yamibuy_so`.`so_tracking_info` WHERE `order_id` = 主单order_id;
-   ```
-3. 查询该订单商品对应的 RMA 规则天数�?
-   ```sql
-   SELECT b.rule_id, b.obj_ym_refund, b.sbj_ym_refund FROM `yamibuy_master`.`xysc_order_goods` a LEFT JOIN `yamibuy_rma`.`rma_rule` b ON a.cat_id_1 = b.category_id WHERE a.order_id = order_id;
-   ```
-4. 查询是否已有 RMA 记录（部分商品可能已退过）�?
-   ```sql
-   SELECT rma_id, item_number, item_quantity, status FROM `yamibuy_rma`.`rma_order_detail` WHERE order_id = order_id;
-   ```
-5. 查询商品分类是否配置了售后原因（前端发起售后必须选择原因，无原因选项则无法提交）：
-   ```sql
-   -- 先查商品的一级分类
-   SELECT i.item_number, i.category_id, c2.parent_id AS level1_cat_id
-   FROM yamibuy_im.im_item i
-   JOIN yamibuy_master.xysc_category c1 ON i.category_id = c1.cat_id
-   JOIN yamibuy_master.xysc_category c2 ON c1.parent_id = c2.cat_id
-   WHERE i.item_number = '商品编号';
+### 场景二：RMA 退款审核提示"订单中商品有补偿退款"/ over refund
 
-   -- 再查该一级分类在 RMA 中是否有规则配置
-   SELECT cr.rec_id AS category_rule_id, cr.category_id, cr.rule_id, r.obj_ym_refund, r.sbj_ym_refund
-   FROM yamibuy_rma.category_rule cr
-   LEFT JOIN yamibuy_rma.rma_rule r ON cr.rule_id = r.rule_id
-   WHERE cr.category_id = 一级分类ID;
+```
+1. 查日志（search.py -s ec-rma -k "order_sn或rma_id" -t 7d 或 search.py -s central-rma -k "order_sn或rma_id" -t 7d）
+2. 查数据库确认退款金额：
+   ├─ 订单总金额 = order_amount + integral_money + gift_card_money
+   ├─ 已退金额 = RMA已退金额 + 补偿退款金额
+   └─ 已退金额 >= 订单总金额 → over refund，不能通过
+3. 已退金额 < 订单总金额 → 弹窗点击"审核通过"即可继续
+```
 
-   -- 查该分类是否配置了售后原因
-   SELECT * FROM yamibuy_rma.category_reason WHERE category_rule_id = 上一步查到的category_rule_id;
-   ```
-6. 常见原因分析�?
-   - **超过售后期限**（最常见）：物流送达后超�?RMA 规则天数（通常 7 �?+ Apollo 配置�?offset 偏移�?`rma.rule.offset.time`），代码逻辑�?`RmaRuleService.getOrderItemRmaRule` 中，超期商品 rma 值被设为 0
-   - **所有商品已退�?*：订单中所有商品都已有 RMA 记录且可退数量�?0
-   - **订单状态不符合**：订单未送达（`delivery_status != 1`）或订单已取�?
-   - **订单类型被排�?*：`order_type` �?1（集运）�?（礼卡）�? 的订单不支持前端 RMA
-   - **分类未配置售后原因**：商品一级分类在 `category_rule` 中有规则，但 `category_reason` 中无对应记录，前端无法展示售后原因选项，导致无法提交。解决方案：在 Central RMA 后台为该分类补充售后原因配置
-7. 关于 FBY 订单（order_type=5）：
-   - FBY 订单�?RMA 中被视为自营，`RmaRuleService.getVendor()` 方法�?order_type=5 返回 vendor_id=0，使用自营退货规�?
-   - 物流送达时间按主单查询（`so_tracking_info` 关联主单 order_id），不按子单
-   - FBY 订单�?vendor_id=-1，满足可售后列表�?SQL 条件（`vendor_id <= 0`�?
+```sql
+-- 查订单总金额
+SELECT order_id, order_sn, order_amount, integral_money, gift_card_money
+FROM yamibuy_master.xysc_order_info WHERE order_sn = '{订单号}';
+
+-- 查 RMA 已退金额
+SELECT SUM(refund_amount) AS rma_refunded FROM yamibuy_rma.rma_order
+WHERE order_sn = '{订单号}' AND status IN (10, 11);
+
+-- 查补偿退款金额
+SELECT SUM(refund_amount) AS total_refund FROM yamibuy_master.xysc_refund_apply
+WHERE order_sn = '{订单号}' AND audit_status = 2;
+```
+
+> RMA 退款单和订单补偿目前没有做关联，审核 RMA 单时需先确认该订单有没有补偿金额。
+
+### 场景三：RMA 单查询/展示异常
+
+```
+1. 查日志（search.py -s ec-rma -k "rma_id或order_sn" -t 7d）
+2. 根据日志定位：
+   ├─ 商品关联异常 → 商品在创建 RMA 后变成了 combo/bundle，导致子品拆分逻辑异常
+   │   → 查 im_item_relation 中商品关联时间是否晚于 RMA 创建时间
+   └─ 其他异常 → 根据日志错误信息定位
+```
+
+### 场景四：客人想取消或修改已提交的 RMA 单
+
+```
+1. 查日志（search.py -s ec-rma -k "email或rma_id" -t 7d）
+2. 查 RMA 单当前状态
+3. 判断是否可操作：
+   ├─ 取消：状态必须为 0(待审核) / 1(已批准) / 3(待处理) / 4(待处理2)
+   ├─ 编辑：状态必须为 0(待审核) / 4(待处理2)
+   └─ 其他状态 → 不可取消/编辑，告知客服当前状态
+```
+
+```sql
+SELECT rma_id, order_id, status, rma_type, request_type, source,
+       FROM_UNIXTIME(in_dtm) AS create_time
+FROM yamibuy_rma.rma_order WHERE rma_id = {rma_id};
+```
+
+### 场景五：退款时间限制
+触发条件：客服询问退款是否受时间限制
+
+```
+客服提供了什么信息？
+├─ 有订单号 → 查 xysc_order_info 获取 add_time 和 pay_provider
+├─ 有 user_id / 邮箱 → 查最近订单
+└─ 只有时间描述 → 根据描述判断
+↓
+判断退款是否受限：
+├─ 微信支付（pay_provider 含 wechat）且下单超过一年 → 无法退款（微信支付接口限制）
+├─ 超过半年的订单 → 可能无法通过 RMA/Central 取消退款（取决于支付渠道限制）
+│   → 查日志确认支付渠道是否支持
+│     search.py -s ec-payment -k "purchase_id值" -t 7d
+└─ 未超时间限制 → 正常退款流程
+
+退款扣积分条件：(order_type=5 或 vendor_id=0) 且 source_flag≠9 且 order_type≠7
+即：自营/FBY 订单扣积分，补发单和虚拟礼卡不扣
+```
+
+```sql
+-- 查订单下单时间和支付方式
+SELECT order_id, order_sn, order_type, vendor_id, source_flag,
+       FROM_UNIXTIME(add_time) AS order_time
+FROM yamibuy_master.xysc_order_info WHERE order_sn = '{订单号}';
+
+-- 查支付渠道
+SELECT purchase_id, pay_provider, FROM_UNIXTIME(charge_dtm) AS charge_time
+FROM yamibuy_payment.payment_charge WHERE purchase_id = 'purchase_id';
+```
 
 ## 注意事项
-- `xysc_users` 表的 email 和 mobile_phone 字段为脱敏数据，查询 user_id 请参考全局规则（cs-global-config.md）的 Central API 查询规则
-- RMA 退税是自动的，不需要手动勾选，税按商品维度自动退
-- RMA 退款上限按主订单维度计算：主订单总金�?- 已退金额 = 剩余最大可退金额。如果商品含税金额超过剩余可退金额，退款会被限制在剩余可退金额内（税金已包含在内）
-- 例如：主订单 $179.72，已退 $40，则最多还能退 $139.72，即使商品含�?$143.31 也只退 $139.72
-- RMA 退款审核时务必先检查订单是否有补偿退�?
-- 部分商品退款接口调用失败时需手动退款（�?Phoebe�?
-- FBY 订单退款按商家子单分别退�?
+- RMA 退税是自动的，税按商品维度自动退
+- RMA 退款上限 = 主订单总金额(order_amount + integral_money + gift_card_money) - 已退金额(RMA已退 + 补偿退款)
+- 冻品/特殊存储类型商品(storage_type≠0 或 parent_category_id=300)需要选择退款比例
+- 部分商品退款接口调用失败时需手动退款（找 Phoebe）
+- FBY 订单退款按商家子单分别退款
