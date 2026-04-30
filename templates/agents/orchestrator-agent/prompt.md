@@ -69,8 +69,8 @@
 4. 监控每个 Phase 的门禁条件
 
 ### 目录约定
-- AI 工作区: /mnt/d/workspace/all/ai-workspace/
-- 代码库: /mnt/d/code/yami/
+- AI 工作区: {{WORK_DIR}}/ai-workspace/
+- 代码库: {{CODE_DIR}}/
 - 只有 QA 和 Coder 可以写入代码库，其他 Agent 只写 ai-workspace
 
 ### SOP 流程

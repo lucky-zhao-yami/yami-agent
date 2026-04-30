@@ -1,7 +1,7 @@
 # 项目工作空间协议
 
 ## 工作空间位置
-`/mnt/d/workspace/all/ai-workspace/`
+`{{WORK_DIR}}/ai-workspace/`
 
 ## 读取协议
 

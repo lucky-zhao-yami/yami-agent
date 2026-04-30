@@ -21,7 +21,7 @@
   "mcpServers": {
     "zentao": {
       "command": "/usr/bin/node",
-      "args": ["/mnt/d/workspace/all/mcp-servers/zentao/index.js"],
+      "args": ["{{WORK_DIR}}/mcp-servers/zentao/index.js"],
       "env": {
         "ZENTAO_URL": "https://bugs.yamibuy.tech",
         "ZENTAO_USERNAME": "ZhaoXingPing",
@@ -35,7 +35,7 @@
     },
     "openproject": {
       "command": "/usr/bin/node",
-      "args": ["/mnt/d/workspace/all/mcp-servers/openproject/index.js"],
+      "args": ["{{WORK_DIR}}/mcp-servers/openproject/index.js"],
       "env": {
         "OPENPROJECT_URL": "https://openproject.yamibuy.net",
         "OPENPROJECT_API_KEY": "28b4737a1cc2fb52d59ef75989d30f78c78651dd1dac7d9adde17bd9fe508767"

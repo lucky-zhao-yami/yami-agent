@@ -312,6 +312,39 @@ cmd_sync() {
   done
 
   ok "全量同步完成"
+
+  # ── 占位符替换 ──
+  _replace_placeholders
+}
+
+# 旧行为：只更新已存在的文件
+# 替换模板中的占位符为实际路径
+_replace_placeholders() {
+  local work_dir="$WORK_DIR"
+  local code_dir=""
+
+  # 从 .env 读取 CODE_DIR
+  if [ -f "$WORK_DIR/.env" ]; then
+    code_dir=$(grep "^CODE_DIR=" "$WORK_DIR/.env" | cut -d= -f2 || true)
+  fi
+
+  # 从 workspace.json 推断 CODE_DIR
+  if [ -z "$code_dir" ] && [ -f "$WORK_DIR/.kiro/workspace.json" ]; then
+    code_dir=$(python3 -c "
+import json, os
+with open('$WORK_DIR/.kiro/workspace.json') as f:
+    d = json.load(f)
+repos = d.get('repositories', [])
+if repos:
+    print(os.path.dirname(repos[0]))
+" 2>/dev/null || true)
+  fi
+  code_dir="${code_dir:-$work_dir/code}"
+
+  info "替换占位符: WORK_DIR=$work_dir, CODE_DIR=$code_dir"
+  find "$WORK_DIR/.kiro" -type f \( -name "*.md" -o -name "*.json" -o -name "*.yaml" -o -name "*.hook" \) \
+    -exec sed -i "s|{{WORK_DIR}}|$work_dir|g; s|{{CODE_DIR}}|$code_dir|g" {} + 2>/dev/null || true
+  ok "占位符替换完成"
 }
 
 # 旧行为：只更新已存在的文件
@@ -340,6 +373,9 @@ _sync_update_only() {
   done
 
   ok "同步完成"
+
+  # ── 占位符替换 ──
+  _replace_placeholders
 }
 
 # ── 运维 ─────────────────────────────────────────────────────
