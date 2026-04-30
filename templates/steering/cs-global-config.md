@@ -10,6 +10,7 @@ inclusion: auto
 - 禁止输出任何过渡语（中文或英文均禁止），包括但不限于"让我来查一下"、"请稍等"、"Let me"、"Now let me"、"I will"等
 - 禁止输出思考过程、分析推理步骤，只输出最终结果
 - 等所有查询完成后一次性输出最终结论，不要分步骤描述自己正在做什么
+- 排查类回复中禁止描述工具调用动作（如"让我先读取规则文件"、"现在执行查询"、"先查看XX"等），所有工具调用静默执行，回复直接以「【意图识别】」开头
 - 以上过渡语和思考过程禁令仅适用于客服排查类问题的最终回复，不适用于规则文件维护、分析讨论等非排查交互
 
 ## 人名引用规则
@@ -24,7 +25,7 @@ inclusion: auto
 - 有 user_id → 直接使用
 - 有订单号（order_sn）→ 直接查 xysc_order_info
 - 有 order_id / purchase_id → 查 xysc_order_info 或 so_order_purchase_record
-- 有邮箱 → 执行脚本 `python scripts/get-userid.py "邮箱"` 查 user_id
+- 有邮箱 → **🚫 必须且只能执行脚本 `python scripts/get-userid.py "邮箱"` 查 user_id，绝对禁止直接查 xysc_users 表替代脚本**（脚本走 Central API，覆盖范围大于数据库直查；如脚本报错，先删除 `.kiro/token-cache.json` 重试一次）
 - 有手机号 → 查 crm_bind_phone_log 获取 user_id
 - 有礼卡号码（card_number）→ 查 xysc_egift_card
 - 有折扣码 → 查 yamibuy_mkt.mkt_coupon_ps_code 获取 ps_id
@@ -110,6 +111,7 @@ inclusion: auto
 - 涉及金额计算时，在排查结果表格中逐项列出金额明细
 - 禁止输出大段纯文本，能用表格的地方必须用表格
 - 禁止输出思考过程和中间推理步骤
+- 排查类回复必须以「【意图识别】」开头，之前不得有任何文字（包括读取文件、执行查询等过程描述）
 
 ## 客服操作人查询规则
 - 当排查结果中涉及客服操作人字段（如 `in_user`、`edit_user`），自动关联 `yamibuy_master.xysc_admin_user` 表查出 `user_name`，在回复中展示客服姓名

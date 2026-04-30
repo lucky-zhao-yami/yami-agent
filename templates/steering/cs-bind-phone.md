@@ -115,6 +115,8 @@ FROM yamibuy_master.xysc_users WHERE user_id = user_id;
 ```sql
 -- 查手机号被谁绑定 → 见 [Q1]
 ```
+
+### 场景四：通过 user_id 查用户信息
 触发条件：用户提及"用户ID"/"用户编号" + "查询"/"信息"
 
 ```

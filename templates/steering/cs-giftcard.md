@@ -114,6 +114,8 @@ WHERE user_id = user_id AND order_type = 7 ORDER BY add_time DESC LIMIT 5;
 search.py -s ec-so -k "卡号或订单号" -t 7d
 关注日志：兑换请求的错误信息、卡状态校验结果
 ```
+
+### 场景三：实体礼卡绑定错误订单
 触发条件：礼卡绑定了错误的订单
 
 ```

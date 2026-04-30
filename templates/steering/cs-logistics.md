@@ -139,6 +139,7 @@ FROM yamibuy_master.xysc_vendor_info WHERE vendor_id = {vendor_id};
 ```
 
 ## 注意事项
+- 补发单（source_flag=9）操作人查询：so_log type=0（订单提交）的 `in_user` 字段记录的是 `xysc_admin_user.user_id`，需关联查出操作人姓名：`SELECT user_id, user_name FROM yamibuy_master.xysc_admin_user WHERE user_id = {in_user值}`
 - `wh_order_info` 表属于仓库系统（WMS），不在当前源码项目中，字段含义需联系仓库团队确认
 - `xysc_users` 表的 email 和 mobile_phone 字段为脱敏数据，查询 user_id 必须执行脚本 `python scripts/get-userid.py "邮箱"`
 - 详情页和结算页的预计送达时间逻辑不同：详情页用最快的，结算页用可用配送方式的

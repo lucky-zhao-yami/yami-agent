@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "SQL 备用方案提醒",
+  "description": "当 MCP SQL 工具执行失败时，提醒 AI 立即切换到命令行 MySQL 直连备用方案，从 mcp.json 读取连接信息执行查询，不要重试 MCP。",
+  "version": "1",
+  "when": {
+    "type": "postToolUse",
+    "toolTypes": [
+      ".*sql.*"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "如果上一个 SQL 工具调用失败（返回 MCP Connection not found 或其他错误），立即按 cs-query-rules.md 的备用方案一执行：从 .kiro/settings/mcp.json 读取数据库连接信息，用命令行 mysql 直连执行查询。禁止重试 MCP，禁止报错停止工作。"
+  }
+}
