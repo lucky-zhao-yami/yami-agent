@@ -61,17 +61,17 @@ DEV_HOOKS=(
 )
 
 # ── cs ───────────────────────────────────────────────────────
-CS_SKILLS=(cs-knowledge sql-query kibana-log zentao manage-openproject central-login api-fetch)
+CS_SKILLS=(sql-query zentao manage-openproject central-login api-fetch enum-values iterable-api query-kibana-logs memory-recall)
 CS_AGENTS=(cs-troubleshooter sql-query)
 CS_MCPS=(google-sheets google-docs)
 CS_STEERING=(
-  cs-global-config.md cs-yami-skills.md sub-agent-guide.md skills-path-find-guide.md
+  cs-global-config.md sub-agent-guide.md skills-path-find-guide.md
   cs-account-login.md cs-bind-phone.md cs-coupon.md cs-email-notification.md
-  cs-follow-buy.md cs-giftcard.md cs-invite-friend.md cs-language.md
+  cs-follow-buy.md cs-giftcard.md cs-invite-friend.md cs-item.md
   cs-logistics.md cs-member-rights.md cs-order.md cs-payment-refund.md
   cs-profile-edit.md cs-query-rules.md cs-rma.md cs-tax.md
 )
-CS_HOOKS=(check-steering-first.kiro.hook)
+CS_HOOKS=(save-memory-on-exit.kiro.hook check-steering-first.kiro.hook cs-kibana-check.kiro.hook cs-rules-auto-update.kiro.hook sql-fallback-reminder.kiro.hook)
 
 # ── ops ──────────────────────────────────────────────────────
 OPS_SKILLS=(grafana-query cli-anything-rancher kibana-logs cli-anything)

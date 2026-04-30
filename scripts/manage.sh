@@ -53,7 +53,9 @@ MCP:
 其他:
   restart                   重启 yami-agent
   status                    查看运行状态
-  sync                      从 templates 同步所有已安装的 skill/agent/steering（更新内容）
+  sync [--profile <name>]   同步模板到工作空间
+                            无 --profile: 仅更新已有文件
+                            有 --profile: 全量同步（以 profile 清单为准，增删改）
 
 环境变量:
   WORK_DIR                  工作空间目录（不设则自动检测）
@@ -216,6 +218,104 @@ cmd_list_mcps() {
 
 # ── Sync ─────────────────────────────────────────────────────
 cmd_sync() {
+  local profile="${1:-}"
+
+  if [ -z "$profile" ]; then
+    # 无 profile：只更新已存在的（旧行为）
+    info "同步模式: 仅更新已有文件（未指定 --profile）"
+    _sync_update_only
+    return
+  fi
+
+  # 有 profile：全量同步（清理 + 重建）
+  source "$SCRIPT_DIR/profiles.sh"
+  local PROFILE_UPPER=$(echo "$profile" | tr '[:lower:]' '[:upper:]')
+
+  # 合并 base + profile 清单
+  eval 'local P_SKILLS=("${BASE_SKILLS[@]}" "${'"${PROFILE_UPPER}"'_SKILLS[@]}")'
+  eval 'local P_AGENTS=("${BASE_AGENTS[@]}" "${'"${PROFILE_UPPER}"'_AGENTS[@]}")'
+  eval 'local P_STEERING=("${BASE_STEERING[@]}" "${'"${PROFILE_UPPER}"'_STEERING[@]}")'
+  eval 'local P_HOOKS=("${BASE_HOOKS[@]}" "${'"${PROFILE_UPPER}"'_HOOKS[@]}")'
+
+  info "同步模式: 全量同步 (profile=$profile)"
+  echo "  Skills:   ${#P_SKILLS[@]} 个"
+  echo "  Agents:   ${#P_AGENTS[@]} 个"
+  echo "  Steering: ${#P_STEERING[@]} 个"
+  echo "  Hooks:    ${#P_HOOKS[@]} 个"
+  echo ""
+
+  # ── skills: 清理 → 重建 ──
+  info "同步 skills..."
+  local old_skills=()
+  for d in "$WORK_DIR/.kiro/skills/"*/; do
+    [ -d "$d" ] && old_skills+=("$(basename "$d")")
+  done
+  # 删除不在清单中的
+  for name in "${old_skills[@]}"; do
+    printf '%s\n' "${P_SKILLS[@]}" | grep -qx "$name" || {
+      rm -rf "$WORK_DIR/.kiro/skills/$name"
+      echo "  ✖ $name (已移除)"
+    }
+  done
+  # 添加/更新清单中的
+  for name in "${P_SKILLS[@]}"; do
+    local src="$TEMPLATE_SRC/skills/$name"
+    local dst="$WORK_DIR/.kiro/skills/$name"
+    if [ -d "$src" ]; then
+      rm -rf "$dst" && cp -r "$src" "$dst"
+      echo "  ↻ $name"
+    else
+      warn "skill 模板不存在: $name"
+    fi
+  done
+  # 同步 skills/*.md 快捷文件
+  rm -f "$WORK_DIR/.kiro/skills/"*.md 2>/dev/null
+  for f in "$TEMPLATE_SRC/skills/"*.md; do
+    [ -f "$f" ] && cp "$f" "$WORK_DIR/.kiro/skills/" && echo "  ↻ $(basename "$f")"
+  done
+
+  # ── agents: 清理 → 重建 ──
+  info "同步 agents..."
+  rm -rf "$WORK_DIR/.kiro/agents/"*
+  for agent in "${P_AGENTS[@]}"; do
+    for src in "$TEMPLATE_SRC/agents/$agent" "$TEMPLATE_SRC/agents/${agent}.json"; do
+      [ -e "$src" ] || continue
+      cp -r "$src" "$WORK_DIR/.kiro/agents/$(basename "$src")"
+      echo "  ↻ $(basename "$src")"
+    done
+  done
+
+  # ── steering: 清理 → 重建 ──
+  info "同步 steering..."
+  rm -f "$WORK_DIR/.kiro/steering/"*
+  for f in "${P_STEERING[@]}"; do
+    local src="$TEMPLATE_SRC/steering/$f"
+    if [ -f "$src" ]; then
+      cp "$src" "$WORK_DIR/.kiro/steering/$f"
+      echo "  ↻ $f"
+    else
+      warn "steering 模板不存在: $f"
+    fi
+  done
+
+  # ── hooks: 清理 → 重建 ──
+  info "同步 hooks..."
+  rm -f "$WORK_DIR/.kiro/hooks/"*
+  for h in "${P_HOOKS[@]}"; do
+    local src="$TEMPLATE_SRC/hooks/$h"
+    if [ -f "$src" ]; then
+      cp "$src" "$WORK_DIR/.kiro/hooks/$h"
+      echo "  ↻ $h"
+    else
+      warn "hook 模板不存在: $h"
+    fi
+  done
+
+  ok "全量同步完成"
+}
+
+# 旧行为：只更新已存在的文件
+_sync_update_only() {
   info "同步 skills..."
   for d in "$WORK_DIR/.kiro/skills/"*/; do
     local name=$(basename "$d")
@@ -278,7 +378,16 @@ case "$CMD" in
   add-mcp)        [ $# -lt 1 ] && fail "用法: $0 add-mcp <name>"; cmd_add_mcp "$1" ;;
   remove-mcp)     [ $# -lt 1 ] && fail "用法: $0 remove-mcp <name>"; cmd_remove_mcp "$1" ;;
   list-mcps)      cmd_list_mcps ;;
-  sync)           cmd_sync ;;
+  sync)
+    profile=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --profile) profile="$2"; shift 2 ;;
+        *) fail "未知参数: $1" ;;
+      esac
+    done
+    cmd_sync "$profile"
+    ;;
   restart)        cmd_restart ;;
   status)         cmd_status ;;
   *)              fail "未知命令: $CMD"; usage ;;
