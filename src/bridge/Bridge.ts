@@ -79,13 +79,11 @@ export class Bridge {
 
       // Preamble is injected by ManagedSession.injectContext on firstMsg only
 
-      // 🤔 cold start placeholder — include message preview so user knows which question
+      // 🤔 cold start placeholder
       streamId = randomUUID().replace(/-/g, '').slice(0, 16);
-      const preview = text ? (text.length > 50 ? text.slice(0, 50) + '...' : text) : '';
-      const prefix = preview ? `💬 **${preview}**\n\n---\n\n` : '';
-      await this.platform.sendStream(reqId, streamId, prefix + '🤔', false).catch(() => {});
+      await this.platform.sendStream(reqId, streamId, '🤔', false).catch(() => {});
 
-      const segmenter = new StreamSegmenter(this.platform, reqId, streamId, chatId, chatType, prefix);
+      const segmenter = new StreamSegmenter(this.platform, reqId, streamId, chatId, chatType);
 
       const onChunk = async (chunk: AgentChunk) => {
         if (chunk.type === 'text') {
