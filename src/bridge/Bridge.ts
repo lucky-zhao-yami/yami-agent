@@ -107,6 +107,14 @@ export class Bridge {
       messagesProcessed.inc({ status });
       messageDuration.observe((Date.now() - startTime) / 1000);
       log.error(err, `Error processing message for ${chatId}`);
+
+      // 进程死了就立即清理，下条消息会自动重建
+      const session = this.sessionManager.getSession(chatId);
+      if (session && !session.alive) {
+        log.info(`Agent process dead for ${chatId}, removing session for auto-recovery`);
+        await this.sessionManager.removeSession(chatId);
+      }
+
       if (streamId) {
         await this.platform.sendStream(reqId, streamId, '❌ 处理消息时出错，请稍后重试', true).catch(() => {});
       } else {

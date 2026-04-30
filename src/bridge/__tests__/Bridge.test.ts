@@ -33,6 +33,8 @@ function mockSessionManager(): SessionManager {
   };
   return {
     getOrCreate: vi.fn(async () => mockSession),
+    getSession: vi.fn(() => mockSession),
+    removeSession: vi.fn(async () => {}),
     shutdown: vi.fn(),
   } as unknown as SessionManager;
 }

@@ -184,6 +184,16 @@ export class SessionManager {
     return this.sessions.get(chatId);
   }
 
+  /** 强制移除 session（进程崩溃后清理，下次 getOrCreate 会自动重建）。 */
+  async removeSession(chatId: string): Promise<void> {
+    const s = this.sessions.get(chatId);
+    if (!s) return;
+    await s.kill().catch(() => {});
+    this.sessions.delete(chatId);
+    sessionsActive.set(this.sessions.size);
+    agentKills.inc({ reason: 'dead' });
+  }
+
   async shutdown(): Promise<void> {
     if (this.cleanupTimer) { clearInterval(this.cleanupTimer); this.cleanupTimer = null; }
     // Kill warm pool processes
