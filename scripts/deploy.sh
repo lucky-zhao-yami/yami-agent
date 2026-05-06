@@ -38,7 +38,17 @@ while [[ $# -gt 0 ]]; do
     *) fail "未知参数: $1" ;;
   esac
 done
-[ -z "$PROFILE" ] && usage
+[ -z "$PROFILE" ] && {
+  # 自动检测：如果只有一个 profile（排除 BASE），自动使用
+  AUTO_PROFILES=$(grep -oP '^\w+(?=_DEFAULT_AGENT=)' "$SCRIPT_DIR/profiles.sh" 2>/dev/null | grep -v "^BASE$" | tr '[:upper:]' '[:lower:]')
+  PROFILE_COUNT=$(echo "$AUTO_PROFILES" | grep -c .)
+  if [ "$PROFILE_COUNT" -eq 1 ]; then
+    PROFILE="$AUTO_PROFILES"
+    info "自动检测到唯一 profile: $PROFILE"
+  else
+    usage
+  fi
+}
 
 # 验证 profile（检查 profiles.sh 中是否定义了对应的变量）
 PROFILE_UPPER=$(echo "$PROFILE" | tr '[:lower:]' '[:upper:]')
