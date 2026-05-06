@@ -160,7 +160,7 @@ curl http://localhost:8900/health
 
 ## 增量管理
 
-部署后如需添加/更新 skill、agent、steering：
+部署后如需添加/更新 skill、agent、steering、MCP：
 
 ```bash
 cd /opt/yami-agent
@@ -177,8 +177,17 @@ bash scripts/manage.sh remove-skill old-skill
 # 添加 agent
 bash scripts/manage.sh add-agent your-agent
 
-# 从 templates 同步所有已安装内容到最新版本
-bash scripts/manage.sh sync
+# 添加 MCP（交互式，会引导填写凭证）
+bash scripts/manage.sh add-mcp sql-query
+
+# 移除 MCP
+bash scripts/manage.sh remove-mcp sql-query
+
+# 查看已配置的 MCP
+bash scripts/manage.sh list-mcps
+
+# 全量同步（以 profile 清单为准，增删改一步到位）
+bash scripts/manage.sh sync --profile cs
 
 # 重启服务
 bash scripts/manage.sh restart
@@ -187,13 +196,68 @@ bash scripts/manage.sh restart
 bash scripts/manage.sh status
 ```
 
+### 添加新的 MCP
+
+MCP 分两种类型：
+
+**1. 使用已注册的 MCP（在 `scripts/mcp-registry.json` 中）**
+
+```bash
+# 查看可用的 MCP
+cat scripts/mcp-registry.json | python3 -c "import json,sys; d=json.load(sys.stdin); [print(f'  {k} ({v[\"name\"]}) — type: {v[\"type\"]}') for k,v in d.items()]"
+
+# 添加（交互式引导填写凭证）
+bash scripts/manage.sh add-mcp <mcp_id>
+```
+
+**2. 注册一个全新的 MCP**
+
+在 `scripts/mcp-registry.json` 中添加配置：
+
+```json
+{
+  "your-mcp": {
+    "name": "Your MCP Name",
+    "type": "custom",
+    "install": { "type": "npm-local", "dir": "mcp-servers/your-mcp" },
+    "command": "node",
+    "args": ["{WORK_DIR}/mcp-servers/your-mcp/index.js"],
+    "env": {
+      "API_KEY": { "prompt": "API Key", "secret": true },
+      "BASE_URL": { "prompt": "服务地址", "default": "https://example.com" }
+    },
+    "autoApprove": ["tool_name_1", "tool_name_2"]
+  }
+}
+```
+
+字段说明：
+
+| 字段 | 说明 |
+|------|------|
+| `name` | 显示名称 |
+| `type` | `third-party`（外部包）或 `custom`（自定义） |
+| `install.type` | 安装方式：`npm`（npm 包）、`npm-local`（本地 package.json）、`git`（git clone）、不填（无需安装） |
+| `install.dir` | 安装目录（相对于 WORK_DIR） |
+| `command` | 启动命令 |
+| `args` | 启动参数，支持 `{WORK_DIR}`、`{CODE_DIR}`、`{PORT}` 变量 |
+| `env` | 环境变量配置 |
+| `env.*.prompt` | 部署时交互式询问的提示文字 |
+| `env.*.default` | 默认值 |
+| `env.*.secret` | 是否隐藏输入（密码类） |
+| `env.*.value` | 固定值（不询问），支持变量 |
+| `env.*.optional` | 是否可选（回车跳过） |
+| `autoApprove` | 自动批准的工具列表（不需要用户确认） |
+
+如果 MCP 有本地代码，放在 `templates/mcp-servers/your-mcp/` 下（需包含 `package.json`）。
+
 ## 现有 Profile
 
 | Profile | 用途 | 默认 Agent | 说明 |
 |---------|------|-----------|------|
-| `dev` | 开发团队 | orchestrator-agent | 代码开发、SOP 流程、代码审查 |
 | `cs` | 客服团队 | cs-troubleshooter | 客服问题排查、数据库查询、日志分析 |
-| `ops` | 运维团队 | alert-advisor | 告警分析、日志查询 |
+
+其他团队参考 `scripts/profiles.sh` 底部的模板添加自己的 profile。
 
 ## 目录结构
 
