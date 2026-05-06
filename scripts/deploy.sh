@@ -43,6 +43,7 @@ done
 # 验证 profile（检查 profiles.sh 中是否定义了对应的变量）
 PROFILE_UPPER=$(echo "$PROFILE" | tr '[:lower:]' '[:upper:]')
 eval 'test -n "${'"${PROFILE_UPPER}"'_DEFAULT_AGENT+x}"' 2>/dev/null || fail "未知 profile: $PROFILE (请在 profiles.sh 中定义 ${PROFILE_UPPER}_* 变量)"
+[ "$PROFILE" = "template" ] && fail "请先将 profiles.sh 中的 TEMPLATE 前缀改为你的团队名（如 CS、OPS 等）"
 
 echo ""
 echo "╔══════════════════════════════════════════╗"
@@ -274,6 +275,7 @@ echo "  + config.json"
 # .env
 cat > "$WORK_DIR/.env" <<EOFE
 WORK_DIR=$WORK_DIR
+CODE_DIR=$CODE_DIR
 PORT=$PORT
 MAX_PROCS=10
 WARM_POOL_SIZE=1
