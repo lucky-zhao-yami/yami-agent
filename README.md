@@ -140,6 +140,9 @@ cd yami-agent
 
 # 一键部署（交互式，会依次询问凭证信息）
 bash scripts/deploy.sh --profile yourteam
+
+# 如果 profiles.sh 中只有一个 profile，可以省略 --profile
+bash scripts/deploy.sh
 ```
 
 部署脚本会依次：
