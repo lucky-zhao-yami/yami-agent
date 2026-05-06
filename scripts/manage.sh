@@ -228,7 +228,7 @@ cmd_sync() {
   fi
 
   # 有 profile：全量同步（清理 + 重建）
-  source "$SCRIPT_DIR/profiles.sh"
+  source "$SCRIPT_DIR/profiles.sh" 2>/dev/null || fail "profiles.sh 不存在。请先：cp $SCRIPT_DIR/profiles.sh.template $SCRIPT_DIR/profiles.sh"
   local PROFILE_UPPER=$(echo "$profile" | tr '[:lower:]' '[:upper:]')
 
   # 合并 base + profile 清单

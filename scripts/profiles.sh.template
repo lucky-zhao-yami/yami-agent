@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════
-# Profile 配置文件
-# 
-# 每个团队维护自己的 profile，定义该团队 Agent 需要的组件。
-# 新团队接入时，复制底部模板，修改为自己的配置即可。
+# Profile 配置模板
+#
+# 使用方式：
+#   1. 复制本文件为 profiles.sh：cp profiles.sh.template profiles.sh
+#   2. 修改下方配置为你的团队实际需要的组件
+#   3. 运行 deploy.sh --profile <你的 profile 名>
 #
 # 组件说明：
 #   SKILLS   — 操作能力（查 SQL、调 API、看日志等），对应 templates/skills/ 下的目录名
@@ -25,47 +27,37 @@ BASE_STEERING=(global_guide.md product.md projects.md)
 BASE_HOOKS=()
 BASE_REPOS=()
 
-# ── cs: 客服团队 ───────────────────────────────────────────────────
-CS_DEFAULT_AGENT="cs-troubleshooter"
-CS_REPOS=(
-  central-activity-service central-crm-web central-customer-service
-  central-distributor-service central-fp-service central-fp-web
-  central-payment-service central-rma-service central-rma-web
-  central-so-service central-so-web
-  ec-activity-service ec-customer-service ec-distributor-service
-  ec-inventory-service ec-payment-service ec-rma-service
-  ec-so-service ec-tax-service
-  mail-service-job public purchase-tool
+# ── 示例 profile（复制此段，替换 TEMPLATE 为你的团队名大写）─────────
+TEMPLATE_DEFAULT_AGENT="cs-troubleshooter"
+TEMPLATE_REPOS=(
+  # 需要拉取的代码仓库（agent 查阅源码用）
+  central-so-service ec-so-service ec-payment-service
 )
-CS_SKILLS=(
+TEMPLATE_SKILLS=(
+  # 从 templates/skills/ 选择需要的能力
   sql-query zentao manage-openproject central-login api-fetch
   enum-values iterable-api query-kibana-logs memory-recall
   query-apollo kibana-log
 )
-CS_AGENTS=(cs-troubleshooter)
-CS_MCPS=()
-CS_STEERING=(
+TEMPLATE_AGENTS=(
+  # 从 templates/agents/ 选择（文件名不含 .json）
+  cs-troubleshooter
+)
+TEMPLATE_MCPS=(
+  # 从 mcp-registry.json 选择需要的 MCP 工具
+  # 留空表示不通过 registry 安装（也可以在 agent JSON 的 mcpServers 里直接定义）
+)
+TEMPLATE_STEERING=(
+  # 从 templates/steering/ 选择规则文件
   cs-global-config.md sub-agent-guide.md skills-path-find-guide.md
   cs-account-login.md cs-bind-phone.md cs-coupon.md cs-email-notification.md
   cs-follow-buy.md cs-giftcard.md cs-invite-friend.md cs-item.md
   cs-logistics.md cs-member-rights.md cs-order.md cs-payment-refund.md
   cs-profile-edit.md cs-query-rules.md cs-rma.md cs-tax.md
 )
-CS_HOOKS=(
+TEMPLATE_HOOKS=(
+  # 从 templates/hooks/ 选择行为触发器
   save-memory-on-exit.kiro.hook check-steering-first.kiro.hook
   cs-kibana-check.kiro.hook cs-rules-auto-update.kiro.hook
   sql-fallback-reminder.kiro.hook
 )
-
-# ═══════════════════════════════════════════════════════════════════
-# 新团队接入模板（复制下方内容，替换 XXX 为团队名大写）
-# ═══════════════════════════════════════════════════════════════════
-#
-# # ── xxx: XX团队 ──────────────────────────────────────────────────
-# XXX_DEFAULT_AGENT="your-agent-name"
-# XXX_REPOS=()                    # 需要拉取的代码仓库
-# XXX_SKILLS=(sql-query)          # 从 templates/skills/ 选择需要的
-# XXX_AGENTS=(your-agent-name)    # 从 templates/agents/ 选择
-# XXX_MCPS=()                     # 从 mcp-registry.json 选择
-# XXX_STEERING=(your-rules.md)    # 从 templates/steering/ 选择
-# XXX_HOOKS=()                    # 从 templates/hooks/ 选择

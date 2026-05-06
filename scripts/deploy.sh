@@ -3,6 +3,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+if [ ! -f "$SCRIPT_DIR/profiles.sh" ]; then
+  fail "profiles.sh 不存在。请先从模板创建：\n  cp $SCRIPT_DIR/profiles.sh.template $SCRIPT_DIR/profiles.sh\n  然后编辑 profiles.sh 配置你的团队 profile"
+fi
 source "$SCRIPT_DIR/profiles.sh"
 source "$SCRIPT_DIR/mcp-collectors.sh"
 
