@@ -268,11 +268,6 @@ cmd_sync() {
       warn "skill 模板不存在: $name"
     fi
   done
-  # 同步 skills/*.md 快捷文件（如有）
-  for f in "$TEMPLATE_SRC/skills/"*.md; do
-    [ -f "$f" ] && cp "$f" "$WORK_DIR/.kiro/skills/" && echo "  ↻ $(basename "$f")"
-  done
-
   # ── agents: 清理 → 重建 ──
   info "同步 agents..."
   rm -rf "$WORK_DIR/.kiro/agents/"*

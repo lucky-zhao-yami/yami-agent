@@ -325,6 +325,7 @@ cat > "$WORK_DIR/restart.sh" <<'EOFR'
 #!/bin/bash
 set -e
 WORK_DIR="$(cd "$(dirname "$0")" && pwd)"
+export PATH="$HOME/.local/bin:$PATH"
 AGENT_DIR="AGENT_DIR_PLACEHOLDER"
 PID_FILE="$WORK_DIR/yami-agent.pid"
 LOG_FILE="$WORK_DIR/yami-agent.log"
