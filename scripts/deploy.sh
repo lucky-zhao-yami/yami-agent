@@ -15,14 +15,13 @@ fail()  { echo -e "${RED}❌ $*${NC}"; exit 1; }
 
 # ── 用法 ─────────────────────────────────────────────────────
 usage() {
-  echo "用法: $0 --profile <dev|cs|ops>"
+  echo "用法: $0 --profile <profile_name>"
   echo ""
-  echo "  --profile   团队 profile (必填)"
+  echo "  --profile   团队 profile (必填，对应 profiles.sh 中的配置段)"
   echo "  --work-dir  工作空间目录 (交互式询问)"
   echo "  --code-dir  代码仓库目录 (交互式询问)"
   echo ""
   echo "示例:"
-  echo "  $0 --profile dev"
   echo "  $0 --profile cs"
   exit 1
 }
@@ -38,11 +37,9 @@ while [[ $# -gt 0 ]]; do
 done
 [ -z "$PROFILE" ] && usage
 
-# 验证 profile
-case "$PROFILE" in
-  dev|cs|ops) ;;
-  *) fail "未知 profile: $PROFILE (可选: dev, cs, ops)" ;;
-esac
+# 验证 profile（检查 profiles.sh 中是否定义了对应的变量）
+PROFILE_UPPER=$(echo "$PROFILE" | tr '[:lower:]' '[:upper:]')
+eval 'test -n "${'"${PROFILE_UPPER}"'_DEFAULT_AGENT+x}"' 2>/dev/null || fail "未知 profile: $PROFILE (请在 profiles.sh 中定义 ${PROFILE_UPPER}_* 变量)"
 
 echo ""
 echo "╔══════════════════════════════════════════╗"
