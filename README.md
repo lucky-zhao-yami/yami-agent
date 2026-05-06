@@ -139,7 +139,7 @@ git clone git@github.com:yamibuy/yami-agent.git
 cd yami-agent
 
 # 一键部署（交互式，会依次询问凭证信息）
-bash scripts/deploy.sh --profile your-team
+bash scripts/deploy.sh --profile yourteam
 ```
 
 部署脚本会依次：
@@ -264,7 +264,7 @@ bash scripts/manage.sh add-mcp <mcp_id>
 |---------|------|-----------|------|
 | `cs` | 客服团队 | cs-troubleshooter | 客服问题排查、数据库查询、日志分析 |
 
-其他团队参考 `scripts/profiles.sh` 底部的模板添加自己的 profile。
+其他团队参考 `scripts/profiles.sh.template` 中的示例添加自己的 profile。
 
 ## 目录结构
 
@@ -303,11 +303,11 @@ npm install && npm run build
 npm run dev
 
 # 清理会话（重启后生效）
-rm -rf /opt/yami-agent-workspace/sessions/*
-systemctl restart yami-agent
+rm -rf <WORK_DIR>/sessions/*
+bash scripts/manage.sh restart
 
 # 查看实时日志
-journalctl -u yami-agent -f
+tail -f <WORK_DIR>/yami-agent.log
 ```
 
 ## 设计原则
