@@ -32,31 +32,38 @@
 
 ### 第一步：定义 Profile
 
-编辑 `scripts/profiles.sh`，为你的部门添加一个 profile。以客服部门（cs）为例：
+从模板创建你的 profile 配置：
 
 ```bash
-# ── your-team ────────────────────────────────────────────────
+cd scripts
+cp profiles.sh.template profiles.sh
+```
+
+编辑 `profiles.sh`，把 `TEMPLATE` 替换为你的团队名（大写），配置需要的组件：
+
+```bash
+# ── yourteam ─────────────────────────────────────────────────
 
 # 默认 Agent（收到消息后由哪个 agent 处理）
 YOURTEAM_DEFAULT_AGENT="your-agent-name"
 
+# 代码仓库（agent 查阅源码用）
+YOURTEAM_REPOS=(central-so-service ec-so-service)
+
 # Skills — agent 可以使用的能力
-YOURTEAM_SKILLS=(sql-query kibana-logs your-custom-skill)
+YOURTEAM_SKILLS=(sql-query query-kibana-logs your-custom-skill)
 
 # Agents — agent 定义文件（放在 templates/agents/ 下）
 YOURTEAM_AGENTS=(your-agent-name)
 
-# MCPs — MCP 服务器（放在 templates/mcp-servers/ 下，需在 mcp-registry.json 注册）
-YOURTEAM_MCPS=(google-sheets)
+# MCPs — MCP 服务器（对应 mcp-registry.json 中的 key）
+YOURTEAM_MCPS=()
 
 # Steering — 规则文档（放在 templates/steering/ 下）
 YOURTEAM_STEERING=(your-global-config.md your-business-rules.md)
 
 # Hooks — 钩子（放在 templates/hooks/ 下）
 YOURTEAM_HOOKS=()
-
-# 代码仓库（如果 agent 需要读代码）
-YOURTEAM_REPOS=()
 ```
 
 ### 第二步：创建 Agent 定义
@@ -263,11 +270,11 @@ bash scripts/manage.sh add-mcp <mcp_id>
 
 ```
 scripts/
-├── deploy.sh           # 一键部署脚本
-├── manage.sh           # 增量管理脚本（add/remove skill/agent/mcp）
-├── profiles.sh         # 团队 profile 定义
-├── mcp-registry.json   # MCP 声明式配置
-└── mcp-collectors.sh   # MCP 凭证收集
+├── deploy.sh               # 一键部署脚本
+├── manage.sh               # 增量管理脚本（add/remove skill/agent/mcp）
+├── profiles.sh.template    # 团队 profile 模板（复制为 profiles.sh 使用）
+├── mcp-registry.json       # MCP 声明式配置
+└── mcp-collectors.sh       # MCP 凭证收集
 
 templates/              # 所有配置模板
 ├── agents/             # Agent 定义（JSON）
