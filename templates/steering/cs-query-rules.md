@@ -87,5 +87,7 @@ $result = mysql -h $host -P $port -u $user -p$pwd --ssl-mode=DISABLED 数据库�
 根据业务领域选择对应数据库/服务。
 
 **3. 查阅源码**
+- 代码仓库路径：读取 `.kiro/workspace.json` 中的 repositories 列表获取所有仓库绝对路径
+- 使用 grep 或 code 工具时必须指定绝对路径
 - 优先读 mapper XML → service 层 → rest 层
 - 回答时注明答案来源是代码逻辑，建议用户确认是否补充到业务文档

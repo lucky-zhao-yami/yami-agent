@@ -12,7 +12,8 @@
     "export_query_result",
     "code",
     "grep",
-    "glob"
+    "glob",
+    "@sql-query"
   ],
   "toolsSettings": {
     "execute_bash": {
@@ -30,5 +31,28 @@
   "resources": [
     "file://../steering/cs-global-config.md",
     "file://../steering/cs-query-rules.md"
-  ]
+  ],
+  "mcpServers": {
+    "sql-query": {
+      "command": "/opt/code/yami/purchase-tool/mcp_tools/sql_mcp/.venv/bin/python3",
+      "args": [
+        "/opt/code/yami/purchase-tool/mcp_tools/sql_mcp/sql_mcp_server.py"
+      ],
+      "env": {
+        "DB_HOST": "${DB_HOST}",
+        "DB_NAME": "${DB_NAME}",
+        "DB_PASSWORD": "${DB_PASSWORD}",
+        "DB_PORT": "${DB_PORT}",
+        "DB_USER": "${DB_USER}",
+        "SQL_MCP_DATA_DIR": ""
+      },
+      "disabled": false,
+      "autoApprove": [
+        "list_tables",
+        "execute_sql_query",
+        "get_table_schema",
+        "create_entities"
+      ]
+    }
+  }
 }

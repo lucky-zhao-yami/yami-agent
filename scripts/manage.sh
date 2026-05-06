@@ -268,8 +268,7 @@ cmd_sync() {
       warn "skill 模板不存在: $name"
     fi
   done
-  # 同步 skills/*.md 快捷文件
-  rm -f "$WORK_DIR/.kiro/skills/"*.md 2>/dev/null
+  # 同步 skills/*.md 快捷文件（如有）
   for f in "$TEMPLATE_SRC/skills/"*.md; do
     [ -f "$f" ] && cp "$f" "$WORK_DIR/.kiro/skills/" && echo "  ↻ $(basename "$f")"
   done
