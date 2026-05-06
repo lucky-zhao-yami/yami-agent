@@ -15,7 +15,8 @@
         "prompt": "GitHub Personal Access Token",
         "secret": true
       }
-    }
+    },
+    "type": "third-party"
   },
   "kibana": {
     "name": "Kibana",
@@ -35,7 +36,8 @@
       "search_logs",
       "search_errors",
       "search_by_order"
-    ]
+    ],
+    "type": "third-party"
   },
   "google-sheets": {
     "name": "Google Sheets",
@@ -60,7 +62,8 @@
         "prompt": "粘贴 Google token JSON (粘贴完按两次回车)",
         "paste": true
       }
-    }
+    },
+    "type": "third-party"
   },
   "google-docs": {
     "name": "Google Docs",
@@ -75,7 +78,8 @@
       "TOKEN_PATH": {
         "value": "{WORK_DIR}/.kiro/gcp-token.json"
       }
-    }
+    },
+    "type": "third-party"
   },
   "openproject": {
     "name": "OpenProject",
@@ -99,7 +103,8 @@
       "OPENPROJECT_URL": {
         "value": "{OPENPROJECT_BASE_URL}"
       }
-    }
+    },
+    "type": "custom"
   },
   "zentao": {
     "name": "禅道",
@@ -126,7 +131,8 @@
     },
     "toolAliases": {
       "list_projects": "zentao_list_projects"
-    }
+    },
+    "type": "custom"
   },
   "sql-query": {
     "name": "SQL Query",
@@ -166,6 +172,7 @@
       "SQL_MCP_DATA_DIR": {
         "value": ""
       }
-    }
+    },
+    "type": "custom"
   }
 }
