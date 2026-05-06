@@ -7,7 +7,6 @@ import type { ManagedSessionOptions } from './types.js';
 import type { MemoryManager } from '../memory/MemoryManager.js';
 import type { SessionMemoryState } from '../memory/events.js';
 import { MessageQueue } from './MessageQueue.js';
-import { getPreamble } from '../bridge/guard.js';
 import { sessionRotations, sessionSummarizations } from '../observability/metrics.js';
 
 const log = getLogger('ManagedSession');
