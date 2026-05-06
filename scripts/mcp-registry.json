@@ -1,5 +1,4 @@
 {
-  "_comment_1": "=== 第三方 MCP（从外部仓库/registry 安装）===",
   "github": {
     "name": "GitHub",
     "install": {
@@ -78,7 +77,6 @@
       }
     }
   },
-  "_comment_2": "=== 自定义 MCP（本地代码，在 mcp-servers/ 或内部 registry）===",
   "openproject": {
     "name": "OpenProject",
     "install": {
