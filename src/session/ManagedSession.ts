@@ -150,9 +150,6 @@ export class ManagedSession {
   private async injectContext(content: PromptContent[]): Promise<PromptContent[]> {
     const parts: PromptContent[] = [];
 
-    // 安全规则
-    parts.push({ type: 'text', text: getPreamble(this.opts.mode) });
-
     // 摘要概要（字数截断）
     if (this.memoryManager) {
       try {
