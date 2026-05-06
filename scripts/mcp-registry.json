@@ -1,4 +1,5 @@
 {
+  "_comment_1": "=== 第三方 MCP（从外部仓库/registry 安装）===",
   "github": {
     "name": "GitHub",
     "install": {
@@ -37,30 +38,6 @@
       "search_by_order"
     ]
   },
-  "openproject": {
-    "name": "OpenProject",
-    "install": {
-      "type": "npm-local",
-      "dir": "mcp-servers/openproject"
-    },
-    "command": "node",
-    "args": [
-      "{WORK_DIR}/mcp-servers/openproject/index.js"
-    ],
-    "env": {
-      "OPENPROJECT_BASE_URL": {
-        "prompt": "OpenProject URL",
-        "default": "https://openproject.yamibuy.net"
-      },
-      "OPENPROJECT_API_KEY": {
-        "prompt": "OpenProject API Key",
-        "secret": true
-      },
-      "OPENPROJECT_URL": {
-        "value": "{OPENPROJECT_BASE_URL}"
-      }
-    }
-  },
   "google-sheets": {
     "name": "Google Sheets",
     "command": "uvx",
@@ -98,6 +75,31 @@
       },
       "TOKEN_PATH": {
         "value": "{WORK_DIR}/.kiro/gcp-token.json"
+      }
+    }
+  },
+  "_comment_2": "=== 自定义 MCP（本地代码，在 mcp-servers/ 或内部 registry）===",
+  "openproject": {
+    "name": "OpenProject",
+    "install": {
+      "type": "npm-local",
+      "dir": "mcp-servers/openproject"
+    },
+    "command": "node",
+    "args": [
+      "{WORK_DIR}/mcp-servers/openproject/index.js"
+    ],
+    "env": {
+      "OPENPROJECT_BASE_URL": {
+        "prompt": "OpenProject URL",
+        "default": "https://openproject.yamibuy.net"
+      },
+      "OPENPROJECT_API_KEY": {
+        "prompt": "OpenProject API Key",
+        "secret": true
+      },
+      "OPENPROJECT_URL": {
+        "value": "{OPENPROJECT_BASE_URL}"
       }
     }
   },
