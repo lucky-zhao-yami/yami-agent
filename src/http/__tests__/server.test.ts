@@ -34,12 +34,18 @@ function mockPlatform(): IMessagePlatform {
 }
 
 function mockSessionManager(): SessionManager {
+  const mockSession = {
+    alive: true, sessionId: 'sess-1', lastActive: Date.now(),
+    getMemoryState: () => ({ turns: 5, bytes: 1024, lastSummarizeTime: Date.now(), sessionStartTime: Date.now() }),
+    send: vi.fn(async (_content: any, onChunk: any) => {
+      await onChunk({ type: 'text', text: '查询结果：订单正常' });
+      await onChunk({ type: 'done', stopReason: 'end' });
+    }),
+  };
   return {
     getActiveChatIds: vi.fn(() => ['chat1', 'chat2']),
-    getSession: vi.fn((id: string) => id === 'chat1' ? {
-      alive: true, sessionId: 'sess-1', lastActive: Date.now(),
-      getMemoryState: () => ({ turns: 5, bytes: 1024, lastSummarizeTime: Date.now(), sessionStartTime: Date.now() }),
-    } : undefined),
+    getOrCreate: vi.fn(async () => mockSession),
+    getSession: vi.fn((id: string) => id === 'chat1' ? mockSession : undefined),
   } as unknown as SessionManager;
 }
 
@@ -80,6 +86,25 @@ describe('HTTP endpoints', () => {
       }),
     }));
 
+    app.post('/chat', async (req: any, reply: any) => {
+      const { message, sessionId } = req.body ?? {} as any;
+      if (!message) return reply.status(400).send({ ok: false, sessionId: '', reply: '', error: 'message required' });
+      const chatId = sessionId ? `api_${sessionId}` : `api_${Date.now()}_test`;
+      try {
+        const session = await sm.getOrCreate(chatId);
+        let fullReply = '';
+        await session.send(
+          [{ type: 'text', text: message }],
+          async (chunk: any) => { if (chunk.type === 'text') fullReply += chunk.text; },
+        );
+        const actualSessionId = chatId.replace('api_', '');
+        return { ok: true, sessionId: actualSessionId, reply: fullReply };
+      } catch (e) {
+        const actualSessionId = chatId.replace('api_', '');
+        return reply.status(500).send({ ok: false, sessionId: actualSessionId, reply: '', error: String(e) });
+      }
+    });
+
     await app.ready();
   });
 
@@ -114,5 +139,40 @@ describe('HTTP endpoints', () => {
     expect(body.sessions).toHaveLength(2);
     expect(body.sessions[0].chatId).toBe('chat1');
     expect(body.sessions[0].alive).toBe(true);
+  });
+
+  describe('POST /chat', () => {
+    it('returns sessionId and reply on first call', async () => {
+      const res = await app.inject({ method: 'POST', url: '/chat', payload: { message: '查订单' } });
+      const body = JSON.parse(res.body);
+      expect(res.statusCode).toBe(200);
+      expect(body.ok).toBe(true);
+      expect(body.sessionId).toBeTruthy();
+      expect(body.reply).toBe('查询结果：订单正常');
+    });
+
+    it('reuses session when sessionId provided', async () => {
+      const res = await app.inject({ method: 'POST', url: '/chat', payload: { message: '继续查', sessionId: 'my-session-123' } });
+      const body = JSON.parse(res.body);
+      expect(res.statusCode).toBe(200);
+      expect(body.sessionId).toBe('my-session-123');
+      expect(sm.getOrCreate).toHaveBeenCalledWith('api_my-session-123');
+    });
+
+    it('returns 400 without message', async () => {
+      const res = await app.inject({ method: 'POST', url: '/chat', payload: {} });
+      expect(res.statusCode).toBe(400);
+      const body = JSON.parse(res.body);
+      expect(body.error).toBe('message required');
+    });
+
+    it('returns 500 when session.send fails', async () => {
+      (sm.getOrCreate as any).mockRejectedValueOnce(new Error('spawn failed'));
+      const res = await app.inject({ method: 'POST', url: '/chat', payload: { message: '测试' } });
+      expect(res.statusCode).toBe(500);
+      const body = JSON.parse(res.body);
+      expect(body.ok).toBe(false);
+      expect(body.error).toContain('spawn failed');
+    });
   });
 });

@@ -79,6 +79,45 @@ export async function startHttpServer(
     };
   });
 
+  interface ChatBody { message: string; sessionId?: string }
+  interface ChatResponse { ok: boolean; sessionId: string; reply: string; error?: string }
+
+  /**
+   * POST /chat — 外部工具调用 Agent 能力
+   * 首次不带 sessionId → 创建新会话，返回 sessionId
+   * 后续带 sessionId → 复用会话，多轮对话
+   */
+  app.post<{ Body: ChatBody }>('/chat', async (req, reply) => {
+    if (apiKey) {
+      const provided = (req.headers['authorization'] ?? '').replace('Bearer ', '');
+      const a = Buffer.from(provided);
+      const b = Buffer.from(apiKey);
+      if (a.length !== b.length || !timingSafeEqual(a, b)) {
+        return reply.status(401).send({ ok: false, sessionId: '', reply: '', error: 'Unauthorized' });
+      }
+    }
+    const { message, sessionId } = req.body ?? {} as ChatBody;
+    if (!message) return reply.status(400).send({ ok: false, sessionId: '', reply: '', error: 'message required' });
+
+    // 用 sessionId 作为 chatId（隔离不同调用方的会话）
+    const chatId = sessionId ? `api_${sessionId}` : `api_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    try {
+      const session = await sessionManager.getOrCreate(chatId);
+      let fullReply = '';
+      await session.send(
+        [{ type: 'text', text: message }],
+        async (chunk) => { if (chunk.type === 'text') fullReply += chunk.text; },
+      );
+      const actualSessionId = chatId.replace('api_', '');
+      return { ok: true, sessionId: actualSessionId, reply: fullReply } as ChatResponse;
+    } catch (e) {
+      log.error(e, `Chat API error for ${chatId}`);
+      const actualSessionId = chatId.replace('api_', '');
+      return reply.status(500).send({ ok: false, sessionId: actualSessionId, reply: '', error: String(e) });
+    }
+  });
+
   app.post('/shutdown', async (_req, reply) => {
     log.info('Shutdown requested via HTTP');
     reply.send({ ok: true, message: 'shutting down gracefully' });
