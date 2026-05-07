@@ -27,12 +27,19 @@ const SummarizeStrategySchema = z.object({
   minutes: z.number().optional(),
 });
 
+const PermissionsSchema = z.object({
+  mode: z.enum(['trust-all', 'restricted']).default('trust-all'),
+  deny: z.array(z.string()).default([]),
+  denyCommands: z.array(z.string()).default([]),
+}).default({ mode: 'trust-all', deny: [], denyCommands: [] });
+
 const BotConfigSchema = z.object({
   bot_id: z.string(),
   secret: z.string(),
   welcome_msg: z.string().default('👋 你好！'),
   agent: AgentConfigSchema,
   chats: z.record(ChatConfigSchema).default({ default: { mode: 'full' } }),
+  permissions: PermissionsSchema,
   memory: z.object({
     layers: z.array(MemoryLayerSchema).default([{ type: 'conversation', enabled: true }]),
     summarize: z.array(SummarizeStrategySchema).optional(),
@@ -56,6 +63,7 @@ export type AgentConfig = z.infer<typeof AgentConfigSchema>;
 export type ChatConfig = z.infer<typeof ChatConfigSchema>;
 export type BotConfig = z.infer<typeof BotConfigSchema>;
 export type EnvConfig = z.infer<typeof EnvConfigSchema>;
+export type PermissionsConfig = z.infer<typeof PermissionsSchema>;
 
 export interface AppConfig {
   bot: BotConfig;

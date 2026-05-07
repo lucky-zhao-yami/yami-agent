@@ -42,6 +42,7 @@ function makeConfig(overrides: Partial<AppConfig['env']> = {}): AppConfig {
       bot_id: 'b', secret: 's', welcome_msg: '👋',
       agent: { command: 'echo', args: [] },
       chats: { default: { mode: 'full' as const } },
+      permissions: { mode: 'trust-all' as const, deny: [], denyCommands: [] },
       memory: { layers: [], injectionMaxChars: 2000 },
     },
     env: {

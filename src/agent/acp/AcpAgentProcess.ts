@@ -5,6 +5,7 @@ import { dirname, resolve as pathResolve } from 'node:path';
 import * as acp from '@agentclientprotocol/sdk';
 import { getLogger } from '../../logger.js';
 import { IAgentProcess, type AgentChunk, type AgentSpawnOptions, type PromptContent } from '../types.js';
+import type { PermissionsConfig } from '../../config.js';
 import { AsyncQueue } from '../../utils.js';
 
 const log = getLogger('AcpAgentProcess');
@@ -20,7 +21,11 @@ export class AcpAgentProcess extends IAgentProcess {
   private _sessionId: string | null = null;
   private activeQueue: AsyncQueue<AgentChunk> | null = null;
 
+  private permissions: PermissionsConfig = { mode: 'trust-all', deny: [], denyCommands: [] };
+
   constructor(private options: AgentSpawnOptions) { super(); }
+
+  setPermissions(p: PermissionsConfig) { this.permissions = p; }
 
   get sessionId() { return this._sessionId; }
 
@@ -134,8 +139,26 @@ export class AcpAgentProcess extends IAgentProcess {
   }
 
   private async handlePermission(params: acp.RequestPermissionRequest): Promise<acp.RequestPermissionResponse> {
+    const title = params.toolCall.title ?? '';
+    const rawInput = JSON.stringify(params.toolCall.rawInput ?? '');
+
+    if (this.permissions.mode === 'restricted') {
+      // 检查工具名是否在 deny 列表
+      if (this.permissions.deny.some(d => title.toLowerCase().includes(d.toLowerCase()))) {
+        log.info(`Permission DENIED (tool in deny list): ${title}`);
+        const deny = params.options.find(o => o.kind === 'reject_once' || o.kind === 'reject_always') ?? params.options[params.options.length - 1];
+        return { outcome: { outcome: 'selected', optionId: deny!.optionId } };
+      }
+      // 检查命令内容是否包含危险关键词
+      if (this.permissions.denyCommands.some(cmd => rawInput.includes(cmd))) {
+        log.info(`Permission DENIED (dangerous command): ${title} input contains blocked keyword`);
+        const deny = params.options.find(o => o.kind === 'reject_once' || o.kind === 'reject_always') ?? params.options[params.options.length - 1];
+        return { outcome: { outcome: 'selected', optionId: deny!.optionId } };
+      }
+    }
+
     const allow = params.options.find(o => o.kind === 'allow_once' || o.kind === 'allow_always') ?? params.options[0];
-    log.info(`Auto-approving permission: ${params.toolCall.title} → ${allow?.name}`);
+    log.info(`Permission APPROVED: ${title}`);
     return { outcome: { outcome: 'selected', optionId: allow!.optionId } };
   }
 

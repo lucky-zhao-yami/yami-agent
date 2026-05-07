@@ -70,7 +70,7 @@ export class ManagedSession {
         this.turns++;
         this.bytes += this.measureBytes(content);
 
-        // 首条消息：强制注入 preamble + 摘要概要 + skill 提示
+        // 首条消息：注入安全规则 + 记忆摘要
         const finalContent = this.firstMsg ? await this.injectContext(content) : content;
         this.firstMsg = false;
 

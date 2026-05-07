@@ -81,7 +81,9 @@ export class SessionManager {
     const chatConfig = getChatConfig(this.config, chatId);
     const spawnOpts = {
       command: chatConfig.agent.command,
-      args: chatConfig.agent.args,
+      args: this.config.bot.permissions.mode === 'restricted'
+        ? chatConfig.agent.args.filter(a => a !== '--trust-all-tools')
+        : chatConfig.agent.args,
       cwd: this.config.env.WORK_DIR,
       env: chatConfig.agent.env,
     };
@@ -91,6 +93,7 @@ export class SessionManager {
     const proc = warmProc ?? await this.agentProvider.spawn(spawnOpts);
     agentSpawns.inc({ reason: warmProc ? 'warm' : 'new' });
     if (warmProc) sessionsWarmPool.dec();
+    if ('setPermissions' in proc) (proc as any).setPermissions(this.config.bot.permissions);
     const router = new SingleAgentRouter(proc, this.agentProvider, spawnOpts);
 
     try {
