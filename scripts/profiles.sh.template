@@ -15,52 +15,6 @@
 #     团队名: ops   → 前缀: OPS_   → 部署: deploy.sh --profile ops
 #     团队名: qa    → 前缀: QA_    → 部署: deploy.sh --profile qa
 #
-# 【各字段说明】
-#
-#   XXX_DEFAULT_AGENT
-#     企微收到消息后，默认由哪个 agent 处理。
-#     对应 templates/agents/ 下的 JSON 文件名（不含 .json 后缀）。
-#
-#   XXX_REPOS
-#     需要拉取到服务器的代码仓库列表。
-#     agent 查阅源码时会用到（通过 .kiro/workspace.json 暴露给 agent）。
-#     如果 agent 不需要读代码，留空即可。
-#
-#   XXX_SKILLS
-#     agent 可使用的操作能力列表。
-#     对应 templates/skills/ 下的目录名，每个 skill 是一个独立能力模块。
-#     常用 skill：
-#       sql-query        — 数据库查询
-#       query-kibana-logs — Kibana 日志查询
-#       central-login    — Central 后台自动登录
-#       api-fetch        — HTTP API 调用
-#       query-apollo     — Apollo 配置查询
-#       manage-openproject — OpenProject 任务管理
-#       zentao           — 禅道 Bug 管理
-#       memory-recall    — 记忆召回
-#
-#   XXX_AGENTS
-#     部署到工作空间的 agent 定义文件列表。
-#     对应 templates/agents/ 下的文件名（不含 .json）。
-#     通常只需要一个（DEFAULT_AGENT 指定的那个）。
-#
-#   XXX_MCPS
-#     需要通过 mcp-registry.json 安装的 MCP 工具服务列表。
-#     deploy 时会交互式引导填写凭证。
-#     如果 MCP 已在 agent JSON 的 mcpServers 字段中定义，这里不需要重复配置。
-#     可用的 MCP 见 scripts/mcp-registry.json。
-#
-#   XXX_STEERING
-#     agent 的行为规则文件列表。
-#     对应 templates/steering/ 下的 .md 文件。
-#     这些文件定义 agent 的排查逻辑、输出格式、业务规则等。
-#     inclusion: auto 的文件会自动加载，manual 的按需读取。
-#
-#   XXX_HOOKS
-#     行为触发器列表。
-#     对应 templates/hooks/ 下的 .hook 文件。
-#     在特定时机（如消息到达、会话结束）自动执行。
-#
 # ═══════════════════════════════════════════════════════════════════
 
 # ── 基础配置（所有 profile 共享，一般不需要改）──────────────────────
@@ -71,10 +25,77 @@ BASE_STEERING=(global_guide.md product.md projects.md)
 BASE_HOOKS=()
 BASE_REPOS=()
 
-# ── TEMPLATE（复制此段，将 TEMPLATE 替换为你的团队名大写）──────────
+# ═══════════════════════════════════════════════════════════════════
+# TEMPLATE（复制此段，将 TEMPLATE 替换为你的团队名大写）
+# ═══════════════════════════════════════════════════════════════════
 
+# ┌─────────────────────────────────────────────────────────────────
+# │ Agent 配置（必填，两项必须同时配置）
+# │
+# │ DEFAULT_AGENT: 企微收到消息后默认使用的 agent
+# │ AGENTS:        部署到工作空间的 agent 定义文件列表
+# │
+# │ ⚠️ DEFAULT_AGENT 必须包含在 AGENTS 列表中，否则启动后找不到 agent
+# └─────────────────────────────────────────────────────────────────
 TEMPLATE_DEFAULT_AGENT="cs-troubleshooter"
+TEMPLATE_AGENTS=(cs-troubleshooter)
 
+# ┌─────────────────────────────────────────────────────────────────
+# │ Skills — agent 可使用的操作能力
+# │
+# │ 对应 templates/skills/ 下的目录名，每个 skill 是一个独立能力模块
+# │ 常用：sql-query, query-kibana-logs, central-login, api-fetch,
+# │       query-apollo, manage-openproject, zentao, memory-recall
+# └─────────────────────────────────────────────────────────────────
+TEMPLATE_SKILLS=(
+  sql-query zentao manage-openproject central-login api-fetch
+  enum-values iterable-api query-kibana-logs memory-recall
+  query-apollo kibana-log
+)
+
+# ┌─────────────────────────────────────────────────────────────────
+# │ Steering — agent 的行为规则文件
+# │
+# │ 对应 templates/steering/ 下的 .md 文件
+# │ 定义 agent 的排查逻辑、输出格式、业务规则等
+# │ inclusion: auto 的文件自动加载，manual 的按需读取
+# └─────────────────────────────────────────────────────────────────
+TEMPLATE_STEERING=(
+  cs-global-config.md sub-agent-guide.md skills-path-find-guide.md
+  cs-account-login.md cs-bind-phone.md cs-coupon.md cs-email-notification.md
+  cs-follow-buy.md cs-giftcard.md cs-invite-friend.md cs-item.md
+  cs-logistics.md cs-member-rights.md cs-order.md cs-payment-refund.md
+  cs-profile-edit.md cs-query-rules.md cs-rma.md cs-tax.md
+)
+
+# ┌─────────────────────────────────────────────────────────────────
+# │ Hooks — 行为触发器
+# │
+# │ 对应 templates/hooks/ 下的 .hook 文件
+# │ 在特定时机自动执行（如消息到达时匹配意图、退出时保存记忆）
+# └─────────────────────────────────────────────────────────────────
+TEMPLATE_HOOKS=(
+  save-memory-on-exit.kiro.hook check-steering-first.kiro.hook
+  cs-kibana-check.kiro.hook cs-rules-auto-update.kiro.hook
+  sql-fallback-reminder.kiro.hook
+)
+
+# ┌─────────────────────────────────────────────────────────────────
+# │ MCPs — MCP 工具服务（可选）
+# │
+# │ 对应 scripts/mcp-registry.json 中的 key
+# │ deploy 时会交互式引导填写凭证
+# │ 如果 MCP 已在 agent JSON 的 mcpServers 字段中定义，这里不需要重复
+# └─────────────────────────────────────────────────────────────────
+TEMPLATE_MCPS=()
+
+# ┌─────────────────────────────────────────────────────────────────
+# │ Repos — 代码仓库（可选）
+# │
+# │ 需要拉取到服务器的代码仓库列表
+# │ agent 查阅源码时通过 .kiro/workspace.json 发现这些仓库
+# │ 如果 agent 不需要读代码，留空即可
+# └─────────────────────────────────────────────────────────────────
 TEMPLATE_REPOS=(
   central-activity-service central-crm-web central-customer-service
   central-distributor-service central-fp-service central-fp-web
@@ -84,28 +105,4 @@ TEMPLATE_REPOS=(
   ec-inventory-service ec-payment-service ec-rma-service
   ec-so-service ec-tax-service
   mail-service-job public purchase-tool
-)
-
-TEMPLATE_SKILLS=(
-  sql-query zentao manage-openproject central-login api-fetch
-  enum-values iterable-api query-kibana-logs memory-recall
-  query-apollo kibana-log
-)
-
-TEMPLATE_AGENTS=(cs-troubleshooter)
-
-TEMPLATE_MCPS=()
-
-TEMPLATE_STEERING=(
-  cs-global-config.md sub-agent-guide.md skills-path-find-guide.md
-  cs-account-login.md cs-bind-phone.md cs-coupon.md cs-email-notification.md
-  cs-follow-buy.md cs-giftcard.md cs-invite-friend.md cs-item.md
-  cs-logistics.md cs-member-rights.md cs-order.md cs-payment-refund.md
-  cs-profile-edit.md cs-query-rules.md cs-rma.md cs-tax.md
-)
-
-TEMPLATE_HOOKS=(
-  save-memory-on-exit.kiro.hook check-steering-first.kiro.hook
-  cs-kibana-check.kiro.hook cs-rules-auto-update.kiro.hook
-  sql-fallback-reminder.kiro.hook
 )
