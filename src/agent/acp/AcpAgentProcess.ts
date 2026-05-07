@@ -140,16 +140,26 @@ export class AcpAgentProcess extends IAgentProcess {
 
   private async handlePermission(params: acp.RequestPermissionRequest): Promise<acp.RequestPermissionResponse> {
     const title = params.toolCall.title ?? '';
+    const kind = params.toolCall.kind ?? '';
     const rawInput = JSON.stringify(params.toolCall.rawInput ?? '');
 
     if (this.permissions.mode === 'restricted') {
-      // 检查工具名是否在 deny 列表
+      // 1. 检查工具类型（edit/delete/move 都是写操作）
+      const writeKinds = ['edit', 'delete', 'move'];
+      if (writeKinds.includes(kind)) {
+        log.info(`Permission DENIED (write kind=${kind}): ${title}`);
+        const deny = params.options.find(o => o.kind === 'reject_once' || o.kind === 'reject_always') ?? params.options[params.options.length - 1];
+        return { outcome: { outcome: 'selected', optionId: deny!.optionId } };
+      }
+
+      // 2. 检查工具名是否在 deny 列表
       if (this.permissions.deny.some(d => title.toLowerCase().includes(d.toLowerCase()))) {
         log.info(`Permission DENIED (tool in deny list): ${title}`);
         const deny = params.options.find(o => o.kind === 'reject_once' || o.kind === 'reject_always') ?? params.options[params.options.length - 1];
         return { outcome: { outcome: 'selected', optionId: deny!.optionId } };
       }
-      // 检查命令内容是否包含危险关键词（检查 title + rawInput）
+
+      // 3. 检查命令内容是否包含危险关键词
       const fullText = `${title} ${rawInput}`;
       if (this.permissions.denyCommands.some(cmd => fullText.includes(cmd))) {
         log.info(`Permission DENIED (dangerous command): ${title}`);
