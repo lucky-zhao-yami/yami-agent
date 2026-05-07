@@ -304,13 +304,36 @@ npm install && npm run build
 
 # 启动（开发模式）
 npm run dev
+```
 
-# 清理会话（重启后生效）
-rm -rf <WORK_DIR>/sessions/*
-bash scripts/manage.sh restart
+### 重启服务
 
-# 查看实时日志
+部署方式不同，重启方式也不同：
+
+```bash
+# 如果用 systemd 部署（deploy.sh 会自动配置）
+systemctl restart yami-agent
+systemctl status yami-agent
+journalctl -u yami-agent -f
+
+# 如果没有 systemd（手动启动）
+bash <WORK_DIR>/restart.sh
 tail -f <WORK_DIR>/yami-agent.log
+```
+
+⚠️ **不要混用**：如果 systemd 在管理进程，不要用 restart.sh 或手动 nohup 启动，否则会端口冲突。通过 `systemctl status yami-agent` 判断是否由 systemd 管理。
+
+### 清理会话
+
+```bash
+# 停止服务
+systemctl stop yami-agent  # 或 pkill -f "node.*index.js"
+
+# 清理
+rm -rf <WORK_DIR>/sessions/*
+
+# 重启
+systemctl start yami-agent  # 或 bash <WORK_DIR>/restart.sh
 ```
 
 ## 设计原则
