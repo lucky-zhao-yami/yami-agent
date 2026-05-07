@@ -343,6 +343,22 @@ PID_FILE="$WORK_DIR/yami-agent.pid"
 LOG_FILE="$WORK_DIR/yami-agent.log"
 PORT=$(grep "^PORT=" "$WORK_DIR/.env" | cut -d= -f2)
 
+# 如果 systemd 在管理，走 systemctl
+if systemctl is-active --quiet yami-agent 2>/dev/null; then
+    echo "🔄 yami-agent 安全重启 (systemd)"
+    echo "📦 编译..."
+    cd "$AGENT_DIR" && npm run build --silent
+    systemctl restart yami-agent
+    sleep 3
+    if systemctl is-active --quiet yami-agent; then
+        echo "✅ yami-agent 已重启 (systemd)"
+    else
+        echo "❌ 重启失败，查看: journalctl -u yami-agent"
+        exit 1
+    fi
+    exit 0
+fi
+
 echo "🔄 yami-agent 安全重启"
 
 echo "📦 编译..."
