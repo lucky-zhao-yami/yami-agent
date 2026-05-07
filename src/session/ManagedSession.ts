@@ -7,6 +7,7 @@ import type { ManagedSessionOptions } from './types.js';
 import type { MemoryManager } from '../memory/MemoryManager.js';
 import type { SessionMemoryState } from '../memory/events.js';
 import { MessageQueue } from './MessageQueue.js';
+import { getPreamble } from '../bridge/guard.js';
 import { sessionRotations, sessionSummarizations } from '../observability/metrics.js';
 
 const log = getLogger('ManagedSession');
@@ -148,6 +149,9 @@ export class ManagedSession {
 
   private async injectContext(content: PromptContent[]): Promise<PromptContent[]> {
     const parts: PromptContent[] = [];
+
+    // 安全规则（只含安全底线，不含回复策略）
+    parts.push({ type: 'text', text: getPreamble(this.opts.mode) });
 
     // 摘要概要（字数截断）
     if (this.memoryManager) {
