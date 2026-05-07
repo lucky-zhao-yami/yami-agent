@@ -278,6 +278,21 @@ cmd_sync() {
       echo "  ↻ $(basename "$src")"
     done
   done
+  # 注入 skill:// 引用
+  for agent_json in "$WORK_DIR/.kiro/agents/"*.json; do
+    [ ! -f "$agent_json" ] && continue
+    python3 -c "
+import json, sys
+f = sys.argv[1]
+d = json.load(open(f))
+resources = d.get('resources', [])
+skill_uri = 'skill://.kiro/skills/*/SKILL.md'
+if skill_uri not in resources:
+    resources.append(skill_uri)
+    d['resources'] = resources
+    json.dump(d, open(f, 'w'), indent=2, ensure_ascii=False)
+" "$agent_json"
+  done
 
   # ── steering: 清理 → 重建 ──
   info "同步 steering..."

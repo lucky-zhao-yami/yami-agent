@@ -183,6 +183,23 @@ for agent in "${P_AGENTS[@]}"; do
   done
 done
 
+# 自动注入 skill:// 到所有 agent JSON 的 resources 中
+for agent_json in "$WORK_DIR/.kiro/agents/"*.json; do
+  [ ! -f "$agent_json" ] && continue
+  python3 -c "
+import json, sys
+f = sys.argv[1]
+d = json.load(open(f))
+resources = d.get('resources', [])
+skill_uri = 'skill://.kiro/skills/*/SKILL.md'
+if skill_uri not in resources:
+    resources.append(skill_uri)
+    d['resources'] = resources
+    json.dump(d, open(f, 'w'), indent=2, ensure_ascii=False)
+" "$agent_json"
+done
+echo "  + skill:// 引用已注入到所有 agent"
+
 # 复制 steering
 for s in "${P_STEERING[@]}"; do
   src="$TEMPLATE_SRC/steering/$s"
