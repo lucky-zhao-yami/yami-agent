@@ -149,9 +149,10 @@ export class AcpAgentProcess extends IAgentProcess {
         const deny = params.options.find(o => o.kind === 'reject_once' || o.kind === 'reject_always') ?? params.options[params.options.length - 1];
         return { outcome: { outcome: 'selected', optionId: deny!.optionId } };
       }
-      // 检查命令内容是否包含危险关键词
-      if (this.permissions.denyCommands.some(cmd => rawInput.includes(cmd))) {
-        log.info(`Permission DENIED (dangerous command): ${title} input contains blocked keyword`);
+      // 检查命令内容是否包含危险关键词（检查 title + rawInput）
+      const fullText = `${title} ${rawInput}`;
+      if (this.permissions.denyCommands.some(cmd => fullText.includes(cmd))) {
+        log.info(`Permission DENIED (dangerous command): ${title}`);
         const deny = params.options.find(o => o.kind === 'reject_once' || o.kind === 'reject_always') ?? params.options[params.options.length - 1];
         return { outcome: { outcome: 'selected', optionId: deny!.optionId } };
       }
