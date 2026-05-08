@@ -21,7 +21,7 @@ export class AcpAgentProcess extends IAgentProcess {
   private _sessionId: string | null = null;
   private activeQueue: AsyncQueue<AgentChunk> | null = null;
 
-  private permissions: PermissionsConfig = { mode: 'trust-all', deny: [], denyCommands: [] };
+  private permissions: PermissionsConfig = { mode: 'trust-all', deny: [], denyCommands: [], denyKinds: ['edit', 'delete', 'move'] };
 
   constructor(private options: AgentSpawnOptions) { super(); }
 
