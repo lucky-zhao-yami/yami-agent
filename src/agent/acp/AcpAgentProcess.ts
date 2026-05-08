@@ -145,8 +145,7 @@ export class AcpAgentProcess extends IAgentProcess {
 
     if (this.permissions.mode === 'restricted') {
       // 1. 检查工具类型（edit/delete/move 都是写操作）
-      const writeKinds = ['edit', 'delete', 'move'];
-      if (writeKinds.includes(kind)) {
+      if (this.permissions.denyKinds.includes(kind)) {
         log.info(`Permission DENIED (write kind=${kind}): ${title}`);
         const deny = params.options.find(o => o.kind === 'reject_once' || o.kind === 'reject_always') ?? params.options[params.options.length - 1];
         return { outcome: { outcome: 'selected', optionId: deny!.optionId } };

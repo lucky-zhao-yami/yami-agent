@@ -31,7 +31,8 @@ const PermissionsSchema = z.object({
   mode: z.enum(['trust-all', 'restricted']).default('trust-all'),
   deny: z.array(z.string()).default([]),
   denyCommands: z.array(z.string()).default([]),
-}).default({ mode: 'trust-all', deny: [], denyCommands: [] });
+  denyKinds: z.array(z.string()).default(['edit', 'delete', 'move']),
+}).default({ mode: 'trust-all', deny: [], denyCommands: [], denyKinds: ['edit', 'delete', 'move'] });
 
 const BotConfigSchema = z.object({
   bot_id: z.string(),

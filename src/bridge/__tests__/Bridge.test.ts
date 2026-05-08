@@ -45,7 +45,7 @@ function makeConfig(): AppConfig {
       bot_id: 'bot1', secret: 's', welcome_msg: '👋 你好！',
       agent: { command: 'echo', args: [] },
       chats: { default: { mode: 'full' as const } },
-      permissions: { mode: 'trust-all' as const, deny: [], denyCommands: [] },
+      permissions: { mode: 'trust-all' as const, deny: [], denyCommands: [], denyKinds: ['edit', 'delete', 'move'] },
       memory: { layers: [], injectionMaxChars: 2000 },
     },
     env: {
