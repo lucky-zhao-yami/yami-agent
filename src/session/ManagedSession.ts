@@ -26,6 +26,8 @@ export class ManagedSession {
   private lastSummarizeTime = Date.now();
   private sessionStartTime = Date.now();
   lastActive = Date.now();
+  private _lastOutput = '';
+  get lastOutput(): string { return this._lastOutput; }
 
   constructor(
     readonly chatId: string,
@@ -83,6 +85,8 @@ export class ManagedSession {
           await onChunk(chunk);
           if (chunk.type === 'done') break;
         }
+
+        this._lastOutput = assistantText;
 
         // 保存对话记录给所有 Layer
         if (this.memoryManager && assistantText) {

@@ -115,6 +115,7 @@ async function main() {
     const afPlatform = new AgentFlowPlatform({ ...config.agentflow, workDir: config.env.WORK_DIR });
     new Bridge(afPlatform, sessionManager, config);
     await afPlatform.connect();
+    bridge.setAgentFlowPlatform(afPlatform);
     log.info("AgentFlow platform connected");
   }
 

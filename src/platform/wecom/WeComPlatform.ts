@@ -150,6 +150,26 @@ export class WeComPlatform extends IMessagePlatform {
     });
   }
 
+  async sendTemplateCard(chatId: string, chatType: number, card: {
+    title: string; desc?: string; taskId: string;
+    buttons: Array<{ text: string; key: string; style?: number }>;
+  }): Promise<void> {
+    const actualId = chatType === 1 ? chatId.replace(/^dm_/, '') : chatId;
+    await this.sendRaw({
+      cmd: 'aibot_send_msg',
+      headers: { req_id: reqId() },
+      body: {
+        chatid: actualId, chat_type: chatType, msgtype: 'template_card',
+        template_card: {
+          card_type: 'button_interaction',
+          main_title: { title: card.title, desc: card.desc ?? '' },
+          button_list: card.buttons.map(b => ({ text: b.text, style: b.style ?? 1, key: b.key })),
+          task_id: card.taskId,
+        },
+      },
+    });
+  }
+
   async getMedia(mediaId: string): Promise<Buffer | null> {
     const doGet = (): Promise<Buffer | null> => {
       const rid = reqId();
@@ -299,6 +319,22 @@ export class WeComPlatform extends IMessagePlatform {
   }
 
   private handleEventCallback(_rid: string, body: Record<string, unknown>) {
+    // Handle template card button clicks as messages
+    if (body.event_type === 'template_card_event') {
+      if (!this.msgHandler) return;
+      const taskId = (body.task_id as string) ?? '';
+      const key = ((body.selected_items as any[])?.[0]?.key as string) ?? '';
+      const userId = (body.from_user as string) ?? (body.userid as string) ?? '';
+      const chatType = (body.chat_type as number) ?? 1;
+      const chatId = chatType === 1 ? `dm_${userId}` : ((body.chatid as string) ?? '');
+      this.msgHandler({
+        chatId, userId, msgType: 'text',
+        text: `__card_click__:${taskId}:${key}`,
+        reqId: reqId(), chatType,
+      }).catch(err => log.error(err, 'Card click handler error'));
+      return;
+    }
+
     if (!this.evtHandler) return;
     const b = body as unknown as EventCallbackBody;
     const eventType = b.event?.eventtype || '';

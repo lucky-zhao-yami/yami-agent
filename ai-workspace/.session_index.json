@@ -1,10 +1,22 @@
 {
   "sessions": [
     {
+      "id": "d1c85c3e-8d89-4dc9-b1be-5b59b2d210c7",
+      "title": "在 /mnt/d/code/yami/yami-agent (分支 feature/agentflow-connector) 中实现\"通过企微交互卡片提交 issue 到 AgentFlow 平台\"功能。",
+      "created": "2026-05-09T06:05:05",
+      "updated": "2026-05-09T06:05:17",
+      "project": "yami-agent",
+      "summary": "实现企微卡片交互提交 issue 到 AgentFlow 功能，8 步计划完成 4 步：ManagedSession 加 lastOutput 属性、WeComPlatform 加 sendTemplateCard 方法、WeComPlatform 加 template_card_event 回调处理（通过 __card_click__ 伪消息传递）。未完成：Bridge.ts 加 handleCardClick/pendingSubmits、commands.ts 加 /submit 命令、index.ts 接线、build 验证。",
+      "status": "in-progress"
+    },
+    {
       "id": "de91d8cc-faae-4d44-a5a7-3b514b2efd37",
-      "title": "修复 /mnt/d/code/yami/yami-agent/src/platform/agentflow/AgentFlowPlatform.ts 中 reviewer 发现的问题。",
+      "title": "修复 AgentFlowPlatform.ts reviewer 问题",
       "created": "2026-05-09T05:50:57",
-      "updated": "2026-05-09T05:51:06"
+      "updated": "2026-05-09T05:51:06",
+      "project": "yami-agent",
+      "summary": "修复 6 个 reviewer 问题：P1 chatToTaskNode 内存泄漏（finish 时 delete）、P2 reqId===chatId 注释、P3 resume_session 注释说明不恢复上下文、P4 cancel_session 清理 map、P5 connect() 10s 超时兜底、P6 确认错误路径 buffer 清理正确。Build 通过。",
+      "status": "done"
     },
     {
       "id": "8d00c87b-20d0-485c-bd3e-7f19720dd940",
@@ -12,8 +24,8 @@
       "created": "2026-05-09T05:49:20",
       "updated": "2026-05-09T13:49:26",
       "project": "yami-agent",
-      "summary": "审查 feature/agentflow-connector 分支。读取了 AgentFlowPlatform.ts、Bridge.ts、StreamSegmenter.ts、types.ts 等文件。发现问题：chatToTaskNode 内存泄漏、cancel_session 未实现、resume_session 未复用已有 session。Session 在产出最终结论前中断。",
-      "status": "incomplete"
+      "summary": "审查 feature/agentflow-connector 分支。发现 6 个问题（chatToTaskNode 泄漏、cancel 未实现、resume 未复用 session 等），已在后续 session de91d8cc 中修复。",
+      "status": "done"
     }
   ]
 }

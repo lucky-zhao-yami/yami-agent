@@ -19,6 +19,8 @@ const log = getLogger('Bridge');
  */
 export class Bridge {
   private streamLocks = new Map<string, Promise<void>>();
+  private agentflowPlatform: any = null;
+  readonly pendingSubmits = new Map<string, { chatId: string; sessionId: string | null; timestamp: number }>();
 
   constructor(
     private platform: IMessagePlatform,
@@ -27,7 +29,17 @@ export class Bridge {
   ) {
     this.platform.onMessage((msg) => this.handleMessage(msg));
     this.platform.onEvent((evt) => this.handleEvent(evt));
+    // Cleanup expired pendingSubmits every 60s
+    setInterval(() => {
+      const cutoff = Date.now() - 5 * 60 * 1000;
+      for (const [k, v] of this.pendingSubmits) {
+        if (v.timestamp < cutoff) this.pendingSubmits.delete(k);
+      }
+    }, 60_000);
   }
+
+  setAgentFlowPlatform(platform: any): void { this.agentflowPlatform = platform; }
+  getAgentFlowPlatform(): any { return this.agentflowPlatform; }
 
   private async handleEvent(evt: PlatformEvent) {
     if (evt.type === 'enter_chat' && evt.reqId) {
@@ -53,6 +65,13 @@ export class Bridge {
       const { text, content } = await this.extractContent(msg);
       if (!text && content.length === 0) return;
 
+      // Handle card click callbacks
+      if (text && text.startsWith('__card_click__:')) {
+        const [, taskId, key] = text.split(':');
+        await this.handleCardClick(chatId, chatType, taskId, key);
+        return;
+      }
+
       if (text && checkInjection(text)) {
         injectionBlocked.inc();
         messagesProcessed.inc({ status: 'injection' });
@@ -68,10 +87,14 @@ export class Bridge {
         if (parsed) {
           await handleCommand({
             chatId,
+            chatType,
             session,
             sessionManager: this.sessionManager,
             config: this.config,
             reply: (t) => this.platform.sendMessage(chatId, t, chatType),
+            platform: this.platform,
+            agentflowPlatform: this.agentflowPlatform,
+            pendingSubmits: this.pendingSubmits,
           }, parsed.cmd, parsed.args);
           return;
         }
@@ -119,6 +142,30 @@ export class Bridge {
         await this.platform.sendMessage(chatId, '❌ 处理消息时出错，请稍后重试', chatType).catch(() => {});
       }
     }
+  }
+
+  private async handleCardClick(chatId: string, chatType: number, taskId: string, key: string): Promise<void> {
+    if (!key.startsWith('submit_wf_')) return;
+    const workflowId = key.replace('submit_wf_', '');
+    const pending = this.pendingSubmits.get(taskId);
+    if (!pending) return;
+    this.pendingSubmits.delete(taskId);
+
+    const session = this.sessionManager.getSession(pending.chatId);
+    const lastOutput = session?.lastOutput ?? '';
+    if (!lastOutput) {
+      await this.platform.sendMessage(chatId, '❌ 没有可提交的内容', chatType);
+      return;
+    }
+
+    this.agentflowPlatform?.submitIssue({
+      sessionId: session?.sessionId ?? '',
+      title: lastOutput.split('\n')[0].slice(0, 50) || 'New Issue',
+      content: lastOutput,
+      source: { type: 'wecom', userId: chatId, chatId },
+      workflowId,
+    });
+    await this.platform.sendMessage(chatId, '✅ 已提交到 AgentFlow 平台，任务开始执行', chatType);
   }
 
   private async extractContent(msg: IncomingMessage): Promise<{ text: string; content: PromptContent[] }> {
