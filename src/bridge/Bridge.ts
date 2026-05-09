@@ -119,6 +119,24 @@ export class Bridge {
         await segmenter.finish();
         messagesProcessed.inc({ status: 'ok' });
         messageDuration.observe((Date.now() - startTime) / 1000);
+
+        // 自动检测 SUBMIT_READY 标记，发送 workflow 选择卡片
+        const output = session.lastOutput;
+        if (output.includes('<!--SUBMIT_READY-->') && this.agentflowPlatform) {
+          const workflows = this.agentflowPlatform.workflows;
+          if (workflows.length > 0) {
+            const taskId = `submit_${chatId}_${Date.now()}`;
+            if ('sendTemplateCard' in this.platform) {
+              await (this.platform as any).sendTemplateCard(chatId, chatType, {
+                title: '提交到开发流程',
+                desc: '选择要使用的工作流：',
+                buttons: workflows.map((w: any) => ({ text: w.name, key: `submit_wf_${w.id}`, style: 1 })),
+                taskId,
+              });
+              this.pendingSubmits.set(taskId, { chatId, sessionId: session.sessionId, timestamp: Date.now() });
+            }
+          }
+        }
       } catch (sendErr) {
         segmenter.dispose();
         throw sendErr;

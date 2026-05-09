@@ -278,6 +278,8 @@ export class WeComPlatform extends IMessagePlatform {
     const rid = (headers.req_id as string) || '';
     const body = msg.body || {};
 
+    if (cmd && cmd !== 'pong') log.info(`WS recv cmd=${cmd} body_keys=${Object.keys(body).join(',')}`);
+
     // Check if this is a media response
     if (rid && this.mediaWaiters.has(rid)) {
       const waiter = this.mediaWaiters.get(rid)!;
@@ -295,6 +297,7 @@ export class WeComPlatform extends IMessagePlatform {
     if (cmd === 'aibot_msg_callback') {
       this.handleMsgCallback(rid, body);
     } else if (cmd === 'aibot_event_callback') {
+      log.info(`Event callback: ${JSON.stringify(body)}`);
       this.handleEventCallback(rid, body);
     } else if (cmd === 'pong' || (!cmd && msg.errcode === 0)) {
       this.lastPong = Date.now();
@@ -320,13 +323,17 @@ export class WeComPlatform extends IMessagePlatform {
 
   private handleEventCallback(_rid: string, body: Record<string, unknown>) {
     // Handle template card button clicks as messages
-    if (body.event_type === 'template_card_event') {
+    const event = body.event as Record<string, unknown> | undefined;
+    if (event?.eventtype === 'template_card_event') {
       if (!this.msgHandler) return;
-      const taskId = (body.task_id as string) ?? '';
-      const key = ((body.selected_items as any[])?.[0]?.key as string) ?? '';
-      const userId = (body.from_user as string) ?? (body.userid as string) ?? '';
-      const chatType = (body.chat_type as number) ?? 1;
+      const cardEvent = event.template_card_event as Record<string, unknown> | undefined;
+      const taskId = (cardEvent?.task_id as string) ?? '';
+      const key = (cardEvent?.event_key as string) ?? '';
+      const from = body.from as Record<string, unknown> | undefined;
+      const userId = (from?.userid as string) ?? '';
+      const chatType = body.chattype === 'single' ? 1 : 2;
       const chatId = chatType === 1 ? `dm_${userId}` : ((body.chatid as string) ?? '');
+      log.info(`Card click: taskId=${taskId} key=${key} chatId=${chatId}`);
       this.msgHandler({
         chatId, userId, msgType: 'text',
         text: `__card_click__:${taskId}:${key}`,
