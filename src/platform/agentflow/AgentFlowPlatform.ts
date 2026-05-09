@@ -37,7 +37,10 @@ export class AgentFlowPlatform extends IMessagePlatform {
   get workflows(): WorkflowInfo[] { return this._workflows; }
 
   async connect(): Promise<void> {
-    return new Promise((resolve) => { this.doConnect(resolve); });
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve(), 10_000);
+      this.doConnect(() => { clearTimeout(timeout); resolve(); });
+    });
   }
 
   async disconnect(): Promise<void> {
@@ -67,6 +70,7 @@ export class AgentFlowPlatform extends IMessagePlatform {
     if (finish) {
       const fullOutput = this.outputBuffers.get(taskNodeId)!.join("");
       this.outputBuffers.delete(taskNodeId);
+      this.chatToTaskNode.delete(reqId);
       if (fullOutput.startsWith("❌")) {
         this.send({ type: "session_error", payload: { taskNodeId, error: fullOutput } });
       } else {
@@ -144,9 +148,16 @@ export class AgentFlowPlatform extends IMessagePlatform {
       case "resume_session":
         this.handleResumeSession(msg.payload);
         break;
-      case "cancel_session":
-        log.info(`Cancel requested for taskNode: ${msg.payload.taskNodeId}`);
+      case "cancel_session": {
+        const { taskNodeId } = msg.payload;
+        log.info(`Cancel requested for taskNode: ${taskNodeId}`);
+        this.outputBuffers.delete(taskNodeId);
+        // Clean chatToTaskNode entry for this taskNode
+        for (const [chatId, tn] of this.chatToTaskNode) {
+          if (tn === taskNodeId) { this.chatToTaskNode.delete(chatId); break; }
+        }
         break;
+      }
       case "task_completed":
       case "task_paused":
       case "task_failed":
@@ -159,6 +170,9 @@ export class AgentFlowPlatform extends IMessagePlatform {
     }
   }
 
+  // Design constraint: reqId === chatId. SessionManager uses reqId to route responses back,
+  // and we use chatId as the key in chatToTaskNode. They must be identical so that sendStream/sendMessage
+  // can look up the taskNodeId from the reqId it receives.
   private handleStartSession(payload: { taskNodeId: string; agentName: string; prompt: string }): void {
     const { taskNodeId, prompt } = payload;
     const chatId = `af_${taskNodeId}`;
@@ -169,6 +183,9 @@ export class AgentFlowPlatform extends IMessagePlatform {
     });
   }
 
+  // Current: resume follows the same path as start — no session context is restored.
+  // The prompt already contains enough information for the agent to continue.
+  // Future: to truly restore session context, SessionManager needs a resumeSession(sessionId) API.
   private handleResumeSession(payload: { taskNodeId: string; agentName: string; sessionId: string; prompt: string }): void {
     const { taskNodeId, prompt } = payload;
     const chatId = `af_${taskNodeId}`;

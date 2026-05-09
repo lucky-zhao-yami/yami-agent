@@ -1,0 +1,19 @@
+{
+  "sessions": [
+    {
+      "id": "de91d8cc-faae-4d44-a5a7-3b514b2efd37",
+      "title": "修复 /mnt/d/code/yami/yami-agent/src/platform/agentflow/AgentFlowPlatform.ts 中 reviewer 发现的问题。",
+      "created": "2026-05-09T05:50:57",
+      "updated": "2026-05-09T05:51:06"
+    },
+    {
+      "id": "8d00c87b-20d0-485c-bd3e-7f19720dd940",
+      "title": "AgentFlow connector 代码审查",
+      "created": "2026-05-09T05:49:20",
+      "updated": "2026-05-09T13:49:26",
+      "project": "yami-agent",
+      "summary": "审查 feature/agentflow-connector 分支。读取了 AgentFlowPlatform.ts、Bridge.ts、StreamSegmenter.ts、types.ts 等文件。发现问题：chatToTaskNode 内存泄漏、cancel_session 未实现、resume_session 未复用已有 session。Session 在产出最终结论前中断。",
+      "status": "incomplete"
+    }
+  ]
+}
