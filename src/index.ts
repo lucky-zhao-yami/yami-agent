@@ -109,6 +109,15 @@ async function main() {
   await sessionManager.warmUp(config.env.WARM_POOL_SIZE);
   const bridge = new Bridge(platform, sessionManager, config);
 
+  // AgentFlow Platform（可选）
+  if (config.agentflow) {
+    const { AgentFlowPlatform } = await import("./platform/agentflow/AgentFlowPlatform.js");
+    const afPlatform = new AgentFlowPlatform({ ...config.agentflow, workDir: config.env.WORK_DIR });
+    new Bridge(afPlatform, sessionManager, config);
+    await afPlatform.connect();
+    log.info("AgentFlow platform connected");
+  }
+
   // 定时器：timer_tick 驱动 IntervalStrategy
   startTimerTick(sessionManager);
 

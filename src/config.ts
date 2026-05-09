@@ -69,6 +69,11 @@ export type PermissionsConfig = z.infer<typeof PermissionsSchema>;
 export interface AppConfig {
   bot: BotConfig;
   env: EnvConfig;
+  agentflow?: {
+    serverUrl: string;
+    daemonName: string;
+    notifyChannel?: string;
+  };
 }
 
 /** 从 {WORK_DIR}/config.json + .env 加载并校验应用配置。 */
@@ -78,7 +83,11 @@ export function loadConfig(): AppConfig {
   const raw = JSON.parse(readFileSync(configPath, 'utf-8'));
   const bot = BotConfigSchema.parse(raw);
   const env = EnvConfigSchema.parse(process.env);
-  return { bot, env };
+  return { bot, env, agentflow: process.env['AGENTFLOW_ENABLED'] === 'true' ? {
+    serverUrl: process.env['AGENTFLOW_SERVER_URL'] || 'ws://localhost:3001',
+    daemonName: process.env['AGENTFLOW_DAEMON_NAME'] || 'yami-agent',
+    notifyChannel: process.env['AGENTFLOW_NOTIFY_CHANNEL'],
+  } : undefined };
 }
 
 /** 按 chatId 解析聊天配置，未匹配时回退到 'default'。 */
