@@ -321,6 +321,37 @@ def upload_file(name: str, content: str, mime_type: str = "text/plain", folder_i
     return {"id": file["id"], "url": file.get("webViewLink", f"https://drive.google.com/file/d/{file['id']}/view")}
 
 
+@mcp.tool()
+def download_file(file_id: str) -> str:
+    """Download a file's content from Google Drive as text.
+
+    Args:
+        file_id: The file ID to download
+
+    Returns:
+        File content as text. For Google Docs/Sheets/Slides, exports as plain text.
+    """
+    drive = get_drive_service()
+    # 获取文件元信息
+    file_meta = drive.files().get(fileId=file_id, fields="mimeType,name").execute()
+    mime = file_meta.get("mimeType", "")
+
+    # Google Workspace 文件需要 export
+    if "google-apps.document" in mime:
+        content = drive.files().export(fileId=file_id, mimeType="text/plain").execute()
+        return content.decode("utf-8") if isinstance(content, bytes) else content
+    elif "google-apps.spreadsheet" in mime:
+        content = drive.files().export(fileId=file_id, mimeType="text/csv").execute()
+        return content.decode("utf-8") if isinstance(content, bytes) else content
+    elif "google-apps.presentation" in mime:
+        content = drive.files().export(fileId=file_id, mimeType="text/plain").execute()
+        return content.decode("utf-8") if isinstance(content, bytes) else content
+    else:
+        # 普通文件直接下载
+        content = drive.files().get_media(fileId=file_id).execute()
+        return content.decode("utf-8") if isinstance(content, bytes) else str(content)
+
+
 # ─── Google Slides Tools ─────────────────────────────────────────────────────
 
 
