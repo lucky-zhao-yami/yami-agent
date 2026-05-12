@@ -213,6 +213,9 @@ export class AgentFlowPlatform extends IMessagePlatform {
       await proc.initialize();
       await proc.createSession(this.config.workDir);
 
+      // 等待 MCP servers 初始化（kiro 异步加载）
+      await new Promise(r => setTimeout(r, 5000));
+
       let currentPrompt = prompt;
       let finalOutput = "";
       const MAX_TURNS = 10;
