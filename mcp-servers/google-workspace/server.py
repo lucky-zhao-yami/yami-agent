@@ -37,7 +37,7 @@ def get_credentials():
     creds = None
     if Path(token_path).exists():
         with open(token_path) as f:
-            creds = Credentials.from_authorized_user_info(json.load(f), SCOPES)
+            creds = Credentials.from_authorized_user_info(json.load(f))
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
