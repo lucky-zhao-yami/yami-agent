@@ -65,10 +65,8 @@ export class AcpAgentProcess extends IAgentProcess {
     log.info('ACP process initialized');
   }
 
-  async createSession(cwd: string, mcpServers?: any[]): Promise<string> {
-    const params: any = { cwd };
-    if (mcpServers) params.mcpServers = mcpServers;
-    const result = await this.conn!.newSession(params);
+  async createSession(cwd: string): Promise<string> {
+    const result = await this.conn!.newSession({ cwd, mcpServers: [] });
     this._sessionId = result.sessionId;
     log.info(`Session created: ${this._sessionId}`);
     return this._sessionId!;
