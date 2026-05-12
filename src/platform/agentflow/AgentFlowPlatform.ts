@@ -178,8 +178,8 @@ export class AgentFlowPlatform extends IMessagePlatform {
     log.info(`Executing task node ${taskNodeId} with agent "${agentName}"`);
 
     try {
-      const output = await this.executeAgent(agentName, prompt);
-      this.sendResult(taskNodeId, output);
+      const { output, sessionId } = await this.executeAgent(agentName, prompt);
+      this.sendResult(taskNodeId, output, sessionId);
     } catch (err: any) {
       log.error(err, `Task node ${taskNodeId} failed`);
       this.send({ type: "session_error", payload: { taskNodeId, error: err.message } });
@@ -191,15 +191,15 @@ export class AgentFlowPlatform extends IMessagePlatform {
     log.info(`Resuming task node ${taskNodeId} with agent "${agentName}"`);
 
     try {
-      const output = await this.executeAgent(agentName, prompt);
-      this.sendResult(taskNodeId, output);
+      const { output, sessionId } = await this.executeAgent(agentName, prompt);
+      this.sendResult(taskNodeId, output, sessionId);
     } catch (err: any) {
       log.error(err, `Task node ${taskNodeId} resume failed`);
       this.send({ type: "session_error", payload: { taskNodeId, error: err.message } });
     }
   }
 
-  private async executeAgent(agentName: string, prompt: string): Promise<string> {
+  private async executeAgent(agentName: string, prompt: string): Promise<{ output: string; sessionId: string | null }> {
     const { AcpAgentProcess } = await import("../../agent/acp/AcpAgentProcess.js");
     const proc = new AcpAgentProcess({
       command: "kiro-cli",
@@ -244,7 +244,7 @@ export class AgentFlowPlatform extends IMessagePlatform {
         currentPrompt = judgment.reply || "请继续完成任务。";
       }
 
-      return finalOutput;
+      return { output: finalOutput, sessionId: proc.sessionId ?? null };
     } finally {
       await proc.kill();
     }
@@ -265,10 +265,10 @@ export class AgentFlowPlatform extends IMessagePlatform {
     }
   }
 
-  private sendResult(taskNodeId: string, output: string): void {
+  private sendResult(taskNodeId: string, output: string, sessionId?: string | null): void {
     let parsed: any;
     try { parsed = JSON.parse(output); } catch { parsed = output; }
-    this.send({ type: "session_result", payload: { taskNodeId, output: parsed } });
+    this.send({ type: "session_result", payload: { taskNodeId, output: parsed, sessionId: sessionId ?? undefined } });
   }
 
   private startHeartbeat(): void {
