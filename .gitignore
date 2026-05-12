@@ -4,3 +4,4 @@ dist/
 *.tgz
 coverage/
 scripts/profiles.sh
+service_account.json

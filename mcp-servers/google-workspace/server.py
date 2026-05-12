@@ -18,8 +18,19 @@ SCOPES = [
 mcp = FastMCP("google-workspace")
 
 
-def get_credentials() -> Credentials:
-    """Load or create OAuth credentials."""
+def get_credentials():
+    """Load credentials. Supports service account (preferred) or OAuth."""
+    service_account_path = os.environ.get("SERVICE_ACCOUNT_PATH", "service_account.json")
+
+    # 优先使用 Service Account
+    if Path(service_account_path).exists():
+        from google.oauth2 import service_account
+        creds = service_account.Credentials.from_service_account_file(
+            service_account_path, scopes=SCOPES
+        )
+        return creds
+
+    # Fallback: OAuth
     credentials_path = os.environ.get("CREDENTIALS_PATH", "credentials.json")
     token_path = os.environ.get("TOKEN_PATH", "token.json")
 
