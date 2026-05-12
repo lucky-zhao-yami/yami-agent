@@ -174,5 +174,34 @@
       }
     },
     "type": "custom"
+  },
+  "google-workspace": {
+    "name": "Google Workspace",
+    "install": {
+      "type": "local",
+      "dir": "mcp-servers/google-workspace",
+      "python": true
+    },
+    "command": "{WORK_DIR}/mcp-servers/google-workspace/.venv/bin/python",
+    "args": [
+      "{WORK_DIR}/mcp-servers/google-workspace/server.py"
+    ],
+    "env": {
+      "CREDENTIALS_PATH": {
+        "prompt": "Google OAuth credentials JSON 路径",
+        "secret": false
+      },
+      "TOKEN_PATH": {
+        "prompt": "Google OAuth token JSON 路径",
+        "secret": false
+      }
+    },
+    "autoApprove": [
+      "read_doc",
+      "list_files",
+      "get_file_info",
+      "read_presentation"
+    ],
+    "type": "built-in"
   }
 }
