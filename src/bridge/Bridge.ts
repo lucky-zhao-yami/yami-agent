@@ -120,9 +120,9 @@ export class Bridge {
         messagesProcessed.inc({ status: 'ok' });
         messageDuration.observe((Date.now() - startTime) / 1000);
 
-        // 自动检测 SUBMIT_READY 标记，发送 workflow 选择卡片
+        // 自动检测文档链接，发送 workflow 选择卡片
         const output = session.lastOutput;
-        if (output.includes('<!--SUBMIT_READY-->') && this.agentflowPlatform) {
+        if (output.includes('docs.google.com/document') && this.agentflowPlatform) {
           const workflows = this.agentflowPlatform.workflows;
           if (workflows.length > 0) {
             const taskId = `submit_${chatId}_${Date.now()}`;

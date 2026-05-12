@@ -173,27 +173,93 @@ export class AgentFlowPlatform extends IMessagePlatform {
   // Design constraint: reqId === chatId. SessionManager uses reqId to route responses back,
   // and we use chatId as the key in chatToTaskNode. They must be identical so that sendStream/sendMessage
   // can look up the taskNodeId from the reqId it receives.
-  private handleStartSession(payload: { taskNodeId: string; agentName: string; prompt: string }): void {
-    const { taskNodeId, prompt } = payload;
-    const chatId = `af_${taskNodeId}`;
-    this.chatToTaskNode.set(chatId, taskNodeId);
-    this.messageHandler?.({
-      chatId, userId: "agentflow-platform", msgType: "text",
-      text: prompt, reqId: chatId, chatType: 1,
-    });
+  private async handleStartSession(payload: { taskNodeId: string; agentName: string; prompt: string }): Promise<void> {
+    const { taskNodeId, agentName, prompt } = payload;
+    log.info(`Executing task node ${taskNodeId} with agent "${agentName}"`);
+
+    try {
+      const output = await this.executeAgent(agentName, prompt);
+      this.sendResult(taskNodeId, output);
+    } catch (err: any) {
+      log.error(err, `Task node ${taskNodeId} failed`);
+      this.send({ type: "session_error", payload: { taskNodeId, error: err.message } });
+    }
   }
 
-  // Current: resume follows the same path as start — no session context is restored.
-  // The prompt already contains enough information for the agent to continue.
-  // Future: to truly restore session context, SessionManager needs a resumeSession(sessionId) API.
-  private handleResumeSession(payload: { taskNodeId: string; agentName: string; sessionId: string; prompt: string }): void {
-    const { taskNodeId, prompt } = payload;
-    const chatId = `af_${taskNodeId}`;
-    this.chatToTaskNode.set(chatId, taskNodeId);
-    this.messageHandler?.({
-      chatId, userId: "agentflow-platform", msgType: "text",
-      text: prompt, reqId: chatId, chatType: 1,
+  private async handleResumeSession(payload: { taskNodeId: string; agentName: string; sessionId: string; prompt: string }): Promise<void> {
+    const { taskNodeId, agentName, prompt } = payload;
+    log.info(`Resuming task node ${taskNodeId} with agent "${agentName}"`);
+
+    try {
+      const output = await this.executeAgent(agentName, prompt);
+      this.sendResult(taskNodeId, output);
+    } catch (err: any) {
+      log.error(err, `Task node ${taskNodeId} resume failed`);
+      this.send({ type: "session_error", payload: { taskNodeId, error: err.message } });
+    }
+  }
+
+  private async executeAgent(agentName: string, prompt: string): Promise<string> {
+    const { AcpAgentProcess } = await import("../../agent/acp/AcpAgentProcess.js");
+    const proc = new AcpAgentProcess({
+      command: "kiro-cli",
+      args: ["acp", "--agent", agentName, "--trust-all-tools"],
+      cwd: this.config.workDir,
+      env: {},
     });
+    proc.setPermissions({ mode: "trust-all", deny: [], denyCommands: [], denyKinds: [] });
+
+    try {
+      await proc.initialize();
+      await proc.createSession(this.config.workDir);
+
+      let currentPrompt = prompt;
+      let finalOutput = "";
+      const MAX_TURNS = 10;
+
+      for (let turn = 0; turn < MAX_TURNS; turn++) {
+        const chunks: string[] = [];
+        for await (const chunk of proc.prompt(proc.sessionId!, [{ type: "text", text: currentPrompt }])) {
+          if (chunk.type === "text") chunks.push(chunk.text);
+          if (chunk.type === "done") break;
+        }
+        const output = chunks.join("");
+
+        if (turn === MAX_TURNS - 1) {
+          finalOutput = output;
+          break;
+        }
+
+        const judgment = await this.judgeOutput(output, prompt);
+
+        if (judgment.done) {
+          finalOutput = output;
+          break;
+        }
+
+        log.info(`Agent "${agentName}" needs more input (turn ${turn + 1}), continuing...`);
+        currentPrompt = judgment.reply || "请继续完成任务。";
+      }
+
+      return finalOutput;
+    } finally {
+      await proc.kill();
+    }
+  }
+
+  private async judgeOutput(agentOutput: string, taskContext: string): Promise<{ done: boolean; reply?: string }> {
+    try {
+      const res = await fetch(`${this.config.serverUrl.replace('ws://', 'http://').replace('wss://', 'https://')}/trpc/assistant.judge`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentOutput: agentOutput.slice(0, 3000), taskContext: taskContext.slice(0, 2000) }),
+      });
+      const data = await res.json() as any;
+      return data?.result?.data ?? { done: true };
+    } catch (err) {
+      log.error(err, "Judge API failed, assuming done");
+      return { done: true };
+    }
   }
 
   private sendResult(taskNodeId: string, output: string): void {
