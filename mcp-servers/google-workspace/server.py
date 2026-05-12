@@ -288,6 +288,39 @@ def delete_file(file_id: str) -> str:
     return "File moved to trash."
 
 
+@mcp.tool()
+def upload_file(name: str, content: str, mime_type: str = "text/plain", folder_id: str | None = None) -> dict:
+    """Upload a file to Google Drive.
+
+    Args:
+        name: File name (e.g. "report.html", "data.csv")
+        content: File content as text
+        mime_type: MIME type (default: text/plain). Common types: text/html, text/csv, application/json, image/png
+        folder_id: Optional folder ID to upload into
+    """
+    from googleapiclient.http import MediaInMemoryUpload
+
+    drive = get_drive_service()
+    metadata: dict = {"name": name}
+    if folder_id:
+        metadata["parents"] = [folder_id]
+
+    media = MediaInMemoryUpload(content.encode("utf-8"), mimetype=mime_type)
+    file = drive.files().create(body=metadata, media_body=media, fields="id,webViewLink").execute()
+
+    # 自动共享给 yamibuy.com 域
+    try:
+        drive.permissions().create(
+            fileId=file["id"],
+            body={"type": "domain", "role": "reader", "domain": "yamibuy.com"},
+            fields="id",
+        ).execute()
+    except Exception:
+        pass
+
+    return {"id": file["id"], "url": file.get("webViewLink", f"https://drive.google.com/file/d/{file['id']}/view")}
+
+
 # ─── Google Slides Tools ─────────────────────────────────────────────────────
 
 
