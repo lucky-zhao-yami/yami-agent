@@ -84,6 +84,17 @@ def create_doc(title: str, content: str = "", folder_id: str | None = None) -> d
             body={"requests": [{"insertText": {"location": {"index": 1}, "text": content}}]},
         ).execute()
 
+    # 自动共享给 yamibuy.com 域所有人（读权限）
+    drive = get_drive_service()
+    try:
+        drive.permissions().create(
+            fileId=doc_id,
+            body={"type": "domain", "role": "reader", "domain": "yamibuy.com"},
+            fields="id",
+        ).execute()
+    except Exception:
+        pass  # 共享失败不阻塞
+
     return {"id": doc_id, "url": f"https://docs.google.com/document/d/{doc_id}/edit"}
 
 
@@ -187,6 +198,17 @@ def create_folder(name: str, parent_id: str | None = None) -> dict:
         metadata["parents"] = [parent_id]
 
     folder = drive.files().create(body=metadata, fields="id, name").execute()
+
+    # 自动共享给 yamibuy.com 域所有人（读权限）
+    try:
+        drive.permissions().create(
+            fileId=folder["id"],
+            body={"type": "domain", "role": "reader", "domain": "yamibuy.com"},
+            fields="id",
+        ).execute()
+    except Exception:
+        pass
+
     return {"id": folder["id"], "name": folder["name"]}
 
 
@@ -268,6 +290,18 @@ def create_presentation(title: str) -> dict:
     slides = get_slides_service()
     presentation = slides.presentations().create(body={"title": title}).execute()
     pres_id = presentation["presentationId"]
+
+    # 自动共享给 yamibuy.com 域所有人（读权限）
+    drive = get_drive_service()
+    try:
+        drive.permissions().create(
+            fileId=pres_id,
+            body={"type": "domain", "role": "reader", "domain": "yamibuy.com"},
+            fields="id",
+        ).execute()
+    except Exception:
+        pass
+
     return {"id": pres_id, "url": f"https://docs.google.com/presentation/d/{pres_id}/edit"}
 
 
