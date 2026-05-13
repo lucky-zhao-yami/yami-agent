@@ -191,16 +191,16 @@ export class AgentFlowPlatform extends IMessagePlatform {
         } else {
           log.info("Production mode, building...");
           execSync("npm run build", { cwd: agentDir, timeout: 60000, stdio: "pipe" });
-          log.info("Build done, spawning new process and exiting...");
+          log.info("Build done, restarting via shell...");
 
-          // spawn 新进程替代自己（不依赖 watchdog）
-          const child = spawnChild(process.argv[0], process.argv.slice(1), {
+          // 用 shell 延迟 3 秒后启动新进程，旧进程立即退出释放端口
+          const cmd = `sleep 3 && ${process.argv.map(a => `"${a}"`).join(" ")}`;
+          spawnChild("sh", ["-c", cmd], {
             cwd: process.cwd(),
             env: process.env,
-            stdio: "inherit",
+            stdio: "ignore",
             detached: true,
-          });
-          child.unref();
+          }).unref();
           process.exit(0);
         }
       } catch (err: any) {
