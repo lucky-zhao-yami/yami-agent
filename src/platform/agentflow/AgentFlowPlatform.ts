@@ -141,6 +141,7 @@ export class AgentFlowPlatform extends IMessagePlatform {
         this.daemonId = msg.payload.daemonId;
         this._workflows = msg.payload.workflows ?? [];
         log.info(`Registered as daemon: ${this.daemonId}, ${this._workflows.length} workflows available`);
+        this.flushPendingMessages();
         break;
       case "start_session":
         this.handleStartSession(msg.payload);
@@ -392,6 +393,44 @@ export class AgentFlowPlatform extends IMessagePlatform {
   private send(msg: object): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(msg));
+    } else {
+      // 平台断开，存入本地 pending 文件
+      this.savePendingMessage(msg);
+    }
+  }
+
+  private savePendingMessage(msg: object): void {
+    try {
+      const fs = require("fs");
+      const path = require("path");
+      const file = path.join(this.config.workDir, ".pending-messages.json");
+      let pending: any[] = [];
+      try { pending = JSON.parse(fs.readFileSync(file, "utf-8")); } catch {}
+      pending.push({ msg, timestamp: Date.now() });
+      fs.writeFileSync(file, JSON.stringify(pending));
+      log.info(`Message saved to pending queue (${pending.length} total)`);
+    } catch (err: any) {
+      log.error(err, "Failed to save pending message");
+    }
+  }
+
+  private flushPendingMessages(): void {
+    try {
+      const fs = require("fs");
+      const path = require("path");
+      const file = path.join(this.config.workDir, ".pending-messages.json");
+      if (!fs.existsSync(file)) return;
+      const pending: any[] = JSON.parse(fs.readFileSync(file, "utf-8"));
+      if (pending.length === 0) return;
+      for (const p of pending) {
+        if (this.ws?.readyState === WebSocket.OPEN) {
+          this.ws.send(JSON.stringify(p.msg));
+        }
+      }
+      fs.unlinkSync(file);
+      log.info(`Flushed ${pending.length} pending messages to platform`);
+    } catch (err: any) {
+      log.error(err, "Failed to flush pending messages");
     }
   }
 
