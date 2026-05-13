@@ -255,12 +255,12 @@ export class AgentFlowPlatform extends IMessagePlatform {
   // Design constraint: reqId === chatId. SessionManager uses reqId to route responses back,
   // and we use chatId as the key in chatToTaskNode. They must be identical so that sendStream/sendMessage
   // can look up the taskNodeId from the reqId it receives.
-  private async handleStartSession(payload: { taskNodeId: string; agentName: string; prompt: string }): Promise<void> {
-    const { taskNodeId, agentName, prompt } = payload;
+  private async handleStartSession(payload: { taskNodeId: string; agentName: string; prompt: string; idleTimeout?: number }): Promise<void> {
+    const { taskNodeId, agentName, prompt, idleTimeout } = payload;
     log.info(`Executing task node ${taskNodeId} with agent "${agentName}"`);
 
     try {
-      const { output, sessionId } = await this.executeAgent(agentName, prompt);
+      const { output, sessionId } = await this.executeAgent(agentName, prompt, idleTimeout);
       this.sendResult(taskNodeId, output, sessionId);
     } catch (err: any) {
       log.error(err, `Task node ${taskNodeId} failed`);
@@ -311,7 +311,7 @@ export class AgentFlowPlatform extends IMessagePlatform {
     }
   }
 
-  private async executeAgent(agentName: string, prompt: string): Promise<{ output: string; sessionId: string | null }> {
+  private async executeAgent(agentName: string, prompt: string, idleTimeout?: number): Promise<{ output: string; sessionId: string | null }> {
     const { AcpAgentProcess } = await import("../../agent/acp/AcpAgentProcess.js");
     const proc = new AcpAgentProcess({
       command: "kiro-cli",
@@ -331,7 +331,7 @@ export class AgentFlowPlatform extends IMessagePlatform {
       let currentPrompt = prompt;
       let finalOutput = "";
       const MAX_TURNS = 10;
-      const IDLE_TIMEOUT = 10 * 60 * 1000; // 10 分钟无输出视为卡住
+      const IDLE_TIMEOUT = idleTimeout || 10 * 60 * 1000; // 默认 10 分钟
 
       for (let turn = 0; turn < MAX_TURNS; turn++) {
         const chunks: string[] = [];
