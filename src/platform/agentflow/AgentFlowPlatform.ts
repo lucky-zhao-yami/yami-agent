@@ -182,12 +182,19 @@ export class AgentFlowPlatform extends IMessagePlatform {
         const agentDir = resolve(dirname(process.argv[1]), "..");
 
         log.info(`Upgrading in ${agentDir}...`);
-        execSync("git pull", { cwd: agentDir, timeout: 30000 });
+        execSync("git pull", { cwd: agentDir, timeout: 30000, stdio: "pipe" });
         log.info("Git pull done");
-        execSync("npm run build", { cwd: agentDir, timeout: 60000 });
-        log.info("Build done, restarting...");
 
-        process.exit(0);
+        // 判断是否是 dev 模式（tsx watch 会自动热重载，不需要 build 和重启）
+        const isDev = process.argv.some(a => a.includes("tsx")) || process.env.NODE_ENV === "development";
+        if (isDev) {
+          log.info("Dev mode detected, hot reload will pick up changes. No restart needed.");
+        } else {
+          log.info("Production mode, building...");
+          execSync("npm run build", { cwd: agentDir, timeout: 60000, stdio: "pipe" });
+          log.info("Build done, restarting...");
+          process.exit(0);
+        }
       } catch (err: any) {
         log.error(err, "Upgrade failed");
       }
