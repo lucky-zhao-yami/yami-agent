@@ -193,7 +193,7 @@ export class AgentFlowPlatform extends IMessagePlatform {
           log.info("Production mode, building...");
           execSync("npm run build", { cwd: agentDir, timeout: 60000, stdio: "pipe" });
           log.info("Build done, restarting...");
-          process.exit(0);
+          process.exit(100); // non-zero so watchdog restarts
         }
       } catch (err: any) {
         log.error(err, "Upgrade failed");
