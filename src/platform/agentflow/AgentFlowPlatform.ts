@@ -1,5 +1,5 @@
 import WebSocket from "ws";
-import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync, writeFileSync, unlinkSync } from "node:fs";
 import { join, basename, resolve, dirname } from "node:path";
 import { getLogger } from "../../logger.js";
 import { IMessagePlatform } from "../types.js";
@@ -183,7 +183,6 @@ export class AgentFlowPlatform extends IMessagePlatform {
     const sessionFile = join(homedir, ".kiro", "sessions", "cli", `${sessionId}.jsonl`);
 
     try {
-      const { readFileSync } = require("fs");
       const content = readFileSync(sessionFile, "utf-8");
       const lines = content.trim().split("\n");
       // 解析为对话消息（只提取 text 和 tool_use）
@@ -401,13 +400,11 @@ export class AgentFlowPlatform extends IMessagePlatform {
 
   private savePendingMessage(msg: object): void {
     try {
-      const fs = require("fs");
-      const path = require("path");
-      const file = path.join(this.config.workDir, ".pending-messages.json");
+      const file = join(this.config.workDir, ".pending-messages.json");
       let pending: any[] = [];
-      try { pending = JSON.parse(fs.readFileSync(file, "utf-8")); } catch {}
+      try { pending = JSON.parse(readFileSync(file, "utf-8")); } catch {}
       pending.push({ msg, timestamp: Date.now() });
-      fs.writeFileSync(file, JSON.stringify(pending));
+      writeFileSync(file, JSON.stringify(pending));
       log.info(`Message saved to pending queue (${pending.length} total)`);
     } catch (err: any) {
       log.error(err, "Failed to save pending message");
@@ -416,18 +413,16 @@ export class AgentFlowPlatform extends IMessagePlatform {
 
   private flushPendingMessages(): void {
     try {
-      const fs = require("fs");
-      const path = require("path");
-      const file = path.join(this.config.workDir, ".pending-messages.json");
-      if (!fs.existsSync(file)) return;
-      const pending: any[] = JSON.parse(fs.readFileSync(file, "utf-8"));
+      const file = join(this.config.workDir, ".pending-messages.json");
+      if (!existsSync(file)) return;
+      const pending: any[] = JSON.parse(readFileSync(file, "utf-8"));
       if (pending.length === 0) return;
       for (const p of pending) {
         if (this.ws?.readyState === WebSocket.OPEN) {
           this.ws.send(JSON.stringify(p.msg));
         }
       }
-      fs.unlinkSync(file);
+      unlinkSync(file);
       log.info(`Flushed ${pending.length} pending messages to platform`);
     } catch (err: any) {
       log.error(err, "Failed to flush pending messages");
