@@ -3,6 +3,7 @@
 ## 状态
 
 - 分支 `feature/agentflow-connector`：AgentFlow 基础连接已完成（审查+修复），企微卡片交互提交功能实现中（4/8 步完成）
+- upgrade 命令：已实现，AgentFlow 平台可通过 WebSocket 发送 `{"type":"upgrade"}` 触发远程升级
 
 ## 关键决策
 
@@ -19,6 +20,9 @@
 - ManagedSession 新增 `lastOutput` 属性，用于获取最近一次 AI 回复内容作为提交内容
 - pendingSubmits Map 存储待确认的提交上下文，5 分钟过期自动清理
 
+- upgrade 命令：收到信号后异步执行 git pull + npm run build，成功后 process.exit(0) 依赖 watchdog 重启；失败只打日志不退出
+- agentDir 通过 `resolve(dirname(process.argv[1]), "..")` 推断（dist/index.js → 项目根）
+
 ## 坑点
 
 - chatToTaskNode 必须在 finish 时清理，否则长期运行会内存泄漏
@@ -26,6 +30,8 @@
 - connect() 的 resolve 只能调用一次：timeout 和 onOpen 互斥
 - WeComPlatform 的 chatId 在单聊时有 `dm_` 前缀，发送时需 replace 掉
 - template_card_event 回调中 userId 字段可能是 `from_user` 或 `userid`，需兼容
+- upgrade 依赖 watchdog/systemd 重启进程，裸启动（无 watchdog）时 exit 后不会自动恢复
+- git pull/npm run build 有超时限制（30s/60s），大仓库或慢网络可能超时
 
 ## 待办
 

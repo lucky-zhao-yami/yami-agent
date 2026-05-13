@@ -1,6 +1,6 @@
 import WebSocket from "ws";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
-import { join, basename } from "node:path";
+import { join, basename, resolve, dirname } from "node:path";
 import { getLogger } from "../../logger.js";
 import { IMessagePlatform } from "../types.js";
 import type { IncomingMessage, PlatformEvent } from "../types.js";
@@ -167,7 +167,31 @@ export class AgentFlowPlatform extends IMessagePlatform {
         this._workflows = msg.payload.workflows ?? [];
         log.info(`Workflows updated: ${this._workflows.length} available`);
         break;
+      case "upgrade":
+        this.handleUpgrade();
+        break;
     }
+  }
+
+  private handleUpgrade(): void {
+    log.info("Received upgrade signal, starting upgrade...");
+
+    (async () => {
+      try {
+        const { execSync } = await import("node:child_process");
+        const agentDir = resolve(dirname(process.argv[1]), "..");
+
+        log.info(`Upgrading in ${agentDir}...`);
+        execSync("git pull", { cwd: agentDir, timeout: 30000 });
+        log.info("Git pull done");
+        execSync("npm run build", { cwd: agentDir, timeout: 60000 });
+        log.info("Build done, restarting...");
+
+        process.exit(0);
+      } catch (err: any) {
+        log.error(err, "Upgrade failed");
+      }
+    })();
   }
 
   // Design constraint: reqId === chatId. SessionManager uses reqId to route responses back,

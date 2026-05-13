@@ -1,6 +1,15 @@
 {
   "sessions": [
     {
+      "id": "7a3bdc1c-81a1-4dc5-85df-1b28b24ebd6e",
+      "title": "AgentFlowPlatform 添加 upgrade 命令",
+      "created": "2026-05-13T02:50:51",
+      "updated": "2026-05-13T02:52:18",
+      "project": "yami-agent",
+      "summary": "在 AgentFlowPlatform.handlePlatformMessage 中添加 upgrade case，收到信号后异步 git pull + npm run build，成功后 process.exit(0) 由 watchdog 重启。通过 process.argv[1] 推断 agentDir。Build 通过。",
+      "status": "done"
+    },
+    {
       "id": "d1c85c3e-8d89-4dc9-b1be-5b59b2d210c7",
       "title": "在 /mnt/d/code/yami/yami-agent (分支 feature/agentflow-connector) 中实现\"通过企微交互卡片提交 issue 到 AgentFlow 平台\"功能。",
       "created": "2026-05-09T06:05:05",
