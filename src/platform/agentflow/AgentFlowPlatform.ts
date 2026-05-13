@@ -297,7 +297,7 @@ export class AgentFlowPlatform extends IMessagePlatform {
 
       const finalSessionId = proc.sessionId ?? sessionId;
       this.sendResult(taskNodeId, output, finalSessionId);
-      proc.kill();
+      try { proc.kill(); } catch {} // 优雅关闭
     } catch (err: any) {
       log.error(err, `Task node ${taskNodeId} resume failed, falling back to new session`);
       if (proc) proc.kill();
@@ -417,13 +417,21 @@ export class AgentFlowPlatform extends IMessagePlatform {
       if (!existsSync(file)) return;
       const pending: any[] = JSON.parse(readFileSync(file, "utf-8"));
       if (pending.length === 0) return;
+      const failed: any[] = [];
       for (const p of pending) {
         if (this.ws?.readyState === WebSocket.OPEN) {
           this.ws.send(JSON.stringify(p.msg));
+        } else {
+          failed.push(p);
         }
       }
-      unlinkSync(file);
-      log.info(`Flushed ${pending.length} pending messages to platform`);
+      if (failed.length > 0) {
+        writeFileSync(file, JSON.stringify(failed));
+        log.info(`Flushed ${pending.length - failed.length} pending messages, ${failed.length} still pending`);
+      } else {
+        unlinkSync(file);
+        log.info(`Flushed ${pending.length} pending messages to platform`);
+      }
     } catch (err: any) {
       log.error(err, "Failed to flush pending messages");
     }
