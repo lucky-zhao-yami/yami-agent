@@ -229,9 +229,10 @@ export class AgentFlowPlatform extends IMessagePlatform {
     const { taskNodeId, agentName, sessionId, prompt } = payload;
     log.info(`Resuming task node ${taskNodeId} with agent "${agentName}", session=${sessionId}`);
 
+    let proc: any = null;
     try {
       const { AcpAgentProcess } = await import("../../agent/acp/AcpAgentProcess.js");
-      const proc = new AcpAgentProcess({
+      proc = new AcpAgentProcess({
         command: "kiro-cli",
         args: ["acp", "--agent", agentName, "--trust-all-tools"],
         cwd: this.config.workDir,
@@ -253,9 +254,10 @@ export class AgentFlowPlatform extends IMessagePlatform {
 
       const finalSessionId = proc.sessionId ?? sessionId;
       this.sendResult(taskNodeId, output, finalSessionId);
-      proc.dispose();
+      proc.kill();
     } catch (err: any) {
       log.error(err, `Task node ${taskNodeId} resume failed, falling back to new session`);
+      if (proc) proc.kill();
       // fallback: 新建 session
       try {
         const { output, sessionId: newSid } = await this.executeAgent(agentName, prompt);
