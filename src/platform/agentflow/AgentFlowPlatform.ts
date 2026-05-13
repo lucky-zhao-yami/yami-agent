@@ -331,7 +331,7 @@ export class AgentFlowPlatform extends IMessagePlatform {
       let currentPrompt = prompt;
       let finalOutput = "";
       const MAX_TURNS = 10;
-      const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 分钟无输出视为卡住
+      const IDLE_TIMEOUT = 10 * 60 * 1000; // 10 分钟无输出视为卡住
 
       for (let turn = 0; turn < MAX_TURNS; turn++) {
         const chunks: string[] = [];
