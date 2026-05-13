@@ -331,12 +331,25 @@ export class AgentFlowPlatform extends IMessagePlatform {
       let currentPrompt = prompt;
       let finalOutput = "";
       const MAX_TURNS = 10;
+      const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 分钟无输出视为卡住
 
       for (let turn = 0; turn < MAX_TURNS; turn++) {
         const chunks: string[] = [];
-        for await (const chunk of proc.prompt(proc.sessionId!, [{ type: "text", text: currentPrompt }])) {
-          if (chunk.type === "text") chunks.push(chunk.text);
-          if (chunk.type === "done") break;
+        let idleTimer: ReturnType<typeof setTimeout> | null = null;
+        const idlePromise = new Promise<never>((_, reject) => {
+          idleTimer = setTimeout(() => reject(new Error("Agent idle timeout (5min no output)")), IDLE_TIMEOUT);
+        });
+
+        try {
+          const promptIter = proc.prompt(proc.sessionId!, [{ type: "text", text: currentPrompt }]);
+          for await (const chunk of promptIter) {
+            // 每收到 chunk 重置 idle timer
+            if (idleTimer) { clearTimeout(idleTimer); idleTimer = setTimeout(() => {}, IDLE_TIMEOUT); }
+            if (chunk.type === "text") chunks.push(chunk.text);
+            if (chunk.type === "done") break;
+          }
+        } finally {
+          if (idleTimer) clearTimeout(idleTimer);
         }
         const output = chunks.join("");
 
