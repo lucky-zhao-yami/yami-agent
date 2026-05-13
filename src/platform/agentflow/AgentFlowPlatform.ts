@@ -226,15 +226,43 @@ export class AgentFlowPlatform extends IMessagePlatform {
   }
 
   private async handleResumeSession(payload: { taskNodeId: string; agentName: string; sessionId: string; prompt: string }): Promise<void> {
-    const { taskNodeId, agentName, prompt } = payload;
-    log.info(`Resuming task node ${taskNodeId} with agent "${agentName}"`);
+    const { taskNodeId, agentName, sessionId, prompt } = payload;
+    log.info(`Resuming task node ${taskNodeId} with agent "${agentName}", session=${sessionId}`);
 
     try {
-      const { output, sessionId } = await this.executeAgent(agentName, prompt);
-      this.sendResult(taskNodeId, output, sessionId);
+      const { AcpAgentProcess } = await import("../../agent/acp/AcpAgentProcess.js");
+      const proc = new AcpAgentProcess({
+        command: "kiro-cli",
+        args: ["acp", "--agent", agentName, "--trust-all-tools"],
+        cwd: this.config.workDir,
+        env: {},
+      });
+      proc.setPermissions({ mode: "trust-all", deny: [], denyCommands: [], denyKinds: [] });
+
+      await proc.initialize();
+      await proc.loadSession(sessionId);
+
+      // 等待 MCP servers 初始化
+      await new Promise(r => setTimeout(r, 5000));
+
+      // 发送新 prompt 继续对话
+      let output = "";
+      for await (const chunk of proc.prompt({ prompt: [{ type: "text", text: prompt }] })) {
+        if (chunk.type === "text") output += chunk.text;
+      }
+
+      const finalSessionId = proc.sessionId ?? sessionId;
+      this.sendResult(taskNodeId, output, finalSessionId);
+      proc.dispose();
     } catch (err: any) {
-      log.error(err, `Task node ${taskNodeId} resume failed`);
-      this.send({ type: "session_error", payload: { taskNodeId, error: err.message } });
+      log.error(err, `Task node ${taskNodeId} resume failed, falling back to new session`);
+      // fallback: 新建 session
+      try {
+        const { output, sessionId: newSid } = await this.executeAgent(agentName, prompt);
+        this.sendResult(taskNodeId, output, newSid);
+      } catch (err2: any) {
+        this.send({ type: "session_error", payload: { taskNodeId, error: err2.message } });
+      }
     }
   }
 
