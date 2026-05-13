@@ -170,6 +170,49 @@ export class AgentFlowPlatform extends IMessagePlatform {
       case "upgrade":
         this.handleUpgrade();
         break;
+      case "get_session_log":
+        this.handleGetSessionLog(msg.payload, (msg as any).requestId);
+        break;
+    }
+  }
+
+  private handleGetSessionLog(payload: { sessionId: string }, requestId: string): void {
+    const { sessionId } = payload;
+    const homedir = process.env.HOME || process.env.USERPROFILE || "";
+    const sessionFile = join(homedir, ".kiro", "sessions", "cli", `${sessionId}.jsonl`);
+
+    try {
+      const { readFileSync } = require("fs");
+      const content = readFileSync(sessionFile, "utf-8");
+      const lines = content.trim().split("\n");
+      // 解析为对话消息（只提取 text 和 tool_use）
+      const messages: any[] = [];
+      for (const line of lines) {
+        try {
+          const d = JSON.parse(line);
+          if (d.kind === "AssistantMessage") {
+            for (const c of d.data.content) {
+              if (c.kind === "text" && c.data?.trim()) {
+                messages.push({ role: "assistant", type: "text", content: c.data });
+              } else if (c.kind === "toolUse") {
+                messages.push({ role: "assistant", type: "tool_use", name: c.data.name, input: c.data.input });
+              }
+            }
+          } else if (d.kind === "ToolResults") {
+            for (const c of d.data.content) {
+              if (c.kind === "toolResult") {
+                const text = c.data.content?.map((i: any) => i.data).join("") || "";
+                messages.push({ role: "tool", type: "result", content: text.slice(0, 500) });
+              }
+            }
+          } else if (d.kind === "UserMessage") {
+            messages.push({ role: "user", type: "text", content: d.data.content?.slice(0, 1000) || "" });
+          }
+        } catch {}
+      }
+      this.send({ type: "request_response" as any, payload: { requestId, data: { sessionId, messages } } });
+    } catch (err: any) {
+      this.send({ type: "request_response" as any, payload: { requestId, data: { sessionId, error: err.message } } });
     }
   }
 
