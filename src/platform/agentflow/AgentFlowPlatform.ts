@@ -182,7 +182,7 @@ export class AgentFlowPlatform extends IMessagePlatform {
         const agentDir = resolve(dirname(process.argv[1]), "..");
 
         log.info(`Upgrading in ${agentDir}...`);
-        execSync("git pull", { cwd: agentDir, timeout: 30000, stdio: "pipe" });
+        execSync("git pull", { cwd: agentDir, timeout: 120000, stdio: "pipe" });
         log.info("Git pull done");
 
         // 判断是否是 dev 模式（tsx watch 会自动热重载，不需要 build 和重启）
