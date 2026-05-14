@@ -259,6 +259,16 @@ export class AgentFlowPlatform extends IMessagePlatform {
     const { taskNodeId, agentName, prompt, idleTimeout } = payload;
     log.info(`Executing task node ${taskNodeId} with agent "${agentName}"`);
 
+    // 快速失败：检查 agent 是否存在
+    const agentDir = join(this.config.workDir, ".kiro", "agents", agentName);
+    const agentJson = join(this.config.workDir, ".kiro", "agents", `${agentName}.json`);
+    if (!existsSync(agentDir) && !existsSync(agentJson)) {
+      const error = `Agent "${agentName}" not found in workspace`;
+      log.error(error);
+      this.send({ type: "session_error", payload: { taskNodeId, error } });
+      return;
+    }
+
     try {
       const { output, sessionId } = await this.executeAgent(agentName, prompt, idleTimeout);
       this.sendResult(taskNodeId, output, sessionId);
