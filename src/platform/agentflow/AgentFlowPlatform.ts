@@ -171,6 +171,13 @@ export class AgentFlowPlatform extends IMessagePlatform {
       case "upgrade":
         this.handleUpgrade();
         break;
+      case "notify_user": {
+        const { chatId, content } = msg.payload;
+        if (chatId && content) {
+          this.messageHandler?.({ reqId: chatId, chatId, content, chatType: 0 });
+        }
+        break;
+      }
       case "get_session_log":
         this.handleGetSessionLog(msg.payload, (msg as any).requestId);
         break;
