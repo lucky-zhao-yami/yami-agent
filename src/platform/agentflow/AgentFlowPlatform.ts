@@ -174,7 +174,7 @@ export class AgentFlowPlatform extends IMessagePlatform {
       case "notify_user": {
         const { chatId, content } = msg.payload;
         if (chatId && content) {
-          this.messageHandler?.({ reqId: chatId, chatId, content, chatType: 0 });
+          this.messageHandler?.({ reqId: chatId, chatId, text: content, userId: "system", msgType: "text", chatType: 0 });
         }
         break;
       }
@@ -230,8 +230,9 @@ export class AgentFlowPlatform extends IMessagePlatform {
       try {
         const { execSync, spawn: spawnChild } = await import("node:child_process");
         const agentDir = resolve(dirname(process.argv[1]), "..");
+        const isWindows = process.platform === "win32";
 
-        log.info(`Upgrading in ${agentDir}...`);
+        log.info(`Upgrading in ${agentDir}... (platform: ${process.platform})`);
         execSync("git pull", { cwd: agentDir, timeout: 120000, stdio: "pipe" });
         log.info("Git pull done");
 
@@ -243,14 +244,29 @@ export class AgentFlowPlatform extends IMessagePlatform {
           execSync("npm run build", { cwd: agentDir, timeout: 60000, stdio: "pipe" });
           log.info("Build done, restarting via shell...");
 
-          // 用 shell 延迟 3 秒后启动新进程，旧进程立即退出释放端口
-          const cmd = `sleep 3 && ${process.argv.map(a => `"${a}"`).join(" ")}`;
-          spawnChild("sh", ["-c", cmd], {
-            cwd: process.cwd(),
-            env: process.env,
-            stdio: "ignore",
-            detached: true,
-          }).unref();
+          // 跨平台重启：延迟 3 秒后启动新进程，旧进程立即退出释放端口
+          const quotedArgs = process.argv.map(a => `"${a}"`).join(" ");
+          
+          if (isWindows) {
+            // Windows: 用 cmd /c 执行，timeout 延迟
+            const cmd = `timeout /t 3 /nobreak >nul && ${quotedArgs}`;
+            spawnChild("cmd", ["/c", cmd], {
+              cwd: process.cwd(),
+              env: process.env,
+              stdio: "ignore",
+              detached: true,
+              shell: true,
+            }).unref();
+          } else {
+            // Mac/Linux: 用 sh -c 执行，sleep 延迟
+            const cmd = `sleep 3 && ${quotedArgs}`;
+            spawnChild("sh", ["-c", cmd], {
+              cwd: process.cwd(),
+              env: process.env,
+              stdio: "ignore",
+              detached: true,
+            }).unref();
+          }
           process.exit(0);
         }
       } catch (err: any) {

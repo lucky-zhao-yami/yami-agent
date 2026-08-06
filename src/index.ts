@@ -126,7 +126,14 @@ async function main() {
   const sessionsDir = join(config.env.WORK_DIR, 'sessions');
   scheduleDailyCleanup(memoryManager, sessionsDir);
 
-  await platform.connect();
+  // 企微连接（可选，失败不影响 AgentFlow）
+  try {
+    await platform.connect();
+    log.info('WeChat platform connected');
+  } catch (e) {
+    log.warn(`WeChat platform connection failed (ignored): ${(e as Error).message}`);
+  }
+  
   await startHttpServer(config.env.PORT, platform, sessionManager);
 
   log.info('yami-agent started');

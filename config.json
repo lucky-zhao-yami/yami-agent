@@ -1,0 +1,9 @@
+{
+  "bot_id": "aibHnN5tRxUjMKkPiR9BbZ-kMKLVBy9EUml",
+  "secret": "o7VDsxrG8sO8niuFOrTpdhMtEncDU5nnYlU7eX3yLBk",
+  "welcome_msg": "👋 你好！",
+  "agent": {
+    "command": "kiro",
+    "args": ["chat"]
+  }
+}
