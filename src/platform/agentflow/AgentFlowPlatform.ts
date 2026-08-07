@@ -1,6 +1,7 @@
 import WebSocket from "ws";
 import { readdirSync, readFileSync, existsSync, writeFileSync, unlinkSync } from "node:fs";
 import { join, basename, resolve, dirname } from "node:path";
+import { execSync } from "node:child_process";
 import { getLogger } from "../../logger.js";
 import { IMessagePlatform } from "../types.js";
 import type { IncomingMessage, PlatformEvent } from "../types.js";
@@ -128,13 +129,13 @@ export class AgentFlowPlatform extends IMessagePlatform {
     // 获取 git commit hash 作为版本号
     let version: string | undefined;
     try {
-      const { execSync } = require("node:child_process");
       const agentDir = resolve(dirname(process.argv[1]), "..");
       version = execSync("git rev-parse --short HEAD", { cwd: agentDir, encoding: "utf-8" }).trim();
-    } catch {
-      // ignore
+    } catch (e) {
+      log.warn({ err: e }, "Failed to get git version");
     }
 
+    log.info(`Registering with version=${version}, platform=${process.platform}`);
     this.send({
       type: "register",
       payload: {
