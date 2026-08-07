@@ -125,12 +125,24 @@ export class AgentFlowPlatform extends IMessagePlatform {
   }
 
   private register(): void {
+    // 获取 git commit hash 作为版本号
+    let version: string | undefined;
+    try {
+      const { execSync } = require("node:child_process");
+      const agentDir = resolve(dirname(process.argv[1]), "..");
+      version = execSync("git rev-parse --short HEAD", { cwd: agentDir, encoding: "utf-8" }).trim();
+    } catch {
+      // ignore
+    }
+
     this.send({
       type: "register",
       payload: {
         name: this.config.daemonName,
         notifyChannel: this.config.notifyChannel,
         agents: this.scanAgents(),
+        version,
+        platform: process.platform,
       },
     });
   }
